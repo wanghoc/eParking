@@ -2,6 +2,11 @@ import { useState } from "react";
 import { AppSidebar } from "./components/AppSidebar";
 import { HomePage } from "./components/HomePage";
 import { VehiclesPage } from "./components/VehiclesPage";
+import { HistoryPage } from "./components/HistoryPage";
+import { PaymentPage } from "./components/PaymentPage";
+import { ManagementPage } from "./components/ManagementPage";
+import { AdminPage } from "./components/AdminPage";
+import { FAQPage } from "./components/FAQPage";
 
 export default function App() {
     const [activeItem, setActiveItem] = useState("home");
@@ -12,41 +17,16 @@ export default function App() {
                 return <HomePage />;
             case "vehicles":
                 return <VehiclesPage />;
-            case "history":
-                return (
-                    <div className="space-y-6">
-                        <h1 className="text-2xl font-semibold text-gray-900">Lịch sử gửi xe</h1>
-                        <p className="text-gray-600">Tính năng đang được phát triển...</p>
-                    </div>
-                );
-            case "payment":
-                return (
-                    <div className="space-y-6">
-                        <h1 className="text-2xl font-semibold text-gray-900">Nạp tiền</h1>
-                        <p className="text-gray-600">Tính năng đang được phát triển...</p>
-                    </div>
-                );
-            case "management":
-                return (
-                    <div className="space-y-6">
-                        <h1 className="text-2xl font-semibold text-gray-900">Quản lý bãi xe</h1>
-                        <p className="text-gray-600">Tính năng đang được phát triển...</p>
-                    </div>
-                );
-            case "admin":
-                return (
-                    <div className="space-y-6">
-                        <h1 className="text-2xl font-semibold text-gray-900">Quản trị hệ thống</h1>
-                        <p className="text-gray-600">Tính năng đang được phát triển...</p>
-                    </div>
-                );
-            case "faq":
-                return (
-                    <div className="space-y-6">
-                        <h1 className="text-2xl font-semibold text-gray-900">FAQ</h1>
-                        <p className="text-gray-600">Câu hỏi thường gặp sẽ được cập nhật...</p>
-                    </div>
-                );
+                  case "history":
+        return <HistoryPage />;
+      case "payment":
+        return <PaymentPage />;
+      case "management":
+        return <ManagementPage />;
+      case "admin":
+        return <AdminPage />;
+      case "faq":
+        return <FAQPage />;
             default:
                 return <HomePage />;
         }

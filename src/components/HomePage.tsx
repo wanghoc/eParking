@@ -10,7 +10,7 @@ export function HomePage() {
             color: "bg-blue-500"
         },
         {
-            title: "Số phương tiện",
+            title: "Số xe máy",
             value: "3",
             icon: Car,
             color: "bg-green-500"
@@ -27,7 +27,7 @@ export function HomePage() {
         <div className="space-y-6">
             <div>
                 <h1 className="text-2xl font-semibold text-gray-900">Trang chủ</h1>
-                <p className="text-gray-600">Tổng quan về tài khoản và hoạt động gửi xe</p>
+                <p className="text-gray-600">Tổng quan về tài khoản và hoạt động gửi xe máy</p>
             </div>
 
             {/* Dashboard Cards */}
