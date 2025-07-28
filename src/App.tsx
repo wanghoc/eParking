@@ -6,6 +6,7 @@ import { HistoryPage } from "./components/HistoryPage";
 import { PaymentPage } from "./components/PaymentPage";
 import { ManagementPage } from "./components/ManagementPage";
 import { AdminPage } from "./components/AdminPage";
+import { CameraPage } from "./components/CameraPage";
 import { FAQPage } from "./components/FAQPage";
 
 export default function App() {
@@ -17,16 +18,18 @@ export default function App() {
                 return <HomePage />;
             case "vehicles":
                 return <VehiclesPage />;
-                  case "history":
-        return <HistoryPage />;
-      case "payment":
-        return <PaymentPage />;
-      case "management":
-        return <ManagementPage />;
-      case "admin":
-        return <AdminPage />;
-      case "faq":
-        return <FAQPage />;
+            case "history":
+                return <HistoryPage />;
+            case "payment":
+                return <PaymentPage />;
+            case "management":
+                return <ManagementPage />;
+            case "admin":
+                return <AdminPage />;
+            case "camera":
+                return <CameraPage />;
+            case "faq":
+                return <FAQPage />;
             default:
                 return <HomePage />;
         }

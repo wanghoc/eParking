@@ -1,228 +1,208 @@
-import { HelpCircle, ChevronDown, ChevronUp, Search, MessageCircle, Phone, Mail } from "lucide-react";
+import { HelpCircle, ChevronDown, ChevronUp, Car, CreditCard, Camera, AlertCircle } from "lucide-react";
 import { useState } from "react";
 
 export function FAQPage() {
-    const [expandedItems, setExpandedItems] = useState<number[]>([]);
+    const [openItems, setOpenItems] = useState<number[]>([]);
 
     const faqData = [
         {
             id: 1,
-            question: "Làm thế nào để đăng ký tài khoản eParking?",
-            answer: "Bạn có thể đăng ký tài khoản bằng cách: 1) Tải ứng dụng eParking từ App Store hoặc Google Play, 2) Chọn 'Đăng ký' và nhập thông tin cá nhân, 3) Xác thực email hoặc số điện thoại, 4) Hoàn tất đăng ký và bắt đầu sử dụng."
+            question: "Làm thế nào để đăng ký xe máy?",
+            answer: "Bạn có thể đăng ký xe máy bằng cách vào trang 'Phương tiện' và nhấn 'Thêm phương tiện'. Hệ thống cho phép đăng ký tối đa 3 xe máy cho mỗi tài khoản.",
+            category: "Đăng ký xe",
+            icon: Car
         },
         {
             id: 2,
-            question: "Cách nạp tiền vào ví eParking?",
-            answer: "Bạn có thể nạp tiền bằng nhiều cách: 1) Thẻ ngân hàng nội địa, 2) Thẻ quốc tế (Visa/Mastercard), 3) Ví điện tử (MoMo, ZaloPay, ViettelPay), 4) Chuyển khoản ngân hàng, 5) Nạp tiền tại các điểm giao dịch."
+            question: "Phí gửi xe là bao nhiêu?",
+            answer: "Phí gửi xe máy được cố định là 2,000₫ cho mỗi lượt gửi xe, không phụ thuộc vào thời gian gửi.",
+            category: "Thanh toán",
+            icon: CreditCard
         },
         {
             id: 3,
-            question: "Giá vé gửi xe máy là bao nhiêu?",
-            answer: "Giá vé gửi xe máy được cố định là 2,000₫ cho mỗi lần gửi xe, không phụ thuộc vào thời gian gửi."
+            question: "Làm thế nào để nạp tiền vào tài khoản?",
+            answer: "Bạn có thể nạp tiền qua các phương thức: Momo, VNPay, ZaloPay hoặc nạp tiền thủ công qua bảo vệ bãi xe.",
+            category: "Thanh toán",
+            icon: CreditCard
         },
         {
             id: 4,
-            question: "Làm sao để tìm bãi xe gần nhất?",
-            answer: "Để tìm bãi xe gần nhất: 1) Mở ứng dụng eParking, 2) Chọn 'Tìm bãi xe', 3) Cho phép định vị GPS, 4) Xem danh sách bãi xe gần bạn, 5) Chọn bãi xe phù hợp và xem thông tin chi tiết."
+            question: "Hệ thống nhận diện biển số hoạt động như thế nào?",
+            answer: "Hệ thống sử dụng camera và công nghệ AI để tự động nhận diện biển số xe khi xe vào/ra bãi. Độ chính xác hiện tại đạt 96%.",
+            category: "Công nghệ",
+            icon: Camera
         },
         {
             id: 5,
-            question: "Có thể hủy vé gửi xe không?",
-            answer: "Có thể hủy vé trong vòng 15 phút sau khi mua. Sau thời gian này, vé không thể hủy và tiền sẽ không được hoàn lại. Để hủy vé: vào 'Lịch sử gửi xe' > chọn vé cần hủy > nhấn 'Hủy vé'."
+            question: "Tôi có thể đăng ký bao nhiêu xe máy?",
+            answer: "Mỗi tài khoản được phép đăng ký tối đa 3 xe máy. Khi đã đăng ký đủ 3 xe, bạn cần xóa một xe để thêm xe mới.",
+            category: "Đăng ký xe",
+            icon: Car
         },
         {
             id: 6,
-            question: "Làm gì khi quên mật khẩu?",
-            answer: "Khi quên mật khẩu: 1) Nhấn 'Quên mật khẩu' tại màn hình đăng nhập, 2) Nhập email hoặc số điện thoại đã đăng ký, 3) Nhận mã xác thực qua SMS/Email, 4) Nhập mã và tạo mật khẩu mới."
+            question: "Làm gì khi hệ thống không nhận diện được biển số?",
+            answer: "Trong trường hợp này, bạn có thể liên hệ bảo vệ bãi xe để được hỗ trợ nhập biển số thủ công hoặc quét mã QR.",
+            category: "Hỗ trợ",
+            icon: AlertCircle
         },
         {
             id: 7,
-            question: "Có thể gửi nhiều xe máy cùng lúc không?",
-            answer: "Có thể gửi nhiều xe máy cùng lúc. Mỗi xe cần được đăng ký riêng với biển số khác nhau. Bạn có thể quản lý tối đa 3 xe máy trong phần 'Quản lý phương tiện'."
+            question: "Làm thế nào để xem lịch sử gửi xe?",
+            answer: "Bạn có thể xem lịch sử gửi xe trong trang 'Lịch sử gửi xe'. Hệ thống hiển thị tất cả các lượt gửi xe của bạn.",
+            category: "Sử dụng",
+            icon: Car
         },
         {
             id: 8,
-            question: "Làm sao để báo cáo sự cố?",
-            answer: "Để báo cáo sự cố: 1) Vào 'Hỗ trợ' > 'Báo cáo sự cố', 2) Chọn loại sự cố, 3) Mô tả chi tiết vấn đề, 4) Gửi báo cáo. Đội ngũ hỗ trợ sẽ liên hệ trong vòng 24 giờ."
-        }
-    ];
-
-    const contactInfo = [
-        {
-            title: "Hỗ trợ trực tuyến",
-            description: "Chat với chuyên viên hỗ trợ",
-            icon: MessageCircle,
-            color: "bg-blue-500"
-        },
-        {
-            title: "Hotline",
-            description: "1900-1234 (8:00 - 22:00)",
-            icon: Phone,
-            color: "bg-green-500"
-        },
-        {
-            title: "Email",
-            description: "support@eparking.com",
-            icon: Mail,
-            color: "bg-purple-500"
+            question: "Tôi có thể thanh toán bằng tiền mặt không?",
+            answer: "Có, bạn có thể nạp tiền mặt qua bảo vệ bãi xe. Bảo vệ sẽ nhập số tiền vào tài khoản của bạn.",
+            category: "Thanh toán",
+            icon: CreditCard
         }
     ];
 
     const toggleItem = (id: number) => {
-        setExpandedItems(prev =>
+        setOpenItems(prev =>
             prev.includes(id)
                 ? prev.filter(item => item !== id)
                 : [...prev, id]
         );
     };
 
+    const categories = [
+        { name: "Tất cả", count: faqData.length },
+        { name: "Đăng ký xe", count: faqData.filter(item => item.category === "Đăng ký xe").length },
+        { name: "Thanh toán", count: faqData.filter(item => item.category === "Thanh toán").length },
+        { name: "Công nghệ", count: faqData.filter(item => item.category === "Công nghệ").length },
+        { name: "Hỗ trợ", count: faqData.filter(item => item.category === "Hỗ trợ").length },
+        { name: "Sử dụng", count: faqData.filter(item => item.category === "Sử dụng").length }
+    ];
+
     return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl font-semibold text-gray-900">Câu hỏi thường gặp (FAQ)</h1>
-                <p className="text-gray-600">Tìm câu trả lời cho các thắc mắc phổ biến</p>
-            </div>
-
-            {/* Tìm kiếm FAQ */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                    <input
-                        type="text"
-                        placeholder="Tìm kiếm câu hỏi..."
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+        <div className="space-y-8">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-cyan-600 via-blue-600 to-cyan-800 rounded-2xl p-8 text-white shadow-2xl">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold mb-2">Câu hỏi thường gặp</h1>
+                        <p className="text-cyan-100 text-lg">Tìm hiểu cách sử dụng hệ thống eParking</p>
+                    </div>
+                    <div className="bg-white bg-opacity-20 p-4 rounded-full">
+                        <HelpCircle className="h-8 w-8" />
+                    </div>
                 </div>
             </div>
 
-            {/* Danh sách FAQ */}
-            <div className="bg-white rounded-lg border border-gray-200">
-                <div className="p-6 border-b border-gray-200">
-                    <h2 className="text-lg font-semibold text-gray-900">Câu hỏi thường gặp</h2>
+            {/* Categories */}
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                    <h2 className="text-xl font-semibold text-gray-900">Danh mục câu hỏi</h2>
                 </div>
-
-                <div className="divide-y divide-gray-200">
-                    {faqData.map((item) => (
-                        <div key={item.id} className="p-6">
-                            <button
-                                onClick={() => toggleItem(item.id)}
-                                className="w-full flex justify-between items-center text-left"
-                            >
-                                <div className="flex items-center space-x-3">
-                                    <div className="bg-blue-100 p-2 rounded-full">
-                                        <HelpCircle className="h-4 w-4 text-blue-600" />
-                                    </div>
-                                    <span className="font-medium text-gray-900">{item.question}</span>
-                                </div>
-                                {expandedItems.includes(item.id) ? (
-                                    <ChevronUp className="h-5 w-5 text-gray-500" />
-                                ) : (
-                                    <ChevronDown className="h-5 w-5 text-gray-500" />
-                                )}
-                            </button>
-
-                            {expandedItems.includes(item.id) && (
-                                <div className="mt-4 pl-11">
-                                    <p className="text-gray-600 leading-relaxed">{item.answer}</p>
-                                </div>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Liên hệ hỗ trợ */}
-            <div className="bg-white rounded-lg border border-gray-200">
-                <div className="p-6 border-b border-gray-200">
-                    <h2 className="text-lg font-semibold text-gray-900">Liên hệ hỗ trợ</h2>
-                    <p className="text-gray-600">Không tìm thấy câu trả lời? Hãy liên hệ với chúng tôi</p>
-                </div>
-
                 <div className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {contactInfo.map((contact, index) => (
-                            <div key={index} className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors">
-                                <div className="flex items-center space-x-3">
-                                    <div className={`p-2 rounded-full ${contact.color}`}>
-                                        <contact.icon className="h-5 w-5 text-white" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-medium text-gray-900">{contact.title}</h3>
-                                        <p className="text-sm text-gray-600">{contact.description}</p>
-                                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                        {categories.map((category, index) => (
+                            <button
+                                key={index}
+                                className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white p-4 rounded-xl hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                            >
+                                <div className="text-center">
+                                    <p className="font-semibold">{category.name}</p>
+                                    <p className="text-cyan-100 text-sm">{category.count} câu hỏi</p>
                                 </div>
-                            </div>
+                            </button>
                         ))}
                     </div>
                 </div>
             </div>
 
-            {/* Thông tin bổ sung */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Hướng dẫn sử dụng</h3>
-                    <div className="space-y-3">
-                        <div className="flex items-center space-x-3">
-                            <div className="bg-green-100 p-2 rounded-full">
-                                <span className="text-green-600 font-semibold">1</span>
-                            </div>
-                            <span className="text-sm text-gray-700">Tải và cài đặt ứng dụng</span>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                            <div className="bg-green-100 p-2 rounded-full">
-                                <span className="text-green-600 font-semibold">2</span>
-                            </div>
-                            <span className="text-sm text-gray-700">Đăng ký tài khoản</span>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                            <div className="bg-green-100 p-2 rounded-full">
-                                <span className="text-green-600 font-semibold">3</span>
-                            </div>
-                            <span className="text-sm text-gray-700">Thêm phương tiện</span>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                            <div className="bg-green-100 p-2 rounded-full">
-                                <span className="text-green-600 font-semibold">4</span>
-                            </div>
-                            <span className="text-sm text-gray-700">Nạp tiền và sử dụng</span>
-                        </div>
-                    </div>
+            {/* FAQ List */}
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                    <h2 className="text-xl font-semibold text-gray-900">Danh sách câu hỏi</h2>
                 </div>
+                <div className="p-6">
+                    <div className="space-y-4">
+                        {faqData.map((item) => {
+                            const Icon = item.icon;
+                            const isOpen = openItems.includes(item.id);
 
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Thời gian hoạt động</h3>
-                    <div className="space-y-3">
-                        <div className="flex justify-between">
-                            <span className="text-sm text-gray-700">Hỗ trợ khách hàng</span>
-                            <span className="text-sm font-medium">8:00 - 22:00</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-sm text-gray-700">Bãi xe hoạt động</span>
-                            <span className="text-sm font-medium">24/7</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-sm text-gray-700">Thanh toán trực tuyến</span>
-                            <span className="text-sm font-medium">24/7</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-sm text-gray-700">Bảo trì hệ thống</span>
-                            <span className="text-sm font-medium">2:00 - 4:00</span>
-                        </div>
+                            return (
+                                <div key={item.id} className="border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300">
+                                    <button
+                                        onClick={() => toggleItem(item.id)}
+                                        className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                                    >
+                                        <div className="flex items-center space-x-4">
+                                            <div className="bg-cyan-100 p-3 rounded-full">
+                                                <Icon className="h-5 w-5 text-cyan-600" />
+                                            </div>
+                                            <div className="text-left">
+                                                <p className="font-semibold text-gray-900">{item.question}</p>
+                                                <p className="text-sm text-gray-500 mt-1">{item.category}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${item.category === "Đăng ký xe" ? "bg-emerald-100 text-emerald-800" :
+                                                    item.category === "Thanh toán" ? "bg-violet-100 text-violet-800" :
+                                                        item.category === "Công nghệ" ? "bg-cyan-100 text-cyan-800" :
+                                                            item.category === "Hỗ trợ" ? "bg-amber-100 text-amber-800" :
+                                                                "bg-blue-100 text-blue-800"
+                                                }`}>
+                                                {item.category}
+                                            </span>
+                                            {isOpen ? (
+                                                <ChevronUp className="h-5 w-5 text-gray-500" />
+                                            ) : (
+                                                <ChevronDown className="h-5 w-5 text-gray-500" />
+                                            )}
+                                        </div>
+                                    </button>
+
+                                    {isOpen && (
+                                        <div className="px-6 pb-4 border-t border-gray-100">
+                                            <div className="pt-4">
+                                                <p className="text-gray-700 leading-relaxed">{item.answer}</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             </div>
 
-            {/* Đánh giá và phản hồi */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Đánh giá của bạn</h3>
-                <p className="text-gray-600 mb-4">Chúng tôi luôn cải thiện để phục vụ bạn tốt hơn</p>
-                <div className="flex space-x-3">
-                    <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                        Đánh giá ứng dụng
-                    </button>
-                    <button className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors">
-                        Gửi phản hồi
-                    </button>
+            {/* Contact Support */}
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                    <h2 className="text-xl font-semibold text-gray-900">Liên hệ hỗ trợ</h2>
+                </div>
+                <div className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white p-6 rounded-2xl">
+                            <div className="flex items-center space-x-3 mb-4">
+                                <AlertCircle className="h-6 w-6" />
+                                <h3 className="text-lg font-semibold">Hỗ trợ kỹ thuật</h3>
+                            </div>
+                            <p className="text-cyan-100 mb-4">Gặp vấn đề với hệ thống? Liên hệ ngay với đội ngũ kỹ thuật.</p>
+                            <button className="bg-white text-cyan-600 px-4 py-2 rounded-lg font-medium hover:bg-gray-100 transition-colors">
+                                Liên hệ ngay
+                            </button>
+                        </div>
+
+                        <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-6 rounded-2xl">
+                            <div className="flex items-center space-x-3 mb-4">
+                                <HelpCircle className="h-6 w-6" />
+                                <h3 className="text-lg font-semibold">Hướng dẫn sử dụng</h3>
+                            </div>
+                            <p className="text-emerald-100 mb-4">Xem hướng dẫn chi tiết cách sử dụng hệ thống eParking.</p>
+                            <button className="bg-white text-emerald-600 px-4 py-2 rounded-lg font-medium hover:bg-gray-100 transition-colors">
+                                Xem hướng dẫn
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

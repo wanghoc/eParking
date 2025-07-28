@@ -1,4 +1,4 @@
-import { Home, Car, History, CreditCard, MapPin, Settings, HelpCircle, Building2 } from "lucide-react";
+import { Home, Car, History, CreditCard, MapPin, Settings, HelpCircle, Building2, Camera } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 interface AppSidebarProps {
@@ -13,6 +13,7 @@ export function AppSidebar({ activeItem, onItemClick }: AppSidebarProps) {
         { id: "history", label: "Lịch sử gửi xe", icon: History },
         { id: "payment", label: "Nạp tiền", icon: CreditCard },
         { id: "management", label: "Quản lý bãi xe", icon: MapPin },
+        { id: "camera", label: "Quản lý Camera", icon: Camera },
         { id: "admin", label: "Quản trị hệ thống", icon: Settings },
         { id: "faq", label: "FAQ", icon: HelpCircle },
     ];
@@ -56,8 +57,8 @@ export function AppSidebar({ activeItem, onItemClick }: AppSidebarProps) {
                                 <button
                                     onClick={() => onItemClick(item.id)}
                                     className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${activeItem === item.id
-                                            ? "bg-green-100 text-green-700 border border-green-200"
-                                            : "hover:bg-gray-100 text-gray-600"
+                                        ? "bg-green-100 text-green-700 border border-green-200"
+                                        : "hover:bg-gray-100 text-gray-600"
                                         }`}
                                 >
                                     <Icon className="h-5 w-5" />

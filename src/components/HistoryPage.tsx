@@ -1,192 +1,193 @@
-import { Clock, Car, MapPin, Calendar, Filter, Search } from "lucide-react";
+import { History, Car, Clock, DollarSign, CheckCircle, Calendar } from "lucide-react";
 
 export function HistoryPage() {
     const historyData = [
         {
             id: 1,
-            plateNumber: "29A-12345",
-            type: "Xe máy",
-            location: "Bãi xe A - Tầng 1",
+            plateNumber: "49P1-12345",
+            brand: "Honda",
+            model: "Wave Alpha",
             checkIn: "2024-01-15 10:30",
             checkOut: "2024-01-15 16:45",
-            duration: "6 giờ 15 phút",
             fee: "2,000₫",
             status: "Hoàn thành"
         },
         {
             id: 2,
-            plateNumber: "30F-67890",
-            type: "Xe máy",
-            location: "Bãi xe B - Tầng 2",
-            checkIn: "2024-01-14 08:15",
-            checkOut: "2024-01-14 18:30",
-            duration: "10 giờ 15 phút",
+            plateNumber: "49P2-67890",
+            brand: "Yamaha",
+            model: "Exciter 150",
+            checkIn: "2024-01-15 08:15",
+            checkOut: "---",
             fee: "2,000₫",
-            status: "Hoàn thành"
+            status: "Đang gửi"
         },
         {
             id: 3,
-            plateNumber: "51G-54321",
-            type: "Xe máy",
-            location: "Bãi xe C - Tầng 3",
-            checkIn: "2024-01-13 14:20",
-            checkOut: "2024-01-13 20:45",
-            duration: "6 giờ 25 phút",
+            plateNumber: "49P1-12345",
+            brand: "Honda",
+            model: "Wave Alpha",
+            checkIn: "2024-01-14 14:20",
+            checkOut: "2024-01-14 18:30",
             fee: "2,000₫",
             status: "Hoàn thành"
         },
         {
             id: 4,
-            plateNumber: "29A-12345",
-            type: "Xe máy",
-            location: "Bãi xe A - Tầng 1",
-            checkIn: "2024-01-12 09:00",
-            checkOut: "2024-01-12 17:30",
-            duration: "8 giờ 30 phút",
+            plateNumber: "49P2-67890",
+            brand: "Yamaha",
+            model: "Exciter 150",
+            checkIn: "2024-01-14 09:45",
+            checkOut: "2024-01-14 17:15",
+            fee: "2,000₫",
+            status: "Hoàn thành"
+        },
+        {
+            id: 5,
+            plateNumber: "49P1-12345",
+            brand: "Honda",
+            model: "Wave Alpha",
+            checkIn: "2024-01-13 11:30",
+            checkOut: "2024-01-13 15:45",
             fee: "2,000₫",
             status: "Hoàn thành"
         }
     ];
 
+    const quickStats = [
+        {
+            title: "Tổng lượt gửi",
+            value: "45",
+            icon: Car,
+            color: "bg-gradient-to-r from-cyan-500 to-cyan-600"
+        },
+        {
+            title: "Đã hoàn thành",
+            value: "44",
+            icon: CheckCircle,
+            color: "bg-gradient-to-r from-emerald-500 to-emerald-600"
+        },
+        {
+            title: "Đang gửi",
+            value: "1",
+            icon: Clock,
+            color: "bg-gradient-to-r from-amber-500 to-amber-600"
+        },
+        {
+            title: "Tổng chi phí",
+            value: "90,000₫",
+            icon: DollarSign,
+            color: "bg-gradient-to-r from-violet-500 to-violet-600"
+        }
+    ];
+
+    const getStatusIcon = (status: string) => {
+        if (status === "Hoàn thành") return <CheckCircle className="h-4 w-4 text-emerald-600" />;
+        return <Clock className="h-4 w-4 text-amber-600" />;
+    };
+
+    const getStatusColor = (status: string) => {
+        if (status === "Hoàn thành") return "bg-emerald-100 text-emerald-800";
+        return "bg-amber-100 text-amber-800";
+    };
+
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">Lịch sử gửi xe</h1>
-                    <p className="text-gray-600">Xem lại các lần gửi xe và chi phí</p>
-                </div>
-                <div className="flex space-x-3">
-                    <button className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-200 transition-colors">
-                        <Filter className="h-4 w-4" />
-                        <span>Lọc</span>
-                    </button>
-                    <button className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-200 transition-colors">
-                        <Search className="h-4 w-4" />
-                        <span>Tìm kiếm</span>
-                    </button>
-                </div>
-            </div>
-
-            {/* Thống kê nhanh */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-blue-50 p-4 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                        <div className="bg-blue-500 p-2 rounded-full">
-                            <Car className="h-4 w-4 text-white" />
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-600">Tổng lần gửi</p>
-                            <p className="text-xl font-semibold text-gray-900">127</p>
-                        </div>
+        <div className="space-y-8">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-cyan-600 via-blue-600 to-cyan-800 rounded-2xl p-8 text-white shadow-2xl">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold mb-2">Lịch sử gửi xe</h1>
+                        <p className="text-cyan-100 text-lg">Theo dõi tất cả hoạt động gửi xe của bạn</p>
                     </div>
-                </div>
-
-                <div className="bg-green-50 p-4 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                        <div className="bg-green-500 p-2 rounded-full">
-                            <Clock className="h-4 w-4 text-white" />
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-600">Thời gian TB</p>
-                            <p className="text-xl font-semibold text-gray-900">6.5h</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-orange-50 p-4 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                        <div className="bg-orange-500 p-2 rounded-full">
-                            <MapPin className="h-4 w-4 text-white" />
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-600">Bãi xe ưa thích</p>
-                            <p className="text-xl font-semibold text-gray-900">Bãi A</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-purple-50 p-4 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                        <div className="bg-purple-500 p-2 rounded-full">
-                            <Calendar className="h-4 w-4 text-white" />
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-600">Tháng này</p>
-                            <p className="text-xl font-semibold text-gray-900">23 lần</p>
-                        </div>
+                    <div className="bg-white bg-opacity-20 p-4 rounded-full">
+                        <History className="h-8 w-8" />
                     </div>
                 </div>
             </div>
 
-            {/* Bảng lịch sử */}
-            <div className="bg-white rounded-lg border border-gray-200">
-                <div className="p-6 border-b border-gray-200">
-                    <h2 className="text-lg font-semibold text-gray-900">Lịch sử gửi xe</h2>
-                </div>
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {quickStats.map((stat, index) => {
+                    const Icon = stat.icon;
+                    return (
+                        <div key={index} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
+                                    <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                                </div>
+                                <div className={`p-3 rounded-xl ${stat.color} shadow-lg`}>
+                                    <Icon className="h-6 w-6 text-white" />
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
 
+            {/* History Table */}
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-semibold text-gray-900">Chi tiết lịch sử gửi xe</h2>
+                        <div className="flex items-center space-x-4">
+                            <button className="bg-cyan-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-cyan-700 transition-colors">
+                                <Calendar className="h-4 w-4" />
+                                <span>Lọc theo ngày</span>
+                            </button>
+                            <button className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-emerald-700 transition-colors">
+                                <DollarSign className="h-4 w-4" />
+                                <span>Xuất báo cáo</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Phương tiện
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Vị trí
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Thời gian vào
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Thời gian ra
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Thời gian gửi
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Chi phí
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Trạng thái
                                 </th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {historyData.map((item) => (
-                                <tr key={item.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                                    <td className="px-6 py-6 whitespace-nowrap">
                                         <div className="flex items-center">
-                                            <div className="bg-blue-100 p-2 rounded-full mr-3">
-                                                <Car className="h-4 w-4 text-blue-600" />
+                                            <div className="bg-cyan-100 p-3 rounded-full mr-4">
+                                                <Car className="h-5 w-5 text-cyan-600" />
                                             </div>
                                             <div>
                                                 <div className="text-sm font-medium text-gray-900">{item.plateNumber}</div>
-                                                <div className="text-sm text-gray-500">{item.type}</div>
+                                                <div className="text-sm text-gray-500">{item.brand} {item.model}</div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">{item.checkIn}</td>
+                                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">{item.checkOut}</td>
+                                    <td className="px-6 py-6 whitespace-nowrap text-sm font-medium text-gray-900">{item.fee}</td>
+                                    <td className="px-6 py-6 whitespace-nowrap">
                                         <div className="flex items-center">
-                                            <MapPin className="h-4 w-4 text-gray-400 mr-2" />
-                                            <span className="text-sm text-gray-900">{item.location}</span>
+                                            {getStatusIcon(item.status)}
+                                            <span className={`ml-2 inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(item.status)}`}>
+                                                {item.status}
+                                            </span>
                                         </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {item.checkIn}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {item.checkOut}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {item.duration}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className="text-sm font-medium text-gray-900">{item.fee}</span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                                            {item.status}
-                                        </span>
                                     </td>
                                 </tr>
                             ))}

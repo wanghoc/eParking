@@ -1,252 +1,314 @@
-import React from "react";
-import { CreditCard, Wallet, Building2, QrCode, Plus, History, Download } from "lucide-react";
+import { CreditCard, Building2, QrCode, DollarSign, Plus, History, Download, CheckCircle, AlertCircle } from "lucide-react";
+import { useState } from "react";
 
 export function PaymentPage() {
-    const PaymentMethodIcon = ({ icon: Icon, color }: { icon: any; color: string }) => (
-        <div className={`p-2 rounded-full ${color}`}>
-            <Icon className="h-5 w-5 text-white" />
-        </div>
-    );
+    const [selectedTab, setSelectedTab] = useState("methods");
 
     const paymentMethods = [
         {
             id: 1,
-            name: "Ví điện tử",
-            icon: Wallet,
-            color: "bg-blue-500",
-            balance: "2,450,000₫",
-            isDefault: true
+            name: "Momo",
+            type: "Ví điện tử",
+            icon: "MOMO",
+            balance: "150,000₫",
+            status: "active"
         },
         {
             id: 2,
-            name: "Thẻ ngân hàng",
-            icon: CreditCard,
-            color: "bg-green-500",
-            balance: "5,000,000₫",
-            isDefault: false
+            name: "VNPay",
+            type: "Ví điện tử",
+            icon: "VNPAY",
+            balance: "75,000₫",
+            status: "active"
         },
         {
             id: 3,
-            name: "Chuyển khoản",
-            icon: Building2,
-            color: "bg-purple-500",
-            balance: "1,200,000₫",
-            isDefault: false
+            name: "ZaloPay",
+            type: "Ví điện tử",
+            icon: "ZALOPAY",
+            balance: "0₫",
+            status: "inactive"
         }
     ];
 
-    const transactionHistory = [
+    const transactions = [
         {
             id: 1,
             type: "Nạp tiền",
-            amount: "+100,000₫",
-            method: "Ví điện tử",
-            date: "2024-01-15 09:15",
+            method: "Momo",
+            amount: "+50,000₫",
+            time: "2024-01-15 10:30",
             status: "Thành công"
         },
         {
             id: 2,
-            type: "Thanh toán gửi xe",
+            type: "Trừ phí gửi xe",
+            method: "Tự động",
             amount: "-2,000₫",
-            method: "Ví điện tử",
-            date: "2024-01-15 16:45",
+            time: "2024-01-15 09:15",
             status: "Thành công"
         },
         {
             id: 3,
             type: "Nạp tiền",
-            amount: "+200,000₫",
-            method: "Thẻ ngân hàng",
-            date: "2024-01-14 14:30",
+            method: "VNPay",
+            amount: "+25,000₫",
+            time: "2024-01-14 16:45",
             status: "Thành công"
         },
         {
             id: 4,
-            type: "Thanh toán gửi xe",
+            type: "Trừ phí gửi xe",
+            method: "Tự động",
             amount: "-2,000₫",
-            method: "Ví điện tử",
-            date: "2024-01-14 18:30",
+            time: "2024-01-14 14:30",
             status: "Thành công"
         }
     ];
 
-    return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl font-semibold text-gray-900">Nạp tiền</h1>
-                <p className="text-gray-600">Quản lý ví điện tử và thanh toán</p>
+    const PaymentMethodIcon = ({ icon }: { icon: string }) => {
+        return (
+            <div className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center">
+                <span className="text-xs font-bold text-cyan-600">{icon}</span>
             </div>
+        );
+    };
 
-            {/* Thông tin ví */}
-            <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-6 text-white">
-                <div className="flex justify-between items-center">
+    const getStatusColor = (status: string) => {
+        if (status === "Thành công") return "bg-emerald-100 text-emerald-800";
+        if (status === "Thất bại") return "bg-red-100 text-red-800";
+        return "bg-amber-100 text-amber-800";
+    };
+
+    const getAmountColor = (amount: string) => {
+        if (amount.startsWith("+")) return "text-emerald-600";
+        if (amount.startsWith("-")) return "text-red-600";
+        return "text-gray-600";
+    };
+
+    return (
+        <div className="space-y-8">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-cyan-600 via-blue-600 to-cyan-800 rounded-2xl p-8 text-white shadow-2xl">
+                <div className="flex items-center justify-between">
                     <div>
-                        <h2 className="text-lg font-semibold mb-2">Ví eParking</h2>
-                        <p className="text-blue-100">Số dư hiện tại</p>
-                        <p className="text-3xl font-bold">2,450,000₫</p>
+                        <h1 className="text-3xl font-bold mb-2">Nạp tiền</h1>
+                        <p className="text-cyan-100 text-lg">Quản lý phương thức thanh toán và giao dịch</p>
                     </div>
-                    <div className="bg-white bg-opacity-20 p-4 rounded-lg">
-                        <Wallet className="h-8 w-8" />
+                    <div className="bg-white bg-opacity-20 p-4 rounded-full">
+                        <CreditCard className="h-8 w-8" />
                     </div>
                 </div>
             </div>
 
-            {/* Phương thức thanh toán */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Phương thức thanh toán</h3>
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-gray-600 mb-1">Tổng số dư</p>
+                            <p className="text-2xl font-bold text-gray-900">45,000₫</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-lg">
+                            <DollarSign className="h-6 w-6 text-white" />
+                        </div>
+                    </div>
+                </div>
 
-                    <div className="space-y-4">
-                        {paymentMethods.map((method) => (
-                            <div key={method.id} className={`p-4 rounded-lg border-2 ${method.isDefault ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                                }`}>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center space-x-3">
-                                        <PaymentMethodIcon icon={method.icon} color={method.color} />
-                                        <div>
-                                            <p className="font-medium text-gray-900">{method.name}</p>
-                                            <p className="text-sm text-gray-500">{method.balance}</p>
-                                        </div>
+                {/* <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-gray-600 mb-1">Phương thức</p>
+                            <p className="text-2xl font-bold text-gray-900">2</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 shadow-lg">
+                            <CreditCard className="h-6 w-6 text-white" />
+                        </div>
+                    </div>
+                </div> */}
+
+                <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-gray-600 mb-1">Giao dịch tháng</p>
+                            <p className="text-2xl font-bold text-gray-900">12</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-gradient-to-r from-violet-500 to-violet-600 shadow-lg">
+                            <History className="h-6 w-6 text-white" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Tab Navigation */}
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                    <nav className="flex space-x-8">
+                        <button
+                            onClick={() => setSelectedTab("methods")}
+                            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${selectedTab === "methods"
+                                    ? "border-cyan-500 text-cyan-600"
+                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                }`}
+                        >
+                            Phương thức thanh toán
+                        </button>
+                        <button
+                            onClick={() => setSelectedTab("transactions")}
+                            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${selectedTab === "transactions"
+                                    ? "border-cyan-500 text-cyan-600"
+                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                }`}
+                        >
+                            Lịch sử giao dịch
+                        </button>
+                    </nav>
+                </div>
+
+                <div className="p-6">
+                    {selectedTab === "methods" && (
+                        <div className="space-y-6">
+                            {/* Payment Methods */}
+                            <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
+                                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                                    <div className="flex items-center justify-between">
+                                        <h2 className="text-xl font-semibold text-gray-900">Phương thức thanh toán</h2>
+                                        {/* <button className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                                            <Plus className="h-4 w-4" />
+                                            <span>Thêm phương thức</span>
+                                        </button> */}
                                     </div>
-                                    {method.isDefault && (
-                                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                                            Mặc định
-                                        </span>
-                                    )}
+                                </div>
+
+                                <div className="p-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {paymentMethods.map((method) => (
+                                            <div key={method.id} className="bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-all duration-300">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <PaymentMethodIcon icon={method.icon} />
+                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${method.status === "active" ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-800"
+                                                        }`}>
+                                                        {method.status === "active" ? "Hoạt động" : "Không hoạt động"}
+                                                    </span>
+                                                </div>
+                                                <h3 className="text-lg font-semibold text-gray-900 mb-1">{method.name}</h3>
+                                                <p className="text-sm text-gray-500 mb-3">{method.type}</p>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-sm text-gray-600">Số dư:</span>
+                                                    <span className="font-semibold text-gray-900">{method.balance}</span>
+                                                </div>
+                                                <div className="flex space-x-2 mt-4">
+                                                    <button className="flex-1 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white px-3 py-2 rounded-lg text-sm hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300">
+                                                        Nạp tiền
+                                                    </button>
+                                                    <button className="flex-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-200 transition-colors">
+                                                        Chi tiết
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
-                        ))}
-                    </div>
 
-                    <button className="w-full mt-4 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center justify-center space-x-2 hover:bg-gray-200 transition-colors">
-                        <Plus className="h-4 w-4" />
-                        <span>Thêm phương thức mới</span>
-                    </button>
-                </div>
-
-                {/* Nạp tiền nhanh */}
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Nạp tiền nhanh</h3>
-
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                        <button className="bg-blue-50 text-blue-700 px-4 py-3 rounded-lg hover:bg-blue-100 transition-colors">
-                            <p className="font-medium">50,000₫</p>
-                        </button>
-                        <button className="bg-blue-50 text-blue-700 px-4 py-3 rounded-lg hover:bg-blue-100 transition-colors">
-                            <p className="font-medium">100,000₫</p>
-                        </button>
-                        <button className="bg-blue-50 text-blue-700 px-4 py-3 rounded-lg hover:bg-blue-100 transition-colors">
-                            <p className="font-medium">200,000₫</p>
-                        </button>
-                        <button className="bg-blue-50 text-blue-700 px-4 py-3 rounded-lg hover:bg-blue-100 transition-colors">
-                            <p className="font-medium">500,000₫</p>
-                        </button>
-                    </div>
-
-                    <div className="space-y-3">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Số tiền tùy chọn
-                            </label>
-                            <input
-                                type="number"
-                                placeholder="Nhập số tiền"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
+                            {/* Quick Actions */}
+                            <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
+                                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                                    <h2 className="text-xl font-semibold text-gray-900">Thao tác nhanh</h2>
+                                </div>
+                                <div className="p-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <button className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-4 rounded-xl flex items-center space-x-3 hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                                            <Building2 className="h-5 w-5" />
+                                            <span>Nạp tiền qua ngân hàng</span>
+                                        </button>
+                                        <button className="bg-gradient-to-r from-violet-500 to-violet-600 text-white p-4 rounded-xl flex items-center space-x-3 hover:from-violet-600 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                                            <QrCode className="h-5 w-5" />
+                                            <span>Quét mã QR</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+                    )}
 
-                        <button className="w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors">
-                            Nạp tiền
-                        </button>
-                    </div>
-                </div>
-            </div>
+                    {selectedTab === "transactions" && (
+                        <div className="space-y-6">
+                            {/* Transactions */}
+                            <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
+                                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                                    <div className="flex items-center justify-between">
+                                        <h2 className="text-xl font-semibold text-gray-900">Lịch sử giao dịch</h2>
+                                        <button className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                                            <Download className="h-4 w-4" />
+                                            <span>Xuất báo cáo</span>
+                                        </button>
+                                    </div>
+                                </div>
 
-            {/* QR Code */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Thanh toán bằng QR Code</h3>
-
-                <div className="flex items-center space-x-6">
-                    <div className="bg-gray-100 p-4 rounded-lg">
-                        <QrCode className="h-32 w-32 text-gray-400" />
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-600 mb-2">Quét mã QR để nạp tiền</p>
-                        <p className="text-xs text-gray-500">Hỗ trợ: MoMo, ZaloPay, ViettelPay</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Lịch sử giao dịch */}
-            <div className="bg-white rounded-lg border border-gray-200">
-                <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-                    <h3 className="text-lg font-semibold text-gray-900">Lịch sử giao dịch</h3>
-                    <button className="text-blue-600 hover:text-blue-700 flex items-center space-x-2">
-                        <Download className="h-4 w-4" />
-                        <span>Xuất báo cáo</span>
-                    </button>
-                </div>
-
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Loại giao dịch
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Số tiền
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Phương thức
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Thời gian
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Trạng thái
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {transactionHistory.map((transaction) => (
-                                <tr key={transaction.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex items-center">
-                                            <div className={`p-2 rounded-full ${transaction.type === "Nạp tiền" ? "bg-green-100" : "bg-red-100"
-                                                }`}>
-                                                {transaction.type === "Nạp tiền" ? (
-                                                    <Plus className="h-4 w-4 text-green-600" />
-                                                ) : (
-                                                    <History className="h-4 w-4 text-red-600" />
-                                                )}
-                                            </div>
-                                            <span className="ml-3 text-sm font-medium text-gray-900">
-                                                {transaction.type}
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`text-sm font-medium ${transaction.amount.startsWith('+') ? 'text-green-600' : 'text-red-600'
-                                            }`}>
-                                            {transaction.amount}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {transaction.method}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {transaction.date}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                                            {transaction.status}
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Giao dịch
+                                                </th>
+                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Phương thức
+                                                </th>
+                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Số tiền
+                                                </th>
+                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Thời gian
+                                                </th>
+                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Trạng thái
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {transactions.map((transaction) => (
+                                                <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
+                                                    <td className="px-6 py-6 whitespace-nowrap">
+                                                        <div className="flex items-center">
+                                                            <div className={`p-2 rounded-lg ${transaction.type === "Nạp tiền" ? "bg-emerald-100" : "bg-red-100"
+                                                                }`}>
+                                                                {transaction.type === "Nạp tiền" ? (
+                                                                    <Plus className="h-4 w-4 text-emerald-600" />
+                                                                ) : (
+                                                                    <DollarSign className="h-4 w-4 text-red-600" />
+                                                                )}
+                                                            </div>
+                                                            <div className="ml-3">
+                                                                <div className="text-sm font-medium text-gray-900">{transaction.type}</div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">
+                                                        {transaction.method}
+                                                    </td>
+                                                    <td className="px-6 py-6 whitespace-nowrap text-sm font-medium">
+                                                        <span className={getAmountColor(transaction.amount)}>
+                                                            {transaction.amount}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">
+                                                        {transaction.time}
+                                                    </td>
+                                                    <td className="px-6 py-6 whitespace-nowrap">
+                                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(transaction.status)}`}>
+                                                            {transaction.status}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
