@@ -1,84 +1,99 @@
-import { HelpCircle, ChevronDown, ChevronUp, Car, CreditCard, Camera, AlertCircle } from "lucide-react";
+import { HelpCircle, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
 import { useState } from "react";
+
+const faqList = [
+  {
+    question: "1. Làm sao để tạo tài khoản sử dụng hệ thống gửi xe eParking?",
+    answer: "Bạn chỉ cần nhập MSSV, họ tên và mật khẩu, sau đó nhấn “Đăng ký” trên trang web eParking."
+  },
+  {
+    question: "2. Nếu tôi quên mật khẩu thì phải làm sao?",
+    answer: "Nhấn vào nút “Quên mật khẩu” tại trang đăng nhập và làm theo hướng dẫn để tạo lại mật khẩu mới qua email đã đăng ký."
+  },
+  {
+    question: "3. Tôi không có tiền lẻ, vậy nạp tiền như thế nào?",
+    answer: "Chọn chức năng “Nạp tiền QR”, sau đó quét mã QR bằng ứng dụng ngân hàng (như Agribank, Vietcombank...). Sau khi thanh toán, hệ thống sẽ cộng tiền vào ví điện tử của bạn."
+  },
+  {
+    question: "4. Hệ thống trừ tiền như thế nào?",
+    answer: "Khi bạn đưa xe ra khỏi bãi, hệ thống sẽ nhận diện biển số và tự động trừ 2.000đ từ tài khoản nếu xác định được xe."
+  },
+  {
+    question: "5. Nếu hệ thống không nhận diện được xe của tôi thì sao?",
+    answer: "Bạn có thể liên hệ bảo vệ tại bãi xe để được hỗ trợ xác minh và ghi nhận thủ công."
+  },
+  {
+    question: "6. Làm sao để biết tài khoản của tôi còn bao nhiêu tiền?",
+    answer: "Vào mục “Tài khoản” → “Số dư” để xem số tiền còn lại trong ví của bạn."
+  },
+  {
+    question: "7. Tôi đã nạp tiền nhưng chưa thấy cập nhật?",
+    answer: "Thông thường sau vài giây tiền sẽ được cộng. Nếu quá 2 phút vẫn chưa có, hãy liên hệ với bảo vệ để kiểm tra."
+  },
+  {
+    question: "8. Tôi có thể nạp tiền bằng cách nào khác ngoài QR không?",
+    answer: "Có. Bạn có thể đến trực tiếp bảo vệ và nạp tiền mặt, người quản lý sẽ cộng tiền vào tài khoản cho bạn."
+  },
+  {
+    question: "9. Làm sao để cập nhật lại biển số nếu tôi đổi xe?",
+    answer: "Bạn vào mục “Thông tin cá nhân” → “Cập nhật biển số” để sửa lại thông tin phương tiện."
+  },
+  {
+    question: "10. Tôi có thể xem lịch sử xe ra vào của mình không?",
+    answer: "Có. Trong phần “Lịch sử gửi xe”, bạn có thể xem toàn bộ lượt xe vào/ra kèm theo thời gian."
+  },
+  {
+    question: "11. Hệ thống có hoàn tiền nếu tôi không dùng nữa không?",
+    answer: "Hiện tại hệ thống chưa hỗ trợ hoàn tiền. Bạn có thể giữ số dư để sử dụng tiếp vào kỳ sau."
+  },
+  {
+    question: "12. Tôi có thể chia sẻ tài khoản cho bạn bè dùng chung không?",
+    answer: "Không. Mỗi tài khoản chỉ dùng cho một người và một phương tiện để đảm bảo tính chính xác khi nhận diện."
+  },
+  {
+    question: "13. Hệ thống có nhận diện được vào ban đêm không?",
+    answer: "Có. Camera được thiết kế để hoạt động tốt trong điều kiện ánh sáng yếu hoặc vào ban đêm."
+  },
+  {
+    question: "14. Tôi có cần điện thoại hoặc kết nối mạng khi gửi xe không?",
+    answer: "Không. Hệ thống hoạt động độc lập. Bạn chỉ cần đảm bảo tài khoản còn tiền là có thể sử dụng."
+  },
+  {
+    question: "15. Tôi có thể dùng số điện thoại để đăng nhập không?",
+    answer: "Không. Hệ thống sử dụng MSSV và mật khẩu để đăng nhập."
+  },
+  {
+    question: "16. Có ứng dụng điện thoại cho hệ thống này không?",
+    answer: "Hiện tại chưa có. Bạn có thể truy cập bằng trình duyệt web trên điện thoại hoặc máy tính."
+  },
+  {
+    question: "17. Làm sao để nhận thông báo khi tài khoản gần hết tiền?",
+    answer: "Hệ thống sẽ gửi thông báo khi số dư dưới mức tối thiểu (ví dụ 2.000đ) để nhắc bạn nạp thêm tiền."
+  },
+  {
+    question: "18. Tôi có thể đăng ký gói gửi xe theo tháng không?",
+    answer: "Có. Bạn có thể chọn mua gói gửi xe theo tháng với chi phí tiết kiệm hơn tại mục “Gói thuê bao”."
+  },
+  {
+    question: "19. Tôi có thể chỉnh sửa thông tin tài khoản được không?",
+    answer: "Có. Bạn có thể thay đổi mật khẩu, thông tin cá nhân và biển số trong phần “Tài khoản”."
+  },
+  {
+    question: "20. Thông tin cá nhân của tôi có được bảo mật không?",
+    answer: "Có. Tất cả thông tin của bạn được bảo mật theo chính sách của hệ thống và không chia sẻ cho bên thứ ba."
+  }
+];
 
 export function FAQPage() {
     const [openItems, setOpenItems] = useState<number[]>([]);
 
-    const faqData = [
-        {
-            id: 1,
-            question: "Làm thế nào để đăng ký xe máy?",
-            answer: "Bạn có thể đăng ký xe máy bằng cách vào trang 'Phương tiện' và nhấn 'Thêm phương tiện'. Hệ thống cho phép đăng ký tối đa 3 xe máy cho mỗi tài khoản.",
-            category: "Đăng ký xe",
-            icon: Car
-        },
-        {
-            id: 2,
-            question: "Phí gửi xe là bao nhiêu?",
-            answer: "Phí gửi xe máy được cố định là 2,000₫ cho mỗi lượt gửi xe, không phụ thuộc vào thời gian gửi.",
-            category: "Thanh toán",
-            icon: CreditCard
-        },
-        {
-            id: 3,
-            question: "Làm thế nào để nạp tiền vào tài khoản?",
-            answer: "Bạn có thể nạp tiền qua các phương thức: Momo, VNPay, ZaloPay hoặc nạp tiền thủ công qua bảo vệ bãi xe.",
-            category: "Thanh toán",
-            icon: CreditCard
-        },
-        {
-            id: 4,
-            question: "Hệ thống nhận diện biển số hoạt động như thế nào?",
-            answer: "Hệ thống sử dụng camera và công nghệ AI để tự động nhận diện biển số xe khi xe vào/ra bãi. Độ chính xác hiện tại đạt 96%.",
-            category: "Công nghệ",
-            icon: Camera
-        },
-        {
-            id: 5,
-            question: "Tôi có thể đăng ký bao nhiêu xe máy?",
-            answer: "Mỗi tài khoản được phép đăng ký tối đa 3 xe máy. Khi đã đăng ký đủ 3 xe, bạn cần xóa một xe để thêm xe mới.",
-            category: "Đăng ký xe",
-            icon: Car
-        },
-        {
-            id: 6,
-            question: "Làm gì khi hệ thống không nhận diện được biển số?",
-            answer: "Trong trường hợp này, bạn có thể liên hệ bảo vệ bãi xe để được hỗ trợ nhập biển số thủ công hoặc quét mã QR.",
-            category: "Hỗ trợ",
-            icon: AlertCircle
-        },
-        {
-            id: 7,
-            question: "Làm thế nào để xem lịch sử gửi xe?",
-            answer: "Bạn có thể xem lịch sử gửi xe trong trang 'Lịch sử gửi xe'. Hệ thống hiển thị tất cả các lượt gửi xe của bạn.",
-            category: "Sử dụng",
-            icon: Car
-        },
-        {
-            id: 8,
-            question: "Tôi có thể thanh toán bằng tiền mặt không?",
-            answer: "Có, bạn có thể nạp tiền mặt qua bảo vệ bãi xe. Bảo vệ sẽ nhập số tiền vào tài khoản của bạn.",
-            category: "Thanh toán",
-            icon: CreditCard
-        }
-    ];
-
-    const toggleItem = (id: number) => {
+    const toggleItem = (index: number) => {
         setOpenItems(prev =>
-            prev.includes(id)
-                ? prev.filter(item => item !== id)
-                : [...prev, id]
+            prev.includes(index)
+                ? prev.filter(i => i !== index)
+                : [...prev, index]
         );
     };
-
-    const categories = [
-        { name: "Tất cả", count: faqData.length },
-        { name: "Đăng ký xe", count: faqData.filter(item => item.category === "Đăng ký xe").length },
-        { name: "Thanh toán", count: faqData.filter(item => item.category === "Thanh toán").length },
-        { name: "Công nghệ", count: faqData.filter(item => item.category === "Công nghệ").length },
-        { name: "Hỗ trợ", count: faqData.filter(item => item.category === "Hỗ trợ").length },
-        { name: "Sử dụng", count: faqData.filter(item => item.category === "Sử dụng").length }
-    ];
 
     return (
         <div className="space-y-8">
@@ -86,33 +101,11 @@ export function FAQPage() {
             <div className="bg-gradient-to-r from-cyan-600 via-blue-600 to-cyan-800 rounded-2xl p-8 text-white shadow-2xl">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold mb-2">Câu hỏi thường gặp</h1>
+                        <h1 className="text-3xl font-bold mb-2">FAQ – Câu hỏi thường gặp về hệ thống gửi xe eParking</h1>
                         <p className="text-cyan-100 text-lg">Tìm hiểu cách sử dụng hệ thống eParking</p>
                     </div>
                     <div className="bg-white bg-opacity-20 p-4 rounded-full">
                         <HelpCircle className="h-8 w-8" />
-                    </div>
-                </div>
-            </div>
-
-            {/* Categories */}
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-                    <h2 className="text-xl font-semibold text-gray-900">Danh mục câu hỏi</h2>
-                </div>
-                <div className="p-6">
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                        {categories.map((category, index) => (
-                            <button
-                                key={index}
-                                className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white p-4 rounded-xl hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl"
-                            >
-                                <div className="text-center">
-                                    <p className="font-semibold">{category.name}</p>
-                                    <p className="text-cyan-100 text-sm">{category.count} câu hỏi</p>
-                                </div>
-                            </button>
-                        ))}
                     </div>
                 </div>
             </div>
@@ -123,48 +116,33 @@ export function FAQPage() {
                     <h2 className="text-xl font-semibold text-gray-900">Danh sách câu hỏi</h2>
                 </div>
                 <div className="p-6">
-                    <div className="space-y-4">
-                        {faqData.map((item) => {
-                            const Icon = item.icon;
-                            const isOpen = openItems.includes(item.id);
-
+                    <div className="space-y-6">
+                        {faqList.map((item, index) => {
+                            const isOpen = openItems.includes(index);
                             return (
-                                <div key={item.id} className="border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300">
+                                <div key={index} className="border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300">
                                     <button
-                                        onClick={() => toggleItem(item.id)}
+                                        onClick={() => toggleItem(index)}
                                         className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                                        aria-expanded={isOpen}
+                                        aria-controls={`faq-answer-${index}`}
+                                        id={`faq-question-${index}`}
                                     >
-                                        <div className="flex items-center space-x-4">
-                                            <div className="bg-cyan-100 p-3 rounded-full">
-                                                <Icon className="h-5 w-5 text-cyan-600" />
-                                            </div>
-                                            <div className="text-left">
-                                                <p className="font-semibold text-gray-900">{item.question}</p>
-                                                <p className="text-sm text-gray-500 mt-1">{item.category}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${item.category === "Đăng ký xe" ? "bg-emerald-100 text-emerald-800" :
-                                                    item.category === "Thanh toán" ? "bg-violet-100 text-violet-800" :
-                                                        item.category === "Công nghệ" ? "bg-cyan-100 text-cyan-800" :
-                                                            item.category === "Hỗ trợ" ? "bg-amber-100 text-amber-800" :
-                                                                "bg-blue-100 text-blue-800"
-                                                }`}>
-                                                {item.category}
-                                            </span>
-                                            {isOpen ? (
-                                                <ChevronUp className="h-5 w-5 text-gray-500" />
-                                            ) : (
-                                                <ChevronDown className="h-5 w-5 text-gray-500" />
-                                            )}
-                                        </div>
+                                        <p className="font-semibold text-gray-900 text-left">{item.question}</p>
+                                        {isOpen ? (
+                                            <ChevronUp className="h-5 w-5 text-gray-500" />
+                                        ) : (
+                                            <ChevronDown className="h-5 w-5 text-gray-500" />
+                                        )}
                                     </button>
-
                                     {isOpen && (
-                                        <div className="px-6 pb-4 border-t border-gray-100">
-                                            <div className="pt-4">
-                                                <p className="text-gray-700 leading-relaxed">{item.answer}</p>
-                                            </div>
+                                        <div
+                                            id={`faq-answer-${index}`}
+                                            role="region"
+                                            aria-labelledby={`faq-question-${index}`}
+                                            className="px-6 pb-4 border-t border-gray-100"
+                                        >
+                                            <p className="text-gray-700 leading-relaxed whitespace-pre-line">{item.answer}</p>
                                         </div>
                                     )}
                                 </div>
@@ -207,4 +185,4 @@ export function FAQPage() {
             </div>
         </div>
     );
-} 
+}
