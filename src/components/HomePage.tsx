@@ -66,7 +66,7 @@ export function HomePage() {
         {
             id: 2,
             type: "info",
-            title: "Xe đã được nhận diện",
+            title: "Xe vào bãi thành công",
             message: "Biển số 49P1-12345 đã được nhận diện thành công",
             time: "1 giờ trước"
         }
@@ -95,7 +95,7 @@ export function HomePage() {
                     <div>
                         <h1 className="text-3xl font-bold mb-2">Chào mừng trở lại!</h1>
                         <p className="text-cyan-100 text-lg">Triệu Quang Học - 2212375</p>
-                        <p className="text-cyan-200">Hệ thống eParking - Đại học Đà Lạt</p>
+                        <p className="text-cyan-200">Hệ thống eParking - Trường Đại học Đà Lạt</p>
                     </div>
                     <div className="bg-white bg-opacity-20 p-4 rounded-full">
                         <Home className="h-8 w-8" />
@@ -162,7 +162,7 @@ export function HomePage() {
                                             <p className="text-sm text-gray-500">{activity.time}</p>
                                             <p className="font-medium text-gray-900">{activity.fee}</p>
                                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(activity.status)}`}>
-                                                {activity.status || "Đang xử lý"}
+                                                {activity.status || "Đang gửi"}
                                             </span>
                                         </div>
                                     </div>
@@ -224,7 +224,7 @@ export function HomePage() {
                         </div>
                     </div>
 
-                    {/* System Status */}
+                    {/* System Status
                     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                         <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
                             <h2 className="text-xl font-semibold text-gray-900">Trạng thái hệ thống</h2>
@@ -254,7 +254,7 @@ export function HomePage() {
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
             </div>
         </div>
