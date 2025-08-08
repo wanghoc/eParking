@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { ProtectedRoute } from "./components/ProtectedRoute";
-import { LoginPage } from "./components/LoginPage";
-import { RegisterPage } from "./components/RegisterPage";
-import { AppSidebar } from "./components/AppSidebar";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { LoginPage } from "./components/auth/LoginPage";
+import { RegisterPage } from "./components/auth/RegisterPage";
+import { AppSidebar } from "./components/common/AppSidebar";
 import { HomePage } from "./components/HomePage";
 import { VehiclesPage } from "./components/VehiclesPage";
 import { HistoryPage } from "./components/HistoryPage";
@@ -163,6 +163,7 @@ function AuthFlow() {
                                     d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-2m-14 0h2m-2 0h-2m3-6h4m-4 6h4m7-14h2m-2 0h-2m2-6h2v6z"
                                 />
                             </svg>
+                            
                             <h2 className="text-3xl font-bold mb-4">Công nghệ hiện đại</h2>
                             <p className="text-lg opacity-90">
                                 Ứng dụng AI và IoT trong quản lý bãi đỗ xe

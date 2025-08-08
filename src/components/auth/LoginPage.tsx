@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Eye, EyeOff, Mail, Lock, Car, ArrowLeft } from 'lucide-react';
-import { useAuth, LoginData } from '../contexts/AuthContext';
+import { useAuth, LoginData } from '../../contexts/AuthContext';
 
 interface LoginPageProps {
     onSwitchToRegister: () => void;
@@ -51,9 +51,9 @@ export function LoginPage({ onSwitchToRegister, onBack }: LoginPageProps) {
     };
 
     const handleInputChange = (field: keyof LoginData, value: string) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
+        setFormData((prev: LoginData) => ({ ...prev, [field]: value }));
         if (errors[field]) {
-            setErrors(prev => ({ ...prev, [field]: '' }));
+            setErrors((prev: any) => ({ ...prev, [field]: '' }));
         }
         if (loginError) {
             setLoginError('');
@@ -210,9 +210,9 @@ export function LoginPage({ onSwitchToRegister, onBack }: LoginPageProps) {
 
             {/* Right side - DLU Image */}
             <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
-                <img 
-                    src="/img/DLU.jpg" 
-                    alt="Đại học Đà Lạt" 
+                <img
+                    src="/img/DLU.jpg"
+                    alt="Đại học Đà Lạt"
                     className="absolute inset-0 w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-black bg-opacity-40"></div>

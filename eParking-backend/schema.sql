@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS system_logs (
   CONSTRAINT fk_logs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- Seed minimal data
+-- Seed data for demo
 INSERT INTO parking_lots (name, capacity, fee_per_turn, status) VALUES
   ('Bãi xe A', 50, 2000, 'Hoạt động'),
   ('Bãi xe B', 40, 2000, 'Hoạt động')
@@ -126,3 +126,71 @@ SELECT * FROM (
   UNION ALL SELECT 'Camera B2', 'Bãi xe B - Cổng ra', 'Ra', 'Lỗi', '192.168.1.104', '1080p', 0, 'Offline', '45%'
 ) AS seed
 WHERE NOT EXISTS (SELECT 1 FROM cameras);
+
+-- Demo users
+INSERT INTO users (username, mssv, email, password, phone, role, status) 
+SELECT * FROM (
+  SELECT 'Triệu Quang Học', '2212375', 'hocquang@student.dlu.edu.vn', '$2b$12$KIX0ov2lQ7Wjf8tLGOY9O.zT8k5mZm9Z3kK3BmW8Dm3/iZQ4JbG8W', '0123456789', 'student', 'active'
+  UNION ALL SELECT 'Nguyễn Văn A', '2212376', 'nguyenvana@student.dlu.edu.vn', '$2b$12$KIX0ov2lQ7Wjf8tLGOY9O.zT8k5mZm9Z3kK3BmW8Dm3/iZQ4JbG8W', '0987654321', 'student', 'active'
+  UNION ALL SELECT 'Trần Thị B', '2212377', 'tranthib@student.dlu.edu.vn', '$2b$12$KIX0ov2lQ7Wjf8tLGOY9O.zT8k5mZm9Z3kK3BmW8Dm3/iZQ4JbG8W', '0369852147', 'student', 'inactive'
+  UNION ALL SELECT 'Admin', 'ADM001', 'admin@dlu.edu.vn', '$2b$12$KIX0ov2lQ7Wjf8tLGOY9O.zT8k5mZm9Z3kK3BmW8Dm3/iZQ4JbG8W', '0123456000', 'admin', 'active'
+) AS seed
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'hocquang@student.dlu.edu.vn');
+
+-- Demo vehicles
+INSERT INTO vehicles (user_id, license_plate, brand, model, vehicle_type)
+SELECT * FROM (
+  SELECT 1, '49P1-12345', 'Honda', 'Wave Alpha', 'Xe máy'
+  UNION ALL SELECT 1, '49P2-67890', 'Yamaha', 'Exciter 150', 'Xe máy'
+  UNION ALL SELECT 2, '49P3-54321', 'Honda', 'Winner X', 'Xe máy'
+) AS seed
+WHERE NOT EXISTS (SELECT 1 FROM vehicles WHERE license_plate = '49P1-12345');
+
+-- Demo wallet
+INSERT INTO wallet (user_id, balance)
+SELECT * FROM (
+  SELECT 1, 45000.00
+  UNION ALL SELECT 2, 25000.00
+  UNION ALL SELECT 3, 5000.00
+) AS seed
+WHERE NOT EXISTS (SELECT 1 FROM wallet WHERE user_id = 1);
+
+-- Demo transactions
+INSERT INTO transactions (user_id, type, method, amount, status, description, created_at)
+SELECT * FROM (
+  SELECT 1, 'TOPUP', 'MOMO', 50000, 'Thành công', 'Nạp tiền vào ví', '2024-01-15 08:45:00'
+  UNION ALL SELECT 1, 'FEE', 'AUTO', -2000, 'Thành công', 'Trừ phí gửi xe - 49P1-12345', '2024-01-15 09:15:00'
+  UNION ALL SELECT 1, 'FEE', 'AUTO', -2000, 'Thành công', 'Trừ phí gửi xe - 49P2-67890', '2024-01-14 14:30:00'
+  UNION ALL SELECT 2, 'TOPUP', 'VNPAY', 25000, 'Thành công', 'Nạp tiền vào ví', '2024-01-14 16:45:00'
+) AS seed
+WHERE NOT EXISTS (SELECT 1 FROM transactions WHERE user_id = 1 AND amount = 50000);
+
+-- Demo parking sessions
+INSERT INTO parking_sessions (vehicle_id, lot_id, entry_time, exit_time, fee, status, recognition_method)
+SELECT * FROM (
+  SELECT 1, 1, '2024-01-15 10:30:00', '2024-01-15 16:45:00', 2000, 'OUT', 'Tự động'
+  UNION ALL SELECT 2, 2, '2024-01-15 08:15:00', NULL, 0, 'IN', 'Tự động'
+  UNION ALL SELECT 1, 1, '2024-01-14 14:20:00', '2024-01-14 18:30:00', 2000, 'OUT', 'Tự động'
+  UNION ALL SELECT 2, 2, '2024-01-14 09:45:00', '2024-01-14 17:15:00', 2000, 'OUT', 'Tự động'
+  UNION ALL SELECT 1, 1, '2024-01-13 11:30:00', '2024-01-13 15:45:00', 2000, 'OUT', 'Tự động'
+) AS seed
+WHERE NOT EXISTS (SELECT 1 FROM parking_sessions WHERE vehicle_id = 1 AND entry_time = '2024-01-15 10:30:00');
+
+-- Demo alerts
+INSERT INTO alerts (camera_id, type, message, priority, created_at)
+SELECT * FROM (
+  SELECT 4, 'Camera lỗi', 'Camera B2 không phản hồi', 'Cao', '2024-01-15 08:30:00'
+  UNION ALL SELECT 2, 'Pin yếu', 'Pin Camera A2 dưới 95%', 'Trung bình', '2024-01-15 10:15:00'
+  UNION ALL SELECT 3, 'Kết nối chậm', 'Độ trễ Camera B1 cao', 'Thấp', '2024-01-15 09:45:00'
+) AS seed
+WHERE NOT EXISTS (SELECT 1 FROM alerts WHERE camera_id = 4 AND type = 'Camera lỗi');
+
+-- Demo system logs
+INSERT INTO system_logs (action, user_id, type, created_at)
+SELECT * FROM (
+  SELECT 'Nhận diện biển số', NULL, 'Recognition', '2024-01-15 10:30:00'
+  UNION ALL SELECT 'Trừ phí gửi xe', 1, 'Payment', '2024-01-15 09:15:00'
+  UNION ALL SELECT 'Nạp tiền thành công', 1, 'Payment', '2024-01-15 08:45:00'
+  UNION ALL SELECT 'Đăng ký xe mới', 2, 'Vehicle', '2024-01-15 08:30:00'
+) AS seed
+WHERE NOT EXISTS (SELECT 1 FROM system_logs WHERE action = 'Nhận diện biển số' AND created_at = '2024-01-15 10:30:00');

@@ -361,6 +361,124 @@ app.get('/api/activities/recent', async (_req, res) => {
   }
 });
 
+// DASHBOARD STATS API
+app.get('/api/dashboard/stats', async (req, res) => {
+  const { userId } = req.query;
+  try {
+    // Get user's vehicles count and parking stats
+    const [vehicles] = await db.query('SELECT COUNT(*) as count FROM vehicles WHERE user_id = ?', [userId]);
+    const [currentParking] = await db.query('SELECT COUNT(*) as count FROM parking_sessions ps JOIN vehicles v ON ps.vehicle_id = v.id WHERE v.user_id = ? AND ps.exit_time IS NULL', [userId]);
+    const [monthlyParking] = await db.query('SELECT COUNT(*) as count FROM parking_sessions ps JOIN vehicles v ON ps.vehicle_id = v.id WHERE v.user_id = ? AND ps.entry_time >= DATE_SUB(NOW(), INTERVAL 1 MONTH)', [userId]);
+    const wallet = await ensureWallet(userId);
+
+    res.json({
+      vehiclesCount: vehicles[0].count,
+      currentParking: currentParking[0].count,
+      monthlyParking: monthlyParking[0].count,
+      balance: Number(wallet.balance)
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error fetching dashboard stats' });
+  }
+});
+
+// USER PROFILE API
+app.put('/api/users/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const { username, phone } = req.body;
+  try {
+    await db.query('UPDATE users SET username = ?, phone = ? WHERE id = ?', [username, phone, userId]);
+    const [rows] = await db.query('SELECT id, username, mssv, email, phone, role, created_at FROM users WHERE id = ?', [userId]);
+    res.json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error updating user' });
+  }
+});
+
+// CHANGE PASSWORD API
+app.put('/api/users/:userId/password', async (req, res) => {
+  const { userId } = req.params;
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ message: 'Vui lòng điền đầy đủ thông tin' });
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ message: 'Mật khẩu mới phải có ít nhất 6 ký tự' });
+  }
+
+  try {
+    // Get current user
+    const [users] = await db.query('SELECT password FROM users WHERE id = ?', [userId]);
+    if (users.length === 0) {
+      return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+    }
+
+    // Verify current password
+    const user = users[0];
+    const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+    if (!isValidPassword) {
+      return res.status(400).json({ message: 'Mật khẩu hiện tại không đúng' });
+    }
+
+    // Hash new password
+    const hashedNewPassword = await bcrypt.hash(newPassword, 12);
+
+    // Update password
+    await db.query('UPDATE users SET password = ? WHERE id = ?', [hashedNewPassword, userId]);
+    
+    res.json({ message: 'Đổi mật khẩu thành công' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error changing password' });
+  }
+});
+
+// VEHICLE EDIT API
+app.put('/api/vehicles/:vehicleId', async (req, res) => {
+  const { vehicleId } = req.params;
+  const { brand, model, vehicle_type } = req.body;
+  try {
+    await db.query('UPDATE vehicles SET brand = ?, model = ?, vehicle_type = ? WHERE id = ?', [brand, model, vehicle_type, vehicleId]);
+    const [rows] = await db.query('SELECT * FROM vehicles WHERE id = ?', [vehicleId]);
+    res.json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error updating vehicle' });
+  }
+});
+
+// PARKING LOT UPDATE API
+app.put('/api/parking-lots/:lotId', async (req, res) => {
+  const { lotId } = req.params;
+  const { name, capacity, fee_per_turn, status } = req.body;
+  try {
+    await db.query('UPDATE parking_lots SET name = ?, capacity = ?, fee_per_turn = ?, status = ? WHERE id = ?', [name, capacity, fee_per_turn, status, lotId]);
+    const [rows] = await db.query('SELECT * FROM parking_lots WHERE id = ?', [lotId]);
+    res.json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error updating parking lot' });
+  }
+});
+
+// CAMERA UPDATE API
+app.put('/api/cameras/:cameraId', async (req, res) => {
+  const { cameraId } = req.params;
+  const { name, location, type, status } = req.body;
+  try {
+    await db.query('UPDATE cameras SET name = ?, location = ?, type = ?, status = ? WHERE id = ?', [name, location, type, status, cameraId]);
+    const [rows] = await db.query('SELECT * FROM cameras WHERE id = ?', [cameraId]);
+    res.json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error updating camera' });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`eParking backend listening on http://localhost:${PORT}`);

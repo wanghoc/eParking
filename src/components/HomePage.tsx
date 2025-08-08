@@ -89,16 +89,26 @@ export function HomePage() {
 
     return (
         <div className="space-y-8">
-            {/* Welcome Section */}
-            <div className="bg-gradient-to-r from-cyan-600 via-blue-600 to-cyan-800 rounded-2xl p-8 text-white shadow-2xl">
-                <div className="flex items-center justify-between">
+            {/* Welcome Section - Enhanced */}
+            <div className="relative bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-700 rounded-3xl p-8 text-white shadow-2xl overflow-hidden">
+                {/* Animated background elements */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -translate-y-16 translate-x-16 animate-pulse"></div>
+                <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-5 rounded-full translate-y-12 -translate-x-12 animate-pulse delay-1000"></div>
+                <div className="absolute top-1/2 right-1/4 w-16 h-16 bg-white opacity-8 rounded-full animate-bounce delay-500"></div>
+                
+                <div className="relative z-10 flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold mb-2">Chào mừng trở lại!</h1>
-                        <p className="text-cyan-100 text-lg">Triệu Quang Học - 2212375</p>
-                        <p className="text-cyan-200">Hệ thống eParking - Trường Đại học Đà Lạt</p>
+                        <h1 className="text-4xl font-extrabold mb-3 bg-gradient-to-r from-white to-cyan-100 bg-clip-text text-transparent">
+                            Chào mừng trở lại!
+                        </h1>
+                        <p className="text-cyan-100 text-xl font-medium mb-1">Triệu Quang Học - 2212375</p>
+                        <p className="text-cyan-200 flex items-center">
+                            <MapPin className="h-4 w-4 mr-2" />
+                            Hệ thống eParking - Trường Đại học Đà Lạt
+                        </p>
                     </div>
-                    <div className="bg-white bg-opacity-20 p-4 rounded-full">
-                        <Home className="h-8 w-8" />
+                    <div className="bg-white bg-opacity-20 backdrop-blur-sm p-5 rounded-2xl border border-white border-opacity-30 shadow-xl">
+                        <Home className="h-10 w-10 drop-shadow-lg" />
                     </div>
                 </div>
             </div>
@@ -108,16 +118,18 @@ export function HomePage() {
                 {quickStats.map((stat, index) => {
                     const Icon = stat.icon;
                     return (
-                        <div key={index} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100">
-                            <div className="flex items-center justify-between">
+                        <div key={index} className="relative group bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-cyan-200 transform hover:-translate-y-2">
+                            <div className="relative z-10 flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
-                                    <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                                    <p className="text-sm font-medium text-gray-600 mb-2 group-hover:text-gray-700 transition-colors">{stat.title}</p>
+                                    <p className="text-3xl font-bold text-gray-900 group-hover:text-cyan-700 transition-colors">{stat.value}</p>
                                 </div>
-                                <div className={`p-3 rounded-xl ${stat.color} shadow-lg`}>
-                                    <Icon className="h-6 w-6 text-white" />
+                                <div className={`p-4 rounded-2xl ${stat.color} shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110`}>
+                                    <Icon className="h-7 w-7 text-white drop-shadow-md" />
                                 </div>
                             </div>
+                            {/* Gradient overlay effect */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-blue-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                         </div>
                     );
                 })}
