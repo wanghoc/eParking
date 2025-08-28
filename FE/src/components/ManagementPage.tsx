@@ -96,11 +96,17 @@ export function ManagementPage() {
     return (
         <div className="space-y-8">
             {/* Header */}
-            <div className="bg-gradient-to-r from-cyan-600 via-blue-600 to-cyan-800 rounded-2xl p-8 text-white shadow-2xl">
-                <div className="flex items-center justify-between">
+            <div className="relative rounded-2xl p-8 text-white shadow-2xl overflow-hidden">
+                <img
+                    src="/img/DLU.jpg"
+                    alt="Đại học Đà Lạt"
+                    className="absolute inset-0 w-full h-full object-cover rounded-2xl"
+                />
+                <div className="absolute inset-0 bg-black bg-opacity-40 rounded-2xl"></div>
+                <div className="relative z-10 flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold mb-2">Quản lý bãi xe</h1>
-                        <p className="text-cyan-100 text-lg">Hệ thống quản lý bãi xe - Đại học Đà Lạt</p>
+                        <h1 className="text-3xl font-bold mb-2 drop-shadow-lg">Quản lý bãi xe</h1>
+                        <p className="text-cyan-100 text-lg drop-shadow-md">Hệ thống quản lý bãi xe - Đại học Đà Lạt</p>
                     </div>
                     <div className="flex space-x-4">
                         <button className="bg-white bg-opacity-20 px-6 py-3 rounded-xl flex items-center space-x-2 hover:bg-opacity-30 transition-all duration-300">

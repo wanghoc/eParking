@@ -1,0 +1,79 @@
+# Docker Compose configuration for eParking System
+
+services:
+  # MySQL Database
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-eParking_db}
+      MYSQL_USER: ${MYSQL_USER:-eparking_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-123456}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ../BE/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - ${DOCKER_NETWORK:-eparking_network}
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Backend API
+  backend:
+    build:
+      context: ../BE
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "${PORT:-5000}:5000"
+    environment:
+      - DB_HOST=db
+      - DB_USER=${DB_USER:-eparking_user}
+      - DB_PASSWORD=${DB_PASSWORD:-123456}
+      - DB_DATABASE_NAME=${DB_DATABASE_NAME:-eParking_db}
+      - DB_PORT=3306
+      - DB_DIALECT=${DB_DIALECT:-mysql}
+      - PORT=${PORT:-5000}
+      - NODE_ENV=${NODE_ENV:-development}
+      - JWT_SECRET=${JWT_SECRET:-your_jwt_secret_key_here}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-24h}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ${DOCKER_NETWORK:-eparking_network}
+    volumes:
+      - ../BE:/app
+      - /app/node_modules
+
+  # Frontend React App
+  frontend:
+    build:
+      context: ../FE
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:5000}
+      - REACT_APP_ENV=${REACT_APP_ENV:-development}
+    depends_on:
+      - backend
+    networks:
+      - ${DOCKER_NETWORK:-eparking_network}
+    volumes:
+      - ../FE:/app
+      - /app/node_modules
+
+volumes:
+  mysql_data:
+
+networks:
+  eparking_network:
+    driver: bridge

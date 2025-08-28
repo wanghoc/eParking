@@ -98,20 +98,14 @@ export function FAQPage() {
     return (
         <div className="space-y-8">
             {/* Header */}
-            <div className="relative rounded-2xl p-8 text-white shadow-2xl overflow-hidden">
-                <img
-                    src="/img/DLU.jpg"
-                    alt="Đại học Đà Lạt"
-                    className="absolute inset-0 w-full h-full object-cover rounded-2xl"
-                />
-                <div className="absolute inset-0 bg-black bg-opacity-40 rounded-2xl"></div>
-                <div className="relative z-10 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-cyan-600 via-blue-600 to-cyan-800 rounded-2xl p-8 text-white shadow-2xl">
+                <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold mb-2 drop-shadow-lg">FAQ – Câu hỏi thường gặp về hệ thống gửi xe eParking</h1>
-                        <p className="text-cyan-100 text-lg drop-shadow-md">Tìm hiểu cách sử dụng hệ thống eParking</p>
+                        <h1 className="text-3xl font-bold mb-2">FAQ – Câu hỏi thường gặp về hệ thống gửi xe eParking</h1>
+                        <p className="text-cyan-100 text-lg">Tìm hiểu cách sử dụng hệ thống eParking</p>
                     </div>
                     <div className="bg-white bg-opacity-20 backdrop-blur-sm p-4 rounded-full border border-white border-opacity-30">
-                        <HelpCircle className="h-8 w-8 drop-shadow-lg" />
+                        <HelpCircle className="h-8 w-8" />
                     </div>
                 </div>
             </div>

@@ -2,10 +2,8 @@
 
 ## 🎯 Tổng quan thay đổi
 
-Tôi đã cập nhật toàn bộ hệ thống eParking để chỉ dành cho **xe máy** với các thay đổi chính:
 
 ### ✅ **Thay đổi chính:**
-- 🚫 **Loại bỏ hoàn toàn** thông tin về ô tô
 - 💰 **Chi phí cố định** 2,000₫ cho mỗi lần gửi xe
 - 📱 **Popup thêm xe** với form đầy đủ
 - 🔢 **Giới hạn 3 xe máy** tối đa

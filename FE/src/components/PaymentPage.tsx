@@ -89,20 +89,14 @@ export function PaymentPage() {
     return (
         <div className="space-y-8">
             {/* Header */}
-            <div className="relative rounded-2xl p-8 text-white shadow-2xl overflow-hidden">
-                <img
-                    src="/img/DLU.jpg"
-                    alt="Đại học Đà Lạt"
-                    className="absolute inset-0 w-full h-full object-cover rounded-2xl"
-                />
-                <div className="absolute inset-0 bg-black bg-opacity-40 rounded-2xl"></div>
-                <div className="relative z-10 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-cyan-600 via-blue-600 to-cyan-800 rounded-2xl p-8 text-white shadow-2xl">
+                <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold mb-2 drop-shadow-lg">Nạp tiền</h1>
-                        <p className="text-cyan-100 text-lg drop-shadow-md">Quản lý phương thức thanh toán và giao dịch</p>
+                        <h1 className="text-3xl font-bold mb-2">Nạp tiền</h1>
+                        <p className="text-cyan-100 text-lg">Quản lý phương thức thanh toán và giao dịch</p>
                     </div>
                     <div className="bg-white bg-opacity-20 backdrop-blur-sm p-4 rounded-full border border-white border-opacity-30">
-                        <CreditCard className="h-8 w-8 drop-shadow-lg" />
+                        <CreditCard className="h-8 w-8" />
                     </div>
                 </div>
             </div>

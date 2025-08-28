@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "db:init": "mysql -u root -p < schema.sql"
+    "db:init": "mysql -u root -p < schema.sql",
+    "build-src": "babel src -d build --copy-files"
   },
   "keywords": [],
   "author": "",
@@ -15,7 +16,8 @@
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "mysql2": "^3.14.3"
+    "mysql2": "^3.14.3",
+    "dotenv": "^16.3.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

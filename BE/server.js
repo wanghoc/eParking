@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const db = require('./db');
+const dotenv = require('dotenv');
+
+dotenv.config();
 
 const app = express();
 app.use(cors());
@@ -479,7 +482,7 @@ app.put('/api/cameras/:cameraId', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`eParking backend listening on http://localhost:${PORT}`);
 });
