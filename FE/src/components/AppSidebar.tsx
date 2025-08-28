@@ -49,26 +49,26 @@ export function AppSidebar({ activeItem, onItemClick }: AppSidebarProps) {
             </div>
 
             {/* User Info */}
-            <div className="p-6 border-b border-gray-200">
+            <div className="p-4 lg:p-6 border-b border-gray-200">
                 <div 
-                    className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 rounded-lg p-2 -m-2 transition-colors group"
+                    className="flex items-center space-x-2 lg:space-x-3 cursor-pointer hover:bg-gray-50 rounded-lg p-2 -m-2 transition-colors group"
                     onClick={() => setShowProfileModal(true)}
                 >
                     <Avatar className="group-hover:ring-2 group-hover:ring-cyan-200 transition-all">
                         <div className="flex h-full w-full items-center justify-center rounded-full bg-cyan-100 text-cyan-700 group-hover:bg-cyan-200">
-                            <User className="h-5 w-5" />
+                            <User className="h-4 w-4 lg:h-5 lg:w-5" />
                         </div>
                     </Avatar>
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                            <p className="font-medium text-gray-900 group-hover:text-cyan-700 transition-colors">{user?.fullName}</p>
-                            <User className="h-4 w-4 text-gray-400 group-hover:text-cyan-500 transition-colors" />
+                            <p className="font-medium text-gray-900 group-hover:text-cyan-700 transition-colors text-sm lg:text-base truncate">{user?.fullName}</p>
+                            <User className="h-3 w-3 lg:h-4 lg:w-4 text-gray-400 group-hover:text-cyan-500 transition-colors flex-shrink-0" />
                         </div>
-                        <p className="text-sm text-gray-500 group-hover:text-gray-600 transition-colors">
+                        <p className="text-xs lg:text-sm text-gray-500 group-hover:text-gray-600 transition-colors truncate">
                             {user?.studentId || user?.email}
                         </p>
                         <div className="flex items-center mt-1">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${user?.role === 'admin'
+                            <span className={`inline-flex items-center px-1.5 lg:px-2 py-0.5 rounded-full text-xs font-medium ${user?.role === 'admin'
                                 ? 'bg-purple-100 text-purple-800 group-hover:bg-purple-200'
                                 : 'bg-green-100 text-green-800 group-hover:bg-green-200'
                                 } transition-colors`}>
@@ -81,23 +81,23 @@ export function AppSidebar({ activeItem, onItemClick }: AppSidebarProps) {
             </div>
 
             {/* Menu Items */}
-            <nav className="flex-1 p-4">
-                <ul className="space-y-2">
+            <nav className="flex-1 p-3 lg:p-4">
+                <ul className="space-y-1 lg:space-y-2">
                     {menuItems.map((item) => {
                         const Icon = item.icon;
                         return (
                             <li key={item.id}>
                                 <button
                                     onClick={() => onItemClick(item.id)}
-                                    className={`group w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-all duration-300 ${activeItem === item.id
+                                    className={`group w-full flex items-center space-x-2 lg:space-x-3 px-3 lg:px-4 py-2.5 lg:py-3 rounded-lg lg:rounded-xl text-left transition-all duration-300 ${activeItem === item.id
                                         ? "bg-gradient-to-r from-cyan-100 to-blue-100 text-cyan-700 border border-cyan-200 shadow-md"
                                         : "hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 text-gray-600 hover:text-gray-800 hover:shadow-sm"
                                         }`}
                                 >
-                                    <Icon className={`h-5 w-5 transition-all duration-300 ${activeItem === item.id ? "text-cyan-600" : "text-gray-500 group-hover:text-gray-700"}`} />
-                                    <span className="font-medium">{item.label}</span>
+                                    <Icon className={`h-4 w-4 lg:h-5 lg:w-5 transition-all duration-300 flex-shrink-0 ${activeItem === item.id ? "text-cyan-600" : "text-gray-500 group-hover:text-gray-700"}`} />
+                                    <span className="font-medium text-sm lg:text-base truncate">{item.label}</span>
                                     {activeItem === item.id && (
-                                        <div className="ml-auto w-2 h-2 bg-cyan-500 rounded-full animate-pulse"></div>
+                                        <div className="ml-auto w-1.5 h-1.5 lg:w-2 lg:h-2 bg-cyan-500 rounded-full animate-pulse flex-shrink-0"></div>
                                     )}
                                 </button>
                             </li>
@@ -107,20 +107,20 @@ export function AppSidebar({ activeItem, onItemClick }: AppSidebarProps) {
             </nav>
 
             {/* Logout Section */}
-            <div className="p-4 border-t border-gray-200">
+            <div className="p-3 lg:p-4 border-t border-gray-200">
                 {showLogoutConfirm ? (
-                    <div className="space-y-3">
-                        <p className="text-sm text-gray-700 text-center">Bạn có chắc muốn đăng xuất?</p>
+                    <div className="space-y-2 lg:space-y-3">
+                        <p className="text-xs lg:text-sm text-gray-700 text-center">Bạn có chắc muốn đăng xuất?</p>
                         <div className="flex space-x-2">
                             <button
                                 onClick={handleLogout}
-                                className="flex-1 bg-red-500 text-white py-2 px-3 rounded-lg text-sm font-medium hover:bg-red-600 transition-colors"
+                                className="flex-1 bg-red-500 text-white py-1.5 lg:py-2 px-2 lg:px-3 rounded-lg text-xs lg:text-sm font-medium hover:bg-red-600 transition-colors"
                             >
                                 Đăng xuất
                             </button>
                             <button
                                 onClick={() => setShowLogoutConfirm(false)}
-                                className="flex-1 bg-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors"
+                                className="flex-1 bg-gray-200 text-gray-700 py-1.5 lg:py-2 px-2 lg:px-3 rounded-lg text-xs lg:text-sm font-medium hover:bg-gray-300 transition-colors"
                             >
                                 Hủy
                             </button>
@@ -129,10 +129,10 @@ export function AppSidebar({ activeItem, onItemClick }: AppSidebarProps) {
                 ) : (
                     <button
                         onClick={() => setShowLogoutConfirm(true)}
-                        className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors hover:bg-red-50 text-red-600 hover:text-red-700"
+                        className="w-full flex items-center space-x-2 lg:space-x-3 px-2 lg:px-3 py-1.5 lg:py-2 rounded-lg text-left transition-colors hover:bg-red-50 text-red-600 hover:text-red-700"
                     >
-                        <LogOut className="h-5 w-5" />
-                        <span>Đăng xuất</span>
+                        <LogOut className="h-4 w-4 lg:h-5 lg:w-5 flex-shrink-0" />
+                        <span className="text-sm lg:text-base">Đăng xuất</span>
                     </button>
                 )}
             </div>

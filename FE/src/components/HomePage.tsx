@@ -90,31 +90,31 @@ export function HomePage() {
     return (
         <div className="space-y-8">
             {/* Welcome Section - Enhanced */}
-            <div className="relative bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-700 rounded-3xl p-8 text-white shadow-2xl overflow-hidden">
+            <div className="relative bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-700 rounded-3xl p-4 lg:p-8 text-white shadow-2xl overflow-hidden">
                 {/* Animated background elements */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -translate-y-16 translate-x-16 animate-pulse"></div>
-                <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-5 rounded-full translate-y-12 -translate-x-12 animate-pulse delay-1000"></div>
-                <div className="absolute top-1/2 right-1/4 w-16 h-16 bg-white opacity-8 rounded-full animate-bounce delay-500"></div>
+                <div className="absolute top-0 right-0 w-16 lg:w-32 h-16 lg:h-32 bg-white opacity-10 rounded-full -translate-y-8 lg:-translate-y-16 translate-x-8 lg:translate-x-16 animate-pulse"></div>
+                <div className="absolute bottom-0 left-0 w-12 lg:w-24 h-12 lg:h-24 bg-white opacity-5 rounded-full translate-y-6 lg:translate-y-12 -translate-x-6 lg:-translate-x-12 animate-pulse delay-1000"></div>
+                <div className="absolute top-1/2 right-1/4 w-8 lg:w-16 h-8 lg:h-16 bg-white opacity-8 rounded-full animate-bounce delay-500"></div>
                 
-                <div className="relative z-10 flex items-center justify-between">
+                <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
                     <div>
-                        <h1 className="text-4xl font-extrabold mb-3 bg-gradient-to-r from-white to-cyan-100 bg-clip-text text-transparent">
+                        <h1 className="text-2xl lg:text-4xl font-extrabold mb-3 bg-gradient-to-r from-white to-cyan-100 bg-clip-text text-transparent">
                             Chào mừng trở lại!
                         </h1>
-                        <p className="text-cyan-100 text-xl font-medium mb-1">Triệu Quang Học - 2212375</p>
-                        <p className="text-cyan-200 flex items-center">
+                        <p className="text-cyan-100 text-base lg:text-xl font-medium mb-1">Triệu Quang Học - 2212375</p>
+                        <p className="text-cyan-200 flex items-center text-sm lg:text-base">
                             <MapPin className="h-4 w-4 mr-2" />
                             Hệ thống eParking - Trường Đại học Đà Lạt
                         </p>
                     </div>
-                    <div className="bg-white bg-opacity-20 backdrop-blur-sm p-5 rounded-2xl border border-white border-opacity-30 shadow-xl">
-                        <Home className="h-10 w-10 drop-shadow-lg" />
+                    <div className="bg-white bg-opacity-20 backdrop-blur-sm p-4 lg:p-5 rounded-2xl border border-white border-opacity-30 shadow-xl self-start lg:self-auto">
+                        <Home className="h-8 w-8 lg:h-10 lg:w-10 drop-shadow-lg" />
                     </div>
                 </div>
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
                 {quickStats.map((stat, index) => {
                     const Icon = stat.icon;
                     return (
@@ -136,7 +136,7 @@ export function HomePage() {
             </div>
 
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                 {/* Recent Activities */}
                 <div className="lg:col-span-2">
                     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">

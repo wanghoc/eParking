@@ -15,6 +15,7 @@ import { FAQPage } from "./components/FAQPage";
 
 function AuthenticatedApp() {
     const [activeItem, setActiveItem] = useState("home");
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     const renderContent = () => {
         switch (activeItem) {
@@ -49,17 +50,52 @@ function AuthenticatedApp() {
 
     return (
         <div className="h-screen flex flex-col bg-gray-50">
-            {/* Top Banner */}
-            <div className="bg-green-400 h-3 w-full"></div>
-
             {/* Main Layout */}
             <div className="flex flex-1 overflow-hidden">
+                {/* Mobile Sidebar Overlay */}
+                {sidebarOpen && (
+                    <div 
+                        className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+                        onClick={() => setSidebarOpen(false)}
+                    />
+                )}
+
                 {/* Sidebar */}
-                <AppSidebar activeItem={activeItem} onItemClick={setActiveItem} />
+                <div className={`fixed lg:static inset-y-0 left-0 z-50 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform duration-300 ease-in-out`}>
+                    <AppSidebar 
+                        activeItem={activeItem} 
+                        onItemClick={(item) => {
+                            setActiveItem(item);
+                            setSidebarOpen(false); // Close sidebar on mobile after item click
+                        }}
+                        onClose={() => setSidebarOpen(false)}
+                    />
+                </div>
 
                 {/* Main Content */}
                 <div className="flex-1 overflow-auto">
-                    <div className="p-8">
+                    {/* Mobile Header */}
+                    <div className="lg:hidden bg-white border-b border-gray-200 px-3 py-2 flex items-center justify-between">
+                        <button
+                            onClick={() => setSidebarOpen(true)}
+                            className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
+                        <div className="flex items-center space-x-2">
+                            <div className="w-7 h-7 bg-cyan-500 rounded-lg flex items-center justify-center">
+                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-2m-14 0h2m-2 0h-2m3-6h4m-4 6h4m7-14h2m-2 0h-2m2-6h2v6z" />
+                                </svg>
+                            </div>
+                            <span className="font-semibold text-gray-900 text-sm">eParking</span>
+                        </div>
+                        <div className="w-7"></div> {/* Spacer for centering */}
+                    </div>
+
+                    <div className="p-3 lg:p-8">
                         {renderContent()}
                     </div>
                 </div>

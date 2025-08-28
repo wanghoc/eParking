@@ -89,20 +89,20 @@ export function PaymentPage() {
     return (
         <div className="space-y-8">
             {/* Header */}
-            <div className="bg-gradient-to-r from-cyan-600 via-blue-600 to-cyan-800 rounded-2xl p-8 text-white shadow-2xl">
-                <div className="flex items-center justify-between">
+            <div className="bg-gradient-to-r from-cyan-600 via-blue-600 to-cyan-800 rounded-2xl p-4 lg:p-8 text-white shadow-2xl">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
                     <div>
-                        <h1 className="text-3xl font-bold mb-2">Nạp tiền</h1>
-                        <p className="text-cyan-100 text-lg">Quản lý phương thức thanh toán và giao dịch</p>
+                        <h1 className="text-2xl lg:text-3xl font-bold mb-2">Nạp tiền</h1>
+                        <p className="text-cyan-100 text-base lg:text-lg">Quản lý phương thức thanh toán và giao dịch</p>
                     </div>
-                    <div className="bg-white bg-opacity-20 backdrop-blur-sm p-4 rounded-full border border-white border-opacity-30">
-                        <CreditCard className="h-8 w-8" />
+                    <div className="bg-white bg-opacity-20 backdrop-blur-sm p-3 lg:p-4 rounded-full border border-white border-opacity-30 self-start lg:self-auto">
+                        <CreditCard className="h-6 w-6 lg:h-8 lg:w-8" />
                     </div>
                 </div>
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
                 <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100">
                     <div className="flex items-center justify-between">
                         <div>
@@ -180,8 +180,8 @@ export function PaymentPage() {
                                     </div>
                                 </div>
 
-                                <div className="p-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <div className="p-4 lg:p-6">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
                                         {paymentMethods.map((method) => (
                                             <div key={method.id} className="bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-all duration-300">
                                                 <div className="flex items-center justify-between mb-4">
@@ -216,8 +216,8 @@ export function PaymentPage() {
                                 <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
                                     <h2 className="text-xl font-semibold text-gray-900">Thao tác nhanh</h2>
                                 </div>
-                                <div className="p-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="p-4 lg:p-6">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <button className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-4 rounded-xl flex items-center space-x-3 hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">
                                             <Building2 className="h-5 w-5" />
                                             <span>Nạp tiền qua ngân hàng</span>
@@ -246,23 +246,23 @@ export function PaymentPage() {
                                     </div>
                                 </div>
 
-                                <div className="overflow-x-auto">
+                                <div className="overflow-x-auto -mx-4 lg:mx-0">
                                     <table className="min-w-full divide-y divide-gray-200">
                                         <thead className="bg-gray-50">
                                             <tr>
-                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                <th className="px-3 lg:px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Giao dịch
                                                 </th>
-                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                <th className="hidden sm:table-cell px-3 lg:px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Phương thức
                                                 </th>
-                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                <th className="px-3 lg:px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Số tiền
                                                 </th>
-                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                <th className="hidden md:table-cell px-3 lg:px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Thời gian
                                                 </th>
-                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                <th className="px-3 lg:px-6 py-4 text-left text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Trạng thái
                                                 </th>
                                             </tr>
@@ -270,37 +270,37 @@ export function PaymentPage() {
                                         <tbody className="bg-white divide-y divide-gray-200">
                                             {transactions.map((transaction) => (
                                                 <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
-                                                    <td className="px-6 py-6 whitespace-nowrap">
-                                                        <div className="flex items-center">
-                                                            <div className={`p-2 rounded-lg ${transaction.type === "Nạp tiền" ? "bg-emerald-100" : "bg-red-100"
-                                                                }`}>
-                                                                {transaction.type === "Nạp tiền" ? (
-                                                                    <Plus className="h-4 w-4 text-emerald-600" />
-                                                                ) : (
-                                                                    <DollarSign className="h-4 w-4 text-red-600" />
-                                                                )}
-                                                            </div>
-                                                            <div className="ml-3">
-                                                                <div className="text-sm font-medium text-gray-900">{transaction.type}</div>
-                                                            </div>
+                                                                                                    <td className="px-3 lg:px-6 py-6 whitespace-nowrap">
+                                                    <div className="flex items-center">
+                                                        <div className={`p-2 rounded-lg ${transaction.type === "Nạp tiền" ? "bg-emerald-100" : "bg-red-100"
+                                                            }`}>
+                                                            {transaction.type === "Nạp tiền" ? (
+                                                                <Plus className="h-4 w-4 text-emerald-600" />
+                                                            ) : (
+                                                                <DollarSign className="h-4 w-4 text-red-600" />
+                                                            )}
                                                         </div>
-                                                    </td>
-                                                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">
-                                                        {transaction.method}
-                                                    </td>
-                                                    <td className="px-6 py-6 whitespace-nowrap text-sm font-medium">
-                                                        <span className={getAmountColor(transaction.amount)}>
-                                                            {transaction.amount}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">
-                                                        {transaction.time}
-                                                    </td>
-                                                    <td className="px-6 py-6 whitespace-nowrap">
-                                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(transaction.status)}`}>
-                                                            {transaction.status}
-                                                        </span>
-                                                    </td>
+                                                        <div className="ml-3">
+                                                            <div className="text-sm font-medium text-gray-900">{transaction.type}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="hidden sm:table-cell px-3 lg:px-6 py-6 whitespace-nowrap text-sm text-gray-900">
+                                                    {transaction.method}
+                                                </td>
+                                                <td className="px-3 lg:px-6 py-6 whitespace-nowrap text-sm font-medium">
+                                                    <span className={getAmountColor(transaction.amount)}>
+                                                        {transaction.amount}
+                                                    </span>
+                                                </td>
+                                                <td className="hidden md:table-cell px-3 lg:px-6 py-6 whitespace-nowrap text-sm text-gray-900">
+                                                    {transaction.time}
+                                                </td>
+                                                <td className="px-3 lg:px-6 py-6 whitespace-nowrap">
+                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(transaction.status)}`}>
+                                                        {transaction.status}
+                                                    </span>
+                                                </td>
                                                 </tr>
                                             ))}
                                         </tbody>

@@ -37,20 +37,20 @@ export function VehiclesPage() {
     return (
         <div className="space-y-8">
             {/* Header */}
-            <div className="bg-gradient-to-r from-cyan-600 via-blue-600 to-cyan-800 rounded-2xl p-8 text-white shadow-2xl">
-                <div className="flex items-center justify-between">
+            <div className="bg-gradient-to-r from-cyan-600 via-blue-600 to-cyan-800 rounded-2xl p-4 lg:p-8 text-white shadow-2xl">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
                     <div>
-                        <h1 className="text-3xl font-bold mb-2">Phương tiện</h1>
-                        <p className="text-cyan-100 text-lg">Quản lý xe máy đã đăng ký</p>
+                        <h1 className="text-2xl lg:text-3xl font-bold mb-2">Phương tiện</h1>
+                        <p className="text-cyan-100 text-base lg:text-lg">Quản lý xe máy đã đăng ký</p>
                     </div>
-                    <div className="bg-white bg-opacity-20 p-4 rounded-full">
-                        <Car className="h-8 w-8" />
+                    <div className="bg-white bg-opacity-20 p-3 lg:p-4 rounded-full self-start lg:self-auto">
+                        <Car className="h-6 w-6 lg:h-8 lg:w-8" />
                     </div>
                 </div>
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
                 <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100">
                     <div className="flex items-center justify-between">
                         <div>

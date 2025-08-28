@@ -98,14 +98,14 @@ export function FAQPage() {
     return (
         <div className="space-y-8">
             {/* Header */}
-            <div className="bg-gradient-to-r from-cyan-600 via-blue-600 to-cyan-800 rounded-2xl p-8 text-white shadow-2xl">
-                <div className="flex items-center justify-between">
+            <div className="bg-gradient-to-r from-cyan-600 via-blue-600 to-cyan-800 rounded-2xl p-4 lg:p-8 text-white shadow-2xl">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
                     <div>
-                        <h1 className="text-3xl font-bold mb-2">FAQ – Câu hỏi thường gặp về hệ thống gửi xe eParking</h1>
-                        <p className="text-cyan-100 text-lg">Tìm hiểu cách sử dụng hệ thống eParking</p>
+                        <h1 className="text-xl lg:text-3xl font-bold mb-2">FAQ – Câu hỏi thường gặp về hệ thống gửi xe eParking</h1>
+                        <p className="text-cyan-100 text-base lg:text-lg">Tìm hiểu cách sử dụng hệ thống eParking</p>
                     </div>
-                    <div className="bg-white bg-opacity-20 backdrop-blur-sm p-4 rounded-full border border-white border-opacity-30">
-                        <HelpCircle className="h-8 w-8" />
+                    <div className="bg-white bg-opacity-20 backdrop-blur-sm p-3 lg:p-4 rounded-full border border-white border-opacity-30 self-start lg:self-auto">
+                        <HelpCircle className="h-6 w-6 lg:h-8 lg:w-8" />
                     </div>
                 </div>
             </div>
@@ -115,8 +115,8 @@ export function FAQPage() {
                 <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
                     <h2 className="text-xl font-semibold text-gray-900">Danh sách câu hỏi</h2>
                 </div>
-                <div className="p-6">
-                    <div className="space-y-6">
+                <div className="p-4 lg:p-6">
+                    <div className="space-y-4 lg:space-y-6">
                         {faqList.map((item, index) => {
                             const isOpen = openItems.includes(index);
                             return (
@@ -157,8 +157,8 @@ export function FAQPage() {
                 <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
                     <h2 className="text-xl font-semibold text-gray-900">Liên hệ hỗ trợ</h2>
                 </div>
-                <div className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-4 lg:p-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                         <div className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white p-6 rounded-2xl">
                             <div className="flex items-center space-x-3 mb-4">
                                 <AlertCircle className="h-6 w-6" />
