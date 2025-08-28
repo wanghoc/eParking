@@ -129,7 +129,7 @@ export function AppSidebar({ activeItem, onItemClick, onClose }: AppSidebarProps
             {/* Footer Info */}
             <div className="p-4 border-t border-gray-200 bg-gray-50">
                 <div className="text-center">
-                    <p className="text-xs text-gray-500 mb-1">© 2024 eParking</p>
+                    <p className="text-xs text-gray-500 mb-1">© 2025 eParking</p>
                     <p className="text-xs text-gray-400">Đại học Đà Lạt</p>
                 </div>
             </div>
