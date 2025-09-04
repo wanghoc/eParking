@@ -127,7 +127,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-2 sm:p-4 lg:p-8">
-            <div className="bg-white rounded-lg sm:rounded-2xl shadow-2xl w-full max-w-[90%] sm:max-w-lg md:max-w-2xl lg:max-w-3xl xl:max-w-4xl max-h-[95vh] sm:max-h-[90vh] lg:max-h-[85vh] overflow-hidden m-auto">
+            <div className="bg-white rounded-lg sm:rounded-2xl shadow-2xl w-full max-w-[90%] sm:max-w-lg md:max-w-2xl lg:max-w-3xl xl:max-w-4xl max-h-[95vh] sm:max-h-[90vh] lg:max-h-[85vh] m-auto flex flex-col">
                 {/* Header */}
                 <div className="bg-gradient-to-r from-cyan-500 to-blue-600 p-4 sm:p-6 lg:p-8 text-white relative">
                     <button
@@ -196,7 +196,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                 </div>
 
                 {/* Content */}
-                <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-h-[60vh] sm:max-h-[65vh] lg:max-h-[70vh] overflow-y-auto">
+                <div className="p-4 sm:p-6 lg:p-8 xl:p-10 flex-1 min-h-0 overflow-y-auto">
                     {/* Message */}
                     {message.text && (
                         <div className={`mb-4 sm:mb-6 p-3 sm:p-4 rounded-lg flex items-center space-x-2 sm:space-x-3 ${
