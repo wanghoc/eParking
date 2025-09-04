@@ -12,10 +12,12 @@ import { ManagementPage } from "./components/ManagementPage";
 import { AdminPage } from "./components/AdminPage";
 import { CameraPage } from "./components/CameraPage";
 import { FAQPage } from "./components/FAQPage";
+import { ProfileModal } from "./components/ProfileModal";
 
 function AuthenticatedApp() {
     const [activeItem, setActiveItem] = useState("home");
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [showProfileModal, setShowProfileModal] = useState(false);
 
     const renderContent = () => {
         switch (activeItem) {
@@ -69,6 +71,7 @@ function AuthenticatedApp() {
                             setSidebarOpen(false); // Close sidebar on mobile after item click
                         }}
                         onClose={() => setSidebarOpen(false)}
+                        onProfileClick={() => setShowProfileModal(true)}
                     />
                 </div>
 
@@ -100,6 +103,12 @@ function AuthenticatedApp() {
                     </div>
                 </div>
             </div>
+
+            {/* Profile Modal - Moved from AppSidebar to App level for proper positioning */}
+            <ProfileModal 
+                isOpen={showProfileModal} 
+                onClose={() => setShowProfileModal(false)} 
+            />
         </div>
     );
 }

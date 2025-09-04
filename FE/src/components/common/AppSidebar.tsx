@@ -1,18 +1,16 @@
 import { Home, Car, History, CreditCard, MapPin, Settings, HelpCircle, Building2, Camera, LogOut, User } from "lucide-react";
 import { Avatar } from "../ui/avatar";
 import { useAuth } from "../../contexts/AuthContext";
-import { ProfileModal } from "../ProfileModal";
-import { useState } from "react";
 
 interface AppSidebarProps {
     activeItem: string;
     onItemClick: (item: string) => void;
     onClose?: () => void;
+    onProfileClick: () => void;
 }
 
-export function AppSidebar({ activeItem, onItemClick, onClose }: AppSidebarProps) {
+export function AppSidebar({ activeItem, onItemClick, onClose, onProfileClick }: AppSidebarProps) {
     const { user } = useAuth();
-    const [showProfileModal, setShowProfileModal] = useState(false);
 
     const menuItems = [
         { id: "home", label: "Trang chủ", icon: Home },
@@ -72,7 +70,7 @@ export function AppSidebar({ activeItem, onItemClick, onClose }: AppSidebarProps
             <div className="p-4 lg:p-6 border-b border-gray-200">
                 <div 
                     className="flex items-center space-x-2 lg:space-x-3 cursor-pointer hover:bg-gray-50 rounded-lg p-2 -m-2 transition-colors group"
-                    onClick={() => setShowProfileModal(true)}
+                    onClick={onProfileClick}
                 >
                     <Avatar className="group-hover:ring-2 group-hover:ring-cyan-200 transition-all">
                         <div className="flex h-full w-full items-center justify-center rounded-full bg-cyan-100 text-cyan-700 group-hover:bg-cyan-200">
@@ -134,11 +132,7 @@ export function AppSidebar({ activeItem, onItemClick, onClose }: AppSidebarProps
                 </div>
             </div>
 
-            {/* Profile Modal */}
-            <ProfileModal 
-                isOpen={showProfileModal} 
-                onClose={() => setShowProfileModal(false)} 
-            />
+            {/* Profile Modal - moved to App.tsx */}
         </div>
     );
 } 
