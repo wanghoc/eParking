@@ -137,7 +137,7 @@ app.get('/api/parking-history/:vehicle_id', async (req, res) => {
   const { vehicle_id } = req.params;
   try {
     const [rows] = await db.query(
-      'SELECT ps.id, ps.entry_time, ps.exit_time, ps.fee, ps.status, ps.recognition_method, v.license_plate, v.brand, v.model FROM parking_sessions ps JOIN vehicles v ON ps.vehicle_id = v.id WHERE ps.vehicle_id = ? ORDER BY ps.entry_time DESC LIMIT 50',
+      'SELECT ps.id, ps.entry_time, ps.exit_time, ps.fee, ps.status, ps.recognition_method, ps.payment_status, v.license_plate, v.brand, v.model, v.vehicle_type FROM parking_sessions ps JOIN vehicles v ON ps.vehicle_id = v.id WHERE ps.vehicle_id = ? ORDER BY ps.entry_time DESC LIMIT 50',
       [vehicle_id]
     );
     res.json(rows);
@@ -159,8 +159,8 @@ app.post('/api/parking-sessions/check-in', async (req, res) => {
     if (open.length > 0) return res.status(400).json({ message: 'Vehicle already checked in' });
 
     await db.query(
-      'INSERT INTO parking_sessions (vehicle_id, lot_id, entry_time, status, recognition_method) VALUES (?, ?, NOW(), ?, ?)',
-      [vehicleId, lot_id || null, 'IN', recognition_method || 'Tự động']
+      'INSERT INTO parking_sessions (vehicle_id, lot_id, entry_time, status, recognition_method, payment_status) VALUES (?, ?, NOW(), ?, ?, ?)',
+      [vehicleId, lot_id || null, 'IN', recognition_method || 'Tự động', 'Chưa thanh toán']
     );
 
     await db.query('INSERT INTO system_logs (action, user_id, type) VALUES (?, NULL, ?)', ['Xe vào bãi', 'Recognition']);
@@ -195,7 +195,7 @@ app.post('/api/parking-sessions/check-out', async (req, res) => {
     await db.query('UPDATE wallet SET balance = balance - ? WHERE user_id = ?', [fee, vehicle.user_id]);
     await db.query('INSERT INTO transactions (user_id, type, method, amount, status, description) VALUES (?, ?, ?, ?, ?, ?)', [vehicle.user_id, 'FEE', 'AUTO', -fee, 'Thành công', `Trừ phí gửi xe - ${license_plate}`]);
 
-    await db.query('UPDATE parking_sessions SET exit_time = NOW(), fee = ?, status = ? WHERE id = ?', [fee, 'OUT', session.id]);
+    await db.query('UPDATE parking_sessions SET exit_time = NOW(), fee = ?, status = ?, payment_status = ? WHERE id = ?', [fee, 'OUT', 'Đã thanh toán', session.id]);
     await db.query('INSERT INTO system_logs (action, user_id, type) VALUES (?, NULL, ?)', ['Xe ra bãi', 'Payment']);
 
     res.json({ message: 'Checked out', fee });
@@ -246,12 +246,14 @@ app.get('/api/transactions', async (req, res) => {
   }
 });
 
-app.get('/api/payment-methods', (_req, res) => {
-  res.json([
-    { id: 1, name: 'Momo', type: 'Ví điện tử', icon: 'MOMO', balance: null, status: 'active' },
-    { id: 2, name: 'VNPay', type: 'Ví điện tử', icon: 'VNPAY', balance: null, status: 'active' },
-    { id: 3, name: 'ZaloPay', type: 'Ví điện tử', icon: 'ZALOPAY', balance: null, status: 'inactive' },
-  ]);
+app.get('/api/payment-methods', async (_req, res) => {
+  try {
+    const [rows] = await db.query('SELECT id, name, type, icon, status FROM payment_methods ORDER BY id');
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error fetching payment methods' });
+  }
 });
 
 // PARKING LOTS

@@ -26,15 +26,16 @@ BEGIN
 END
 GO
 
--- VEHICLES table (simplified to match frontend)
+-- VEHICLES table (updated to match frontend and backend)
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[vehicles]') AND type in (N'U'))
 BEGIN
     CREATE TABLE vehicles (
         id INT IDENTITY(1,1) PRIMARY KEY,
         user_id INT NOT NULL,
-        plate_number NVARCHAR(20) NOT NULL UNIQUE,
+        license_plate NVARCHAR(20) NOT NULL UNIQUE,
         brand NVARCHAR(50),
         model NVARCHAR(50),
+        vehicle_type NVARCHAR(20) DEFAULT 'Xe máy' CHECK (vehicle_type IN ('Xe máy', 'Xe đạp', 'Xe ô tô')),
         created_at DATETIME2 DEFAULT GETDATE(),
         CONSTRAINT FK_vehicles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
@@ -74,6 +75,20 @@ BEGIN
 END
 GO
 
+-- PAYMENT METHODS table
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[payment_methods]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE payment_methods (
+        id INT IDENTITY(1,1) PRIMARY KEY,
+        name NVARCHAR(50) NOT NULL,
+        type NVARCHAR(50) NOT NULL,
+        icon NVARCHAR(20) NOT NULL,
+        status NVARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+        created_at DATETIME2 DEFAULT GETDATE()
+    );
+END
+GO
+
 -- PARKING LOTS table
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[parking_lots]') AND type in (N'U'))
 BEGIN
@@ -88,7 +103,7 @@ BEGIN
 END
 GO
 
--- PARKING SESSIONS table (history)
+-- PARKING SESSIONS table (simplified for turn-based system)
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[parking_sessions]') AND type in (N'U'))
 BEGIN
     CREATE TABLE parking_sessions (
@@ -97,15 +112,18 @@ BEGIN
         lot_id INT NULL,
         entry_time DATETIME2 NOT NULL DEFAULT GETDATE(),
         exit_time DATETIME2 NULL,
-        fee DECIMAL(12,2) DEFAULT 0.00,
+        fee DECIMAL(12,2) DEFAULT 2000.00, -- Fixed fee per turn
         status NVARCHAR(20) DEFAULT 'IN' CHECK (status IN ('IN', 'OUT')),
         recognition_method NVARCHAR(50) DEFAULT 'Tự động',
+        payment_status NVARCHAR(20) DEFAULT 'Chưa thanh toán' CHECK (payment_status IN ('Chưa thanh toán', 'Đã thanh toán', 'Hoàn tiền')),
+        created_at DATETIME2 DEFAULT GETDATE(),
         CONSTRAINT FK_ps_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE,
         CONSTRAINT FK_ps_lot FOREIGN KEY (lot_id) REFERENCES parking_lots(id) ON DELETE SET NULL
     );
     
     -- Create index for better performance
     CREATE INDEX IX_parking_sessions_vehicle_entry ON parking_sessions(vehicle_id, entry_time);
+    CREATE INDEX IX_parking_sessions_status ON parking_sessions(status);
 END
 GO
 
@@ -155,6 +173,26 @@ BEGIN
         created_at DATETIME2 DEFAULT GETDATE(),
         CONSTRAINT FK_logs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
     );
+END
+GO
+
+-- Insert seed data for payment methods
+IF NOT EXISTS (SELECT 1 FROM payment_methods WHERE name = 'Momo')
+BEGIN
+    INSERT INTO payment_methods (name, type, icon, status) 
+    VALUES ('Momo', 'Ví điện tử', 'MOMO', 'active');
+END
+
+IF NOT EXISTS (SELECT 1 FROM payment_methods WHERE name = 'VNPay')
+BEGIN
+    INSERT INTO payment_methods (name, type, icon, status) 
+    VALUES ('VNPay', 'Ví điện tử', 'VNPAY', 'active');
+END
+
+IF NOT EXISTS (SELECT 1 FROM payment_methods WHERE name = 'ZaloPay')
+BEGIN
+    INSERT INTO payment_methods (name, type, icon, status) 
+    VALUES ('ZaloPay', 'Ví điện tử', 'ZALOPAY', 'inactive');
 END
 GO
 
@@ -224,23 +262,23 @@ BEGIN
 END
 GO
 
--- Insert demo vehicles (simplified structure matching frontend)
-IF NOT EXISTS (SELECT 1 FROM vehicles WHERE plate_number = '49P1-12345')
+-- Insert demo vehicles (updated structure matching frontend and backend)
+IF NOT EXISTS (SELECT 1 FROM vehicles WHERE license_plate = '49P1-12345')
 BEGIN
-    INSERT INTO vehicles (user_id, plate_number, brand, model) 
-    VALUES (1, '49P1-12345', 'Honda', 'Wave Alpha');
+    INSERT INTO vehicles (user_id, license_plate, brand, model, vehicle_type) 
+    VALUES (1, '49P1-12345', 'Honda', 'Wave Alpha', 'Xe máy');
 END
 
-IF NOT EXISTS (SELECT 1 FROM vehicles WHERE plate_number = '49P2-67890')
+IF NOT EXISTS (SELECT 1 FROM vehicles WHERE license_plate = '49P2-67890')
 BEGIN
-    INSERT INTO vehicles (user_id, plate_number, brand, model) 
-    VALUES (1, '49P2-67890', 'Yamaha', 'Exciter 150');
+    INSERT INTO vehicles (user_id, license_plate, brand, model, vehicle_type) 
+    VALUES (1, '49P2-67890', 'Yamaha', 'Exciter 150', 'Xe máy');
 END
 
-IF NOT EXISTS (SELECT 1 FROM vehicles WHERE plate_number = '49P3-54321')
+IF NOT EXISTS (SELECT 1 FROM vehicles WHERE license_plate = '49P3-54321')
 BEGIN
-    INSERT INTO vehicles (user_id, plate_number, brand, model) 
-    VALUES (2, '49P3-54321', 'Honda', 'Winner X');
+    INSERT INTO vehicles (user_id, license_plate, brand, model, vehicle_type) 
+    VALUES (2, '49P3-54321', 'Honda', 'Winner X', 'Xe máy');
 END
 GO
 
@@ -271,13 +309,13 @@ END
 IF NOT EXISTS (SELECT 1 FROM transactions WHERE user_id = 1 AND amount = -2000 AND description LIKE '%49P1-12345%')
 BEGIN
     INSERT INTO transactions (user_id, type, method, amount, status, description, created_at)
-    VALUES (1, 'FEE', 'AUTO', -2000, 'Thành công', 'Trừ phí gửi xe - 49P1-12345', '2024-01-15 09:15:00');
+    VALUES (1, 'FEE', 'AUTO', -2000, 'Thành công', 'Trừ phí gửi xe - 49P1-12345', '2024-01-15 16:45:00');
 END
 
-IF NOT EXISTS (SELECT 1 FROM transactions WHERE user_id = 1 AND amount = -2000 AND description LIKE '%49P2-67890%')
+IF NOT EXISTS (SELECT 1 FROM transactions WHERE user_id = 1 AND amount = -2000 AND description LIKE '%49P1-12345%' AND created_at = '2024-01-14 18:30:00')
 BEGIN
     INSERT INTO transactions (user_id, type, method, amount, status, description, created_at)
-    VALUES (1, 'FEE', 'AUTO', -2000, 'Thành công', 'Trừ phí gửi xe - 49P2-67890', '2024-01-14 14:30:00');
+    VALUES (1, 'FEE', 'AUTO', -2000, 'Thành công', 'Trừ phí gửi xe - 49P1-12345', '2024-01-14 18:30:00');
 END
 
 IF NOT EXISTS (SELECT 1 FROM transactions WHERE user_id = 2 AND amount = 25000)
@@ -287,23 +325,23 @@ BEGIN
 END
 GO
 
--- Insert demo parking sessions
+-- Insert demo parking sessions (updated for turn-based system)
 IF NOT EXISTS (SELECT 1 FROM parking_sessions WHERE vehicle_id = 1 AND entry_time = '2024-01-15 10:30:00')
 BEGIN
-    INSERT INTO parking_sessions (vehicle_id, lot_id, entry_time, exit_time, fee, status, recognition_method)
-    VALUES (1, 1, '2024-01-15 10:30:00', '2024-01-15 16:45:00', 2000, 'OUT', 'Tự động');
+    INSERT INTO parking_sessions (vehicle_id, lot_id, entry_time, exit_time, fee, status, recognition_method, payment_status)
+    VALUES (1, 1, '2024-01-15 10:30:00', '2024-01-15 16:45:00', 2000, 'OUT', 'Tự động', 'Đã thanh toán');
 END
 
 IF NOT EXISTS (SELECT 1 FROM parking_sessions WHERE vehicle_id = 2 AND entry_time = '2024-01-15 08:15:00')
 BEGIN
-    INSERT INTO parking_sessions (vehicle_id, lot_id, entry_time, exit_time, fee, status, recognition_method)
-    VALUES (2, 2, '2024-01-15 08:15:00', NULL, 0, 'IN', 'Tự động');
+    INSERT INTO parking_sessions (vehicle_id, lot_id, entry_time, exit_time, fee, status, recognition_method, payment_status)
+    VALUES (2, 2, '2024-01-15 08:15:00', NULL, 2000, 'IN', 'Tự động', 'Chưa thanh toán');
 END
 
 IF NOT EXISTS (SELECT 1 FROM parking_sessions WHERE vehicle_id = 1 AND entry_time = '2024-01-14 14:20:00')
 BEGIN
-    INSERT INTO parking_sessions (vehicle_id, lot_id, entry_time, exit_time, fee, status, recognition_method)
-    VALUES (1, 1, '2024-01-14 14:20:00', '2024-01-14 18:30:00', 2000, 'OUT', 'Tự động');
+    INSERT INTO parking_sessions (vehicle_id, lot_id, entry_time, exit_time, fee, status, recognition_method, payment_status)
+    VALUES (1, 1, '2024-01-14 14:20:00', '2024-01-14 18:30:00', 2000, 'OUT', 'Tự động', 'Đã thanh toán');
 END
 GO
 
