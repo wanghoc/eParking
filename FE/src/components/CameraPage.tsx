@@ -1,8 +1,10 @@
 import { Camera, Video, Settings, AlertCircle, CheckCircle, Eye, Edit, Trash2, Wifi, WifiOff, RefreshCw } from "lucide-react";
 import { useState } from "react";
+import { LiveCameraModal } from "./LiveCameraModal";
 
 export function CameraPage() {
     const [selectedTab, setSelectedTab] = useState("overview");
+    const [showLiveModal, setShowLiveModal] = useState(false);
 
     const cameras = [
         {
@@ -129,7 +131,10 @@ export function CameraPage() {
                             <Camera className="h-4 w-4 lg:h-5 lg:w-5" />
                             <span className="text-sm lg:text-base">Thêm camera</span>
                         </button>
-                        <button className="bg-white bg-opacity-20 px-4 lg:px-6 py-2 lg:py-3 rounded-xl flex items-center justify-center space-x-2 hover:bg-opacity-30 transition-all duration-300">
+                        <button 
+                            onClick={() => setShowLiveModal(true)}
+                            className="bg-white bg-opacity-20 px-4 lg:px-6 py-2 lg:py-3 rounded-xl flex items-center justify-center space-x-2 hover:bg-opacity-30 transition-all duration-300"
+                        >
                             <RefreshCw className="h-4 w-4 lg:h-5 lg:w-5" />
                             <span className="text-sm lg:text-base">Kiểm tra tất cả</span>
                         </button>
@@ -247,17 +252,16 @@ export function CameraPage() {
                                     </div>
                                     <div className="p-6">
                                         <div className="space-y-4">
-                                            <button className="w-full bg-gradient-to-r from-cyan-500 to-cyan-600 text-white p-4 rounded-xl flex items-center space-x-3 hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                                            <button 
+                                                onClick={() => setShowLiveModal(true)}
+                                                className="w-full bg-gradient-to-r from-cyan-500 to-cyan-600 text-white p-4 rounded-xl flex items-center space-x-3 hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                                            >
                                                 <Camera className="h-5 w-5" />
                                                 <span>Xem trực tiếp camera</span>
                                             </button>
                                             <button className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-4 rounded-xl flex items-center space-x-3 hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">
                                                 <RefreshCw className="h-5 w-5" />
                                                 <span>Khởi động lại camera</span>
-                                            </button>
-                                            <button className="w-full bg-gradient-to-r from-violet-500 to-violet-600 text-white p-4 rounded-xl flex items-center space-x-3 hover:from-violet-600 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-                                                <Settings className="h-5 w-5" />
-                                                <span>Cài đặt nhận diện</span>
                                             </button>
                                             <button className="w-full bg-gradient-to-r from-amber-500 to-amber-600 text-white p-4 rounded-xl flex items-center space-x-3 hover:from-amber-600 hover:to-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl">
                                                 <Video className="h-5 w-5" />
@@ -369,7 +373,11 @@ export function CameraPage() {
                                                     </td>
                                                     <td className="px-6 py-6 whitespace-nowrap text-sm font-medium">
                                                         <div className="flex space-x-3">
-                                                            <button className="text-cyan-600 hover:text-cyan-900 transition-colors">
+                                                            <button 
+                                                                onClick={() => setShowLiveModal(true)}
+                                                                className="text-cyan-600 hover:text-cyan-900 transition-colors"
+                                                                title="Xem trực tiếp"
+                                                            >
                                                                 <Eye className="h-5 w-5" />
                                                             </button>
                                                             <button className="text-emerald-600 hover:text-emerald-900 transition-colors">
@@ -391,6 +399,13 @@ export function CameraPage() {
 
                 </div>
             </div>
+
+            {/* Live Camera Modal */}
+            <LiveCameraModal 
+                isOpen={showLiveModal}
+                onClose={() => setShowLiveModal(false)}
+                cameraCount={cameras.length}
+            />
         </div>
     );
 } 
