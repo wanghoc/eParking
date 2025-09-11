@@ -442,6 +442,70 @@ app.put('/api/users/:userId/password', async (req, res) => {
   }
 });
 
+// ADMIN UPDATE USER BALANCE API
+app.put('/api/admin/users/:userId/balance', async (req, res) => {
+  const { userId } = req.params;
+  const { newBalance, adminPassword } = req.body;
+
+  if (!newBalance || !adminPassword) {
+    return res.status(400).json({ message: 'Thiếu thông tin bắt buộc' });
+  }
+
+  if (isNaN(Number(newBalance)) || Number(newBalance) < 0) {
+    return res.status(400).json({ message: 'Số dư không hợp lệ' });
+  }
+
+  try {
+    // Verify admin password (simplified - in production should verify against current admin user)
+    if (adminPassword !== 'admin123') {
+      return res.status(401).json({ message: 'Mật khẩu admin không đúng' });
+    }
+
+    // Get user info
+    const [users] = await db.query('SELECT username FROM users WHERE id = ?', [userId]);
+    if (users.length === 0) {
+      return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+    }
+
+    // Get current balance
+    const wallet = await ensureWallet(userId);
+    const oldBalance = Number(wallet.balance);
+    const balanceChange = Number(newBalance) - oldBalance;
+
+    // Update balance
+    await db.query('UPDATE wallet SET balance = ?, updated_at = GETDATE() WHERE user_id = ?', [newBalance, userId]);
+
+    // Log transaction
+    if (balanceChange !== 0) {
+      const transactionType = balanceChange > 0 ? 'TOPUP' : 'FEE';
+      const description = balanceChange > 0 
+        ? `Admin cộng tiền vào tài khoản (+${balanceChange.toLocaleString()}₫)`
+        : `Admin trừ tiền từ tài khoản (${balanceChange.toLocaleString()}₫)`;
+      
+      await db.query(
+        'INSERT INTO transactions (user_id, type, method, amount, status, description) VALUES (?, ?, ?, ?, ?, ?)',
+        [userId, transactionType, 'ADMIN', balanceChange, 'Thành công', description]
+      );
+
+      // Log system action
+      await db.query(
+        'INSERT INTO system_logs (action, user_id, type) VALUES (?, ?, ?)',
+        [`Admin điều chỉnh số dư: ${users[0].username}`, userId, 'Admin']
+      );
+    }
+
+    res.json({ 
+      message: 'Cập nhật số dư thành công',
+      oldBalance,
+      newBalance: Number(newBalance),
+      change: balanceChange
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi cập nhật số dư' });
+  }
+});
+
 // VEHICLE EDIT API
 app.put('/api/vehicles/:vehicleId', async (req, res) => {
   const { vehicleId } = req.params;
@@ -481,6 +545,54 @@ app.put('/api/cameras/:cameraId', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error updating camera' });
+  }
+});
+
+// SYSTEM SETTINGS API
+app.get('/api/system-settings', async (_req, res) => {
+  try {
+    const [rows] = await db.query('SELECT setting_key, setting_value, setting_type, description FROM system_settings ORDER BY setting_key');
+    const settings = {};
+    rows.forEach(row => {
+      let value = row.setting_value;
+      if (row.setting_type === 'number') {
+        value = Number(value);
+      } else if (row.setting_type === 'boolean') {
+        value = value === 'true';
+      }
+      settings[row.setting_key] = value;
+    });
+    res.json(settings);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error fetching system settings' });
+  }
+});
+
+app.put('/api/system-settings', async (req, res) => {
+  const { settings } = req.body;
+  if (!settings || typeof settings !== 'object') {
+    return res.status(400).json({ message: 'Invalid settings data' });
+  }
+
+  try {
+    for (const [key, value] of Object.entries(settings)) {
+      await db.query(
+        'UPDATE system_settings SET setting_value = ?, updated_at = GETDATE() WHERE setting_key = ?',
+        [String(value), key]
+      );
+    }
+
+    // Log system action
+    await db.query(
+      'INSERT INTO system_logs (action, user_id, type) VALUES (?, NULL, ?)',
+      ['Cập nhật cấu hình hệ thống', 'Admin']
+    );
+
+    res.json({ message: 'Cập nhật cấu hình thành công' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error updating system settings' });
   }
 });
 

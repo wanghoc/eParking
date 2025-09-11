@@ -203,15 +203,6 @@ export function ManagementPage() {
                         >
                             Hoạt động gần đây
                         </button>
-                        <button
-                            onClick={() => setSelectedTab("alerts")}
-                            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${selectedTab === "alerts"
-                                    ? "border-cyan-500 text-cyan-600"
-                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                                }`}
-                        >
-                            Cảnh báo
-                        </button>
                     </nav>
                 </div>
 
@@ -398,47 +389,6 @@ export function ManagementPage() {
                         </div>
                     )}
 
-                    {selectedTab === "alerts" && (
-                        <div className="space-y-6">
-                            {/* System Alerts */}
-                            <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
-                                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-                                    <h2 className="text-xl font-semibold text-gray-900">Cảnh báo hệ thống</h2>
-                                </div>
-
-                                <div className="p-6">
-                                    <div className="space-y-4">
-                                        {systemAlerts.map((alert) => (
-                                            <div key={alert.id} className="flex justify-between items-center p-4 border border-gray-200 rounded-2xl hover:shadow-lg transition-all duration-300">
-                                                <div className="flex items-center space-x-4">
-                                                    <div className={`p-3 rounded-full ${alert.priority === "Cao" ? "bg-red-100" :
-                                                        alert.priority === "Trung bình" ? "bg-amber-100" : "bg-cyan-100"}`}>
-                                                        <AlertCircle className={`h-5 w-5 ${alert.priority === "Cao" ? "text-red-600" :
-                                                            alert.priority === "Trung bình" ? "text-amber-600" : "text-cyan-600"}`} />
-                                                    </div>
-                                                    <div>
-                                                        <p className={`font-semibold text-lg ${alert.priority === "Cao" ? "text-red-900" :
-                                                            alert.priority === "Trung bình" ? "text-amber-900" : "text-cyan-900"}`}>
-                                                            {alert.type}
-                                                        </p>
-                                                        <p className="text-sm text-gray-600 mt-1">{alert.message}</p>
-                                                        <p className="text-sm text-gray-500 mt-2">{alert.time}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex space-x-3">
-                                                    <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getPriorityColor(alert.priority)}`}>
-                                                        {alert.priority}
-                                                    </span>
-                                                    <button className="bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors">Xử lý</button>
-                                                    <button className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors">Chi tiết</button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>

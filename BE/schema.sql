@@ -176,6 +176,53 @@ BEGIN
 END
 GO
 
+-- SYSTEM SETTINGS table
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[system_settings]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE system_settings (
+        id INT IDENTITY(1,1) PRIMARY KEY,
+        setting_key NVARCHAR(50) NOT NULL UNIQUE,
+        setting_value NVARCHAR(255) NOT NULL,
+        setting_type NVARCHAR(20) DEFAULT 'string' CHECK (setting_type IN ('string', 'number', 'boolean')),
+        description NVARCHAR(255),
+        created_at DATETIME2 DEFAULT GETDATE(),
+        updated_at DATETIME2 DEFAULT GETDATE()
+    );
+END
+GO
+
+-- Insert seed data for system settings
+IF NOT EXISTS (SELECT 1 FROM system_settings WHERE setting_key = 'fee_per_turn')
+BEGIN
+    INSERT INTO system_settings (setting_key, setting_value, setting_type, description) 
+    VALUES ('fee_per_turn', '2000', 'number', 'Phí gửi xe mỗi lượt (VND)');
+END
+
+IF NOT EXISTS (SELECT 1 FROM system_settings WHERE setting_key = 'low_balance_threshold')
+BEGIN
+    INSERT INTO system_settings (setting_key, setting_value, setting_type, description) 
+    VALUES ('low_balance_threshold', '5000', 'number', 'Ngưỡng cảnh báo số dư thấp (VND)');
+END
+
+IF NOT EXISTS (SELECT 1 FROM system_settings WHERE setting_key = 'min_topup_amount')
+BEGIN
+    INSERT INTO system_settings (setting_key, setting_value, setting_type, description) 
+    VALUES ('min_topup_amount', '10000', 'number', 'Số tiền nạp tối thiểu (VND)');
+END
+
+IF NOT EXISTS (SELECT 1 FROM system_settings WHERE setting_key = 'max_topup_amount')
+BEGIN
+    INSERT INTO system_settings (setting_key, setting_value, setting_type, description) 
+    VALUES ('max_topup_amount', '1000000', 'number', 'Số tiền nạp tối đa (VND)');
+END
+
+IF NOT EXISTS (SELECT 1 FROM system_settings WHERE setting_key = 'max_vehicles_per_user')
+BEGIN
+    INSERT INTO system_settings (setting_key, setting_value, setting_type, description) 
+    VALUES ('max_vehicles_per_user', '3', 'number', 'Số lượng xe tối đa mỗi người dùng');
+END
+GO
+
 -- Insert seed data for payment methods
 IF NOT EXISTS (SELECT 1 FROM payment_methods WHERE name = 'Momo')
 BEGIN

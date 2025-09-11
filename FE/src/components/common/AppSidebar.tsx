@@ -16,7 +16,7 @@ export function AppSidebar({ activeItem, onItemClick, onClose, onProfileClick }:
         { id: "home", label: "Trang chủ", icon: Home },
         { id: "vehicles", label: "Phương tiện", icon: Car },
         { id: "history", label: "Lịch sử gửi xe", icon: History },
-        { id: "payment", label: "Nạp tiền", icon: CreditCard },
+        ...(user?.role !== 'admin' ? [{ id: "payment", label: "Nạp tiền", icon: CreditCard }] : []),
         { id: "management", label: "Quản lý bãi xe", icon: MapPin },
         ...(user?.role === 'admin' ? [
             { id: "camera", label: "Quản lý Camera", icon: Camera },
@@ -39,7 +39,11 @@ export function AppSidebar({ activeItem, onItemClick, onClose, onProfileClick }:
                     >
                         <div className="flex items-center space-x-2">
                             <div className="bg-white bg-opacity-20 backdrop-blur-sm p-2 rounded-lg border border-white border-opacity-30">
-                                <Building2 className="h-5 w-5 text-white drop-shadow-lg" />
+                                <img 
+                                    src="/img/DLU_logo.png" 
+                                    alt="DLU Logo" 
+                                    className="h-6 w-6 object-contain drop-shadow-lg"
+                                />
                             </div>
                             <div>
                                 <h2 className="text-lg font-bold text-white drop-shadow-md">eParking</h2>
@@ -57,7 +61,11 @@ export function AppSidebar({ activeItem, onItemClick, onClose, onProfileClick }:
             <div className={`${onClose ? 'hidden lg:block' : ''} p-4 lg:p-6 border-b border-gray-200 bg-gradient-to-r from-cyan-500 to-blue-600`}>
                 <div className="flex items-center space-x-2 lg:space-x-3">
                     <div className="bg-white bg-opacity-20 backdrop-blur-sm p-2 lg:p-3 rounded-xl border border-white border-opacity-30">
-                        <Building2 className="h-5 w-5 lg:h-7 lg:w-7 text-white drop-shadow-lg" />
+                        <img 
+                            src="/img/DLU_logo.png" 
+                            alt="DLU Logo" 
+                            className="h-8 w-8 lg:h-10 lg:w-10 object-contain drop-shadow-lg"
+                        />
                     </div>
                     <div>
                         <h2 className="text-lg lg:text-xl font-bold text-white drop-shadow-md">eParking</h2>
