@@ -1,0 +1,77 @@
+# Version control
+.git
+.gitignore
+
+# Documentation
+README.md
+README-Docker.md
+*.md
+
+# Node modules (will be installed in container)
+**/node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files (handled separately)
+.env
+.env.*
+!.env.example
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage
+*.lcov
+
+# Temporary directories
+tmp/
+temp/
+
+# Build outputs that shouldn't be in Docker context
+**/build
+**/dist
+
+# Docker files (don't copy Docker files into containers)
+**/Dockerfile
+**/.dockerignore
+docker-compose*.yml
+
+# Development database files
+*.sql
+*.db
+*.sqlite
+
+# Backup files
+*.backup
+*.bak
+
+# Cache directories
+.cache
+.parcel-cache
+.next
+.nuxt

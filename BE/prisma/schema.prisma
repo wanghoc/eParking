@@ -1,0 +1,253 @@
+// Prisma Schema for eParking PostgreSQL Database
+// Generated: Auto-regenerated from corrupted schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// MODELS
+
+model User {
+  id          Int       @id @default(autoincrement())
+  username    String    @db.VarChar(100)
+  mssv        String?   @db.VarChar(20)
+  email       String    @unique @db.VarChar(100)
+  phone       String?   @db.VarChar(20)
+  password    String    @db.VarChar(255)
+  role        Role      @default(student)
+  status      UserStatus @default(active)
+  created_at  DateTime  @default(now()) @db.Timestamp()
+
+  // Relations
+  vehicles     Vehicle[]
+  wallet       Wallet?
+  transactions Transaction[]
+  system_logs  SystemLog[]
+
+  @@map("users")
+}
+
+model Vehicle {
+  id            Int         @id @default(autoincrement())
+  user_id       Int
+  license_plate String      @unique @db.VarChar(20)
+  brand         String?     @db.VarChar(50)
+  model         String?     @db.VarChar(50)
+  vehicle_type  VehicleType @default(Xe_may)
+  created_at    DateTime    @default(now()) @db.Timestamp()
+
+  // Relations
+  user             User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  parking_sessions ParkingSession[]
+
+  @@map("vehicles")
+}
+
+model Wallet {
+  id         Int      @id @default(autoincrement())
+  user_id    Int      @unique
+  balance    Decimal  @default(0.00) @db.Decimal(12, 2)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamp()
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("wallet")
+}
+
+model Transaction {
+  id          Int             @id @default(autoincrement())
+  user_id     Int
+  type        TransactionType
+  method      String?         @db.VarChar(50)
+  amount      Decimal         @db.Decimal(12, 2)
+  status      String          @default("Thành công") @db.VarChar(50)
+  description String?         @db.VarChar(255)
+  created_at  DateTime        @default(now()) @db.Timestamp()
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, created_at], map: "IX_transactions_user_created")
+  @@map("transactions")
+}
+
+model PaymentMethod {
+  id         Int                 @id @default(autoincrement())
+  name       String              @db.VarChar(50)
+  type       String              @db.VarChar(50)
+  icon       String              @db.VarChar(20)
+  status     PaymentMethodStatus @default(active)
+  created_at DateTime            @default(now()) @db.Timestamp()
+
+  @@map("payment_methods")
+}
+
+model ParkingLot {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(100)
+  capacity     Int
+  fee_per_turn Decimal  @default(2000.00) @db.Decimal(12, 2)
+  status       String   @default("Hoạt động") @db.VarChar(20)
+  created_at   DateTime @default(now()) @db.Timestamp()
+
+  // Relations
+  parking_sessions ParkingSession[]
+
+  @@map("parking_lots")
+}
+
+model ParkingSession {
+  id                 Int           @id @default(autoincrement())
+  vehicle_id         Int
+  lot_id             Int?
+  entry_time         DateTime      @default(now()) @db.Timestamp()
+  exit_time          DateTime?     @db.Timestamp()
+  fee                Decimal       @default(2000.00) @db.Decimal(12, 2)
+  status             SessionStatus @default(IN)
+  recognition_method String        @default("Tự động") @db.VarChar(50)
+  payment_status     PaymentStatus @default(Chua_thanh_toan)
+  created_at         DateTime      @default(now()) @db.Timestamp()
+
+  // Relations
+  vehicle     Vehicle     @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
+  parking_lot ParkingLot? @relation(fields: [lot_id], references: [id], onDelete: SetNull)
+
+  @@index([vehicle_id, entry_time], map: "IX_parking_sessions_vehicle_entry")
+  @@index([status], map: "IX_parking_sessions_status")
+  @@map("parking_sessions")
+}
+
+model Camera {
+  id                    Int        @id @default(autoincrement())
+  name                  String     @db.VarChar(100)
+  location              String?    @db.VarChar(200)
+  type                  CameraType
+  status                String     @default("Hoạt động") @db.VarChar(50)
+  ip_address            String?    @db.VarChar(50)
+  resolution            String?    @db.VarChar(20)
+  fps                   Int?
+  last_activity         DateTime?  @db.Timestamp()
+  recognition_accuracy  String?    @db.VarChar(20)
+  connection            String     @default("Online") @db.VarChar(20)
+  battery               String?    @db.VarChar(10)
+  recording_enabled     Boolean    @default(false)
+  motion_detection      Boolean    @default(true)
+  night_vision          Boolean    @default(false)
+  created_at            DateTime   @default(now()) @db.Timestamp()
+
+  // Relations
+  alerts Alert[]
+
+  @@map("cameras")
+}
+
+model Alert {
+  id         Int      @id @default(autoincrement())
+  camera_id  Int?
+  type       String   @db.VarChar(100)
+  message    String?  @db.VarChar(255)
+  priority   Priority @default(Trung_binh)
+  created_at DateTime @default(now()) @db.Timestamp()
+
+  // Relations
+  camera Camera? @relation(fields: [camera_id], references: [id], onDelete: SetNull)
+
+  @@map("alerts")
+}
+
+model SystemLog {
+  id         Int      @id @default(autoincrement())
+  user_id    Int?
+  action     String   @db.VarChar(100)
+  type       LogType  @default(Other)
+  created_at DateTime @default(now()) @db.Timestamp()
+
+  // Relations
+  user User? @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@map("system_logs")
+}
+
+model SystemSetting {
+  id            Int         @id @default(autoincrement())
+  setting_key   String      @unique @db.VarChar(50)
+  setting_value String      @db.VarChar(255)
+  setting_type  SettingType @default(string)
+  description   String?     @db.VarChar(255)
+  created_at    DateTime    @default(now()) @db.Timestamp()
+  updated_at    DateTime    @default(now()) @updatedAt @db.Timestamp()
+
+  @@map("system_settings")
+}
+
+// ENUMS
+
+enum Role {
+  student
+  admin
+}
+
+enum UserStatus {
+  active
+  inactive
+  banned
+}
+
+enum VehicleType {
+  Xe_may  @map("Xe máy")
+  Xe_dap  @map("Xe đạp")
+  Xe_o_to @map("Xe ô tô")
+}
+
+enum TransactionType {
+  TOPUP
+  FEE
+  REFUND
+}
+
+enum PaymentMethodStatus {
+  active
+  inactive
+}
+
+enum SessionStatus {
+  IN
+  OUT
+}
+
+enum PaymentStatus {
+  Chua_thanh_toan @map("Chưa thanh toán")
+  Da_thanh_toan   @map("Đã thanh toán")
+  Hoan_tien       @map("Hoàn tiền")
+}
+
+enum CameraType {
+  Vao @map("Vào")
+  Ra  @map("Ra")
+}
+
+enum Priority {
+  Cao        @map("Cao")
+  Trung_binh @map("Trung bình")
+  Thap       @map("Thấp")
+}
+
+enum LogType {
+  Recognition
+  Payment
+  Vehicle
+  Admin
+  Other
+}
+
+enum SettingType {
+  string
+  number
+  boolean
+}

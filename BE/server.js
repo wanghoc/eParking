@@ -473,7 +473,7 @@ app.put('/api/admin/users/:userId/balance', async (req, res) => {
     const balanceChange = Number(newBalance) - oldBalance;
 
     // Update balance
-    await db.query('UPDATE wallet SET balance = ?, updated_at = GETDATE() WHERE user_id = ?', [newBalance, userId]);
+    await db.query('UPDATE wallet SET balance = ?, updated_at = NOW() WHERE user_id = ?', [newBalance, userId]);
 
     // Log transaction
     if (balanceChange !== 0) {
@@ -578,7 +578,7 @@ app.put('/api/system-settings', async (req, res) => {
   try {
     for (const [key, value] of Object.entries(settings)) {
       await db.query(
-        'UPDATE system_settings SET setting_value = ?, updated_at = GETDATE() WHERE setting_key = ?',
+        'UPDATE system_settings SET setting_value = ?, updated_at = NOW() WHERE setting_key = ?',
         [String(value), key]
       );
     }

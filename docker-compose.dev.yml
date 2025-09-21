@@ -1,0 +1,49 @@
+version: '3.8'
+
+# Development override for docker-compose.yml
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  # Database - same as production but with exposed port for direct access
+  database:
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root_dev_password
+      MYSQL_DATABASE: eParking_db_dev
+      MYSQL_USER: dev_user
+      MYSQL_PASSWORD: dev_password
+
+  # Backend - with volume mounting for live reload
+  backend:
+    build:
+      context: ./BE
+      dockerfile: Dockerfile.dev
+    environment:
+      NODE_ENV: development
+      DB_HOST: database
+      DB_USER: dev_user
+      DB_PASSWORD: dev_password
+      DB_DATABASE_NAME: eParking_db_dev
+    volumes:
+      - ./BE:/app
+      - /app/node_modules
+    command: npm run dev
+
+  # Frontend - with volume mounting for live reload
+  frontend:
+    build:
+      context: ./FE
+      dockerfile: Dockerfile.dev
+    environment:
+      REACT_APP_API_URL: http://localhost:5000
+      REACT_APP_ENVIRONMENT: development
+      CHOKIDAR_USEPOLLING: true
+    volumes:
+      - ./FE:/app
+      - /app/node_modules
+    command: npm start
+
+  # Always include adminer in development
+  adminer:
+    profiles: []  # Remove profiles to always run

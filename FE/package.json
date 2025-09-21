@@ -20,7 +20,10 @@
         "build": "react-scripts build",
         "build:prod": "CI=false react-scripts build",
         "test": "react-scripts test",
-        "eject": "react-scripts eject"
+        "eject": "react-scripts eject",
+        "docker:build": "docker build -t eparking-frontend .",
+        "docker:run": "docker run -p 3000:3000 eparking-frontend",
+        "docker:dev": "docker-compose -f ../docker-compose.yml up --build frontend backend database"
     },
     "eslintConfig": {
         "extends": [
