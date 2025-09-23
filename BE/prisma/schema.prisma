@@ -201,6 +201,8 @@ enum UserStatus {
 
 enum VehicleType {
   Xe_may  @map("Xe máy")
+  Xe_dap  @map("Xe đạp")
+  Xe_o_to @map("Xe ô tô")
 }
 
 enum TransactionType {

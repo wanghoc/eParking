@@ -59,9 +59,17 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
             const data = await response.json();
 
             if (response.ok) {
+                alert("Đổi thông tin thành công");
                 setMessage({ type: "success", text: "Cập nhật thông tin thành công!" });
                 setIsEditing(false);
-                // Update local user data if needed
+                // Cập nhật localStorage user để đồng bộ UI
+                const updated = await fetch(apiUrl(`/users/${user?.id}`));
+                if (updated.ok) {
+                    const newUser = await updated.json();
+                    localStorage.setItem('eparking_user', JSON.stringify(newUser));
+                }
+                // Tự động reload trang sau khi cập nhật
+                setTimeout(() => window.location.reload(), 400);
             } else {
                 setMessage({ type: "error", text: data.message || "Có lỗi xảy ra. Vui lòng thử lại!" });
             }
@@ -110,12 +118,15 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
             const data = await response.json();
 
             if (response.ok) {
+                alert("Đổi mật khẩu thành công");
                 setMessage({ type: "success", text: "Đổi mật khẩu thành công!" });
                 setPasswordData({
                     currentPassword: "",
                     newPassword: "",
                     confirmPassword: "",
                 });
+                // Tự động reload trang sau khi đổi mật khẩu
+                setTimeout(() => window.location.reload(), 400);
             } else {
                 setMessage({ type: "error", text: data.message || "Có lỗi xảy ra. Vui lòng thử lại!" });
             }

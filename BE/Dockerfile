@@ -20,7 +20,7 @@ RUN npx prisma generate
 COPY . .
 
 # Install netcat for database health check
-RUN apk update && apk add --no-cache curl busybox-extras
+RUN apk add --no-cache netcat-openbsd wget
 
 # Copy and make entrypoint script executable
 COPY docker-entrypoint.sh /docker-entrypoint.sh

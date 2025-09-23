@@ -12,18 +12,22 @@ interface AppSidebarProps {
 export function AppSidebar({ activeItem, onItemClick, onClose, onProfileClick }: AppSidebarProps) {
     const { user } = useAuth();
 
-    const menuItems = [
-        { id: "home", label: "Trang chủ", icon: Home },
-        ...(user?.role !== 'admin' ? [{ id: "vehicles", label: "Phương tiện", icon: Car }] : []),
-        { id: "history", label: "Lịch sử gửi xe", icon: History },
-        ...(user?.role !== 'admin' ? [{ id: "payment", label: "Nạp tiền", icon: CreditCard }] : []),
-        { id: "management", label: "Quản lý bãi xe", icon: MapPin },
-        ...(user?.role === 'admin' ? [
+    const menuItems = user?.role === 'admin'
+        ? [
+            { id: "home", label: "Trang chủ", icon: Home },
+            { id: "history", label: "Lịch sử gửi xe", icon: History },
+            { id: "management", label: "Quản lý bãi xe", icon: MapPin },
             { id: "camera", label: "Quản lý Camera", icon: Camera },
             { id: "admin", label: "Quản trị hệ thống", icon: Settings },
-        ] : []),
-        { id: "faq", label: "FAQ", icon: HelpCircle },
-    ];
+            { id: "faq", label: "FAQ", icon: HelpCircle },
+        ]
+        : [
+            { id: "home", label: "Trang chủ", icon: Home },
+            { id: "vehicles", label: "Phương tiện", icon: Car },
+            { id: "history", label: "Lịch sử gửi xe", icon: History },
+            { id: "payment", label: "Nạp tiền", icon: CreditCard },
+            { id: "faq", label: "FAQ", icon: HelpCircle },
+        ];
 
 
 

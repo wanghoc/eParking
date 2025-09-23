@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { LoginPage } from "./components/auth/LoginPage";
@@ -15,22 +15,40 @@ import { FAQPage } from "./components/FAQPage";
 import { ProfileModal } from "./components/ProfileModal";
 
 function AuthenticatedApp() {
+    const { user } = useAuth();
     const [activeItem, setActiveItem] = useState("home");
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [showProfileModal, setShowProfileModal] = useState(false);
+
+    // Enforce role-based accessible pages by auto-redirecting to home when not allowed
+    useEffect(() => {
+        if (!user) return;
+        const studentBlocked = ["management", "camera", "admin"];
+        const adminBlocked = ["vehicles", "payment"];
+        if (user.role === 'student' && studentBlocked.includes(activeItem)) {
+            setActiveItem("home");
+        }
+        if (user.role === 'admin' && adminBlocked.includes(activeItem)) {
+            setActiveItem("home");
+        }
+    }, [user?.role, activeItem]);
 
     const renderContent = () => {
         switch (activeItem) {
             case "home":
                 return <HomePage />;
             case "vehicles":
-                return <VehiclesPage />;
+                return user?.role === 'admin' ? <HomePage /> : <VehiclesPage />;
             case "history":
                 return <HistoryPage />;
             case "payment":
-                return <PaymentPage />;
+                return user?.role === 'admin' ? <HomePage /> : <PaymentPage />;
             case "management":
-                return <ManagementPage />;
+                return (
+                    <ProtectedRoute requiredRole="admin">
+                        <ManagementPage />
+                    </ProtectedRoute>
+                );
             case "admin":
                 return (
                     <ProtectedRoute requiredRole="admin">

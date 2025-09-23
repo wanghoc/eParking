@@ -80,9 +80,11 @@ export function VehiclesPage() {
             const result = await response.json();
 
             if (response.ok) {
+                alert('Thêm phương tiện thành công');
                 setShowAddModal(false);
                 setNewVehicle({ license_plate: "", brand: "", model: "" });
                 fetchVehicles(); // Reload danh sách
+                setTimeout(() => window.location.reload(), 400);
             } else {
                 setError(result.message || 'Không thể thêm phương tiện');
             }
@@ -108,6 +110,8 @@ export function VehiclesPage() {
 
             if (response.ok) {
                 fetchVehicles(); // Reload danh sách
+                // Auto reload trang để đồng bộ
+                setTimeout(() => window.location.reload(), 600);
             } else {
                 setError(result.message || 'Không thể xóa phương tiện');
             }
