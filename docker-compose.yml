@@ -1,17 +1,19 @@
+version: '3.8'
+
 services:
   # PostgreSQL Database
-  database:
-    image: postgres:15-alpine
-    container_name: eparking_db
+  postgres:
+    image: postgres:16
+    container_name: eparking_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_DATABASE_NAME:-eParking_db}
       POSTGRES_USER: ${DB_USER:-eparking_user}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-eparking_password_2024}
+      POSTGRES_DB: ${DB_DATABASE_NAME:-eParking_db}
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql/data
     networks:
       - eparking_network
     healthcheck:
@@ -19,7 +21,7 @@ services:
       timeout: 20s
       retries: 10
       interval: 10s
-      start_period: 40s
+      start_period: 20s
 
   # Backend API
   backend:
@@ -29,35 +31,31 @@ services:
     container_name: eparking_backend
     restart: unless-stopped
     depends_on:
-      database:
+      postgres:
         condition: service_healthy
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: ${BACKEND_PORT:-5000}
-      DB_HOST: database
+      DB_HOST: postgres
       DB_USER: ${DB_USER:-eparking_user}
       DB_PASSWORD: ${DB_PASSWORD:-eparking_password_2024}
       DB_DATABASE_NAME: ${DB_DATABASE_NAME:-eParking_db}
       DB_PORT: 5432
-      DATABASE_URL: "postgresql://${DB_USER:-eparking_user}:${DB_PASSWORD:-eparking_password_2024}@database:5432/${DB_DATABASE_NAME:-eParking_db}?schema=public"
+      DATABASE_URL: "postgresql://${DB_USER:-eparking_user}:${DB_PASSWORD:-eparking_password_2024}@postgres:5432/${DB_DATABASE_NAME:-eParking_db}?schema=public"
       USE_PRISMA: ${USE_PRISMA:-true}
-      # Prisma specific settings
-      PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK: 1
-      SKIP_PRISMA_VERSION_CHECK: 1
     ports:
       - "5001:5000"
     volumes:
       - ./BE:/app
       - /app/node_modules
-      - /app/prisma/generated
     networks:
       - eparking_network
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/api/health"]
-      timeout: 15s
-      retries: 10
+      timeout: 10s
+      retries: 5
       interval: 30s
-      start_period: 60s
+      start_period: 20s
 
   # Frontend React App
   frontend:
@@ -91,11 +89,11 @@ services:
     container_name: eparking_prisma_studio
     restart: unless-stopped
     depends_on:
-      database:
+      postgres:
         condition: service_healthy
     environment:
       NODE_ENV: ${NODE_ENV:-production}
-      DATABASE_URL: "postgresql://${DB_USER:-eparking_user}:${DB_PASSWORD:-eparking_password_2024}@database:5432/${DB_DATABASE_NAME:-eParking_db}?schema=public"
+      DATABASE_URL: "postgresql://${DB_USER:-eparking_user}:${DB_PASSWORD:-eparking_password_2024}@postgres:5432/${DB_DATABASE_NAME:-eParking_db}?schema=public"
       PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK: 1
       SKIP_PRISMA_VERSION_CHECK: 1
     ports:
@@ -132,6 +130,6 @@ networks:
     name: eparking_network
 
 volumes:
-  postgres_data:
+  pg_data:
     driver: local
-    name: eparking_postgres_data
+    name: eparking_pg_data
