@@ -1,38 +1,145 @@
 import { Car, Plus, Edit, Trash2, AlertCircle, CheckCircle } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { apiUrl } from "../api";
+
+interface Vehicle {
+    id: number;
+    license_plate: string;
+    brand?: string;
+    model?: string;
+    vehicle_type: string;
+    created_at: string;
+}
 
 export function VehiclesPage() {
+    const { user } = useAuth();
+    const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [showAddModal, setShowAddModal] = useState(false);
-    const [newVehicle, setNewVehicle] = useState({ plateNumber: "", brand: "", model: "" });
+    const [newVehicle, setNewVehicle] = useState({ license_plate: "", brand: "", model: "" });
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState<string>("");
 
-    const vehicles = [
-        {
-            id: 1,
-            plateNumber: "49P1-12345",
-            brand: "Honda",
-            model: "Wave Alpha"
-        },
-        {
-            id: 2,
-            plateNumber: "49P2-67890",
-            brand: "Yamaha",
-            model: "Exciter 150"
+    // Fetch vehicles khi component mount
+    useEffect(() => {
+        if (user?.id) {
+            fetchVehicles();
         }
-    ];
+    }, [user?.id]);
 
-    const handleAddVehicle = () => {
-        if (newVehicle.plateNumber && newVehicle.brand && newVehicle.model) {
-            // Logic thêm xe
-            setShowAddModal(false);
-            setNewVehicle({ plateNumber: "", brand: "", model: "" });
+    const fetchVehicles = async () => {
+        if (!user?.id) return;
+        
+        try {
+            setIsLoading(true);
+            const response = await fetch(apiUrl(`/users/${user.id}/vehicles`));
+            if (response.ok) {
+                const data = await response.json();
+                setVehicles(data);
+            } else {
+                setError('Không thể tải danh sách phương tiện');
+            }
+        } catch (error) {
+            console.error('Error fetching vehicles:', error);
+            setError('Không thể kết nối đến server');
+        } finally {
+            setIsLoading(false);
         }
     };
 
-    const handleDeleteVehicle = (id: number) => {
-        // Logic xóa xe
+    const handleAddVehicle = async () => {
+        if (!newVehicle.license_plate || !newVehicle.brand || !newVehicle.model) {
+            setError('Vui lòng điền đầy đủ thông tin');
+            return;
+        }
+
+        if (!user?.id) {
+            setError('Không tìm thấy thông tin người dùng');
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+            setError('');
+            
+            const response = await fetch(apiUrl(`/vehicles`), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: user.id,
+                    license_plate: newVehicle.license_plate,
+                    brand: newVehicle.brand,
+                    model: newVehicle.model,
+                    vehicle_type: 'Xe_may' // Chỉ hỗ trợ xe máy
+                }),
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                setShowAddModal(false);
+                setNewVehicle({ license_plate: "", brand: "", model: "" });
+                fetchVehicles(); // Reload danh sách
+            } else {
+                setError(result.message || 'Không thể thêm phương tiện');
+            }
+        } catch (error) {
+            console.error('Error adding vehicle:', error);
+            setError('Không thể kết nối đến server');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleDeleteVehicle = async (id: number) => {
+        if (!window.confirm('Bạn có chắc chắn muốn xóa phương tiện này?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(apiUrl(`/vehicles/${id}`), {
+                method: 'DELETE',
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                fetchVehicles(); // Reload danh sách
+            } else {
+                setError(result.message || 'Không thể xóa phương tiện');
+            }
+        } catch (error) {
+            console.error('Error deleting vehicle:', error);
+            setError('Không thể kết nối đến server');
+        }
     };
 
     const isAddDisabled = vehicles.length >= 3;
+
+    if (isLoading) {
+        return (
+            <div className="space-y-8">
+                <div className="bg-gradient-to-r from-cyan-600 via-blue-600 to-cyan-800 rounded-2xl p-4 lg:p-8 text-white shadow-2xl">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                        <div>
+                            <h1 className="text-2xl lg:text-3xl font-bold mb-2">Phương tiện</h1>
+                            <p className="text-cyan-100 text-base lg:text-lg">Quản lý xe máy đã đăng ký</p>
+                        </div>
+                        <div className="bg-white bg-opacity-20 p-3 lg:p-4 rounded-full self-start lg:self-auto">
+                            <Car className="h-6 w-6 lg:h-8 lg:w-8" />
+                        </div>
+                    </div>
+                </div>
+                <div className="flex justify-center items-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
+                    <span className="ml-3 text-gray-600">Đang tải...</span>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-8">
@@ -48,6 +155,13 @@ export function VehiclesPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Error Message */}
+            {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                    {error}
+                </div>
+            )}
 
             {/* Quick Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
@@ -139,40 +253,50 @@ export function VehiclesPage() {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {vehicles.map((vehicle) => (
-                                <tr key={vehicle.id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-6 whitespace-nowrap">
-                                        <div className="flex items-center">
-                                            <div className="bg-cyan-100 p-3 rounded-full mr-4">
-                                                <Car className="h-5 w-5 text-cyan-600" />
-                                            </div>
-                                            <div>
-                                                <div className="text-sm font-medium text-gray-900">{vehicle.plateNumber}</div>
-                                                <div className="text-sm text-gray-500">{vehicle.brand} {vehicle.model}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-6 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        {vehicle.plateNumber}
-                                    </td>
-                                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">
-                                        {vehicle.brand} {vehicle.model}
-                                    </td>
-                                    <td className="px-6 py-6 whitespace-nowrap text-sm font-medium">
-                                        <div className="flex space-x-3">
-                                            <button className="text-cyan-600 hover:text-cyan-900 transition-colors">
-                                                <Edit className="h-5 w-5" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteVehicle(vehicle.id)}
-                                                className="text-red-600 hover:text-red-900 transition-colors"
-                                            >
-                                                <Trash2 className="h-5 w-5" />
-                                            </button>
-                                        </div>
+                            {vehicles.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
+                                        <Car className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                                        <p className="text-lg font-medium">Chưa có phương tiện nào</p>
+                                        <p className="text-sm">Nhấn "Thêm phương tiện" để đăng ký xe máy của bạn</p>
                                     </td>
                                 </tr>
-                            ))}
+                            ) : (
+                                vehicles.map((vehicle) => (
+                                    <tr key={vehicle.id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-6 py-6 whitespace-nowrap">
+                                            <div className="flex items-center">
+                                                <div className="bg-cyan-100 p-3 rounded-full mr-4">
+                                                    <Car className="h-5 w-5 text-cyan-600" />
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-medium text-gray-900">{vehicle.license_plate}</div>
+                                                    <div className="text-sm text-gray-500">{vehicle.brand} {vehicle.model}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-6 whitespace-nowrap text-sm font-medium text-gray-900">
+                                            {vehicle.license_plate}
+                                        </td>
+                                        <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">
+                                            {vehicle.brand} {vehicle.model}
+                                        </td>
+                                        <td className="px-6 py-6 whitespace-nowrap text-sm font-medium">
+                                            <div className="flex space-x-3">
+                                                <button className="text-cyan-600 hover:text-cyan-900 transition-colors">
+                                                    <Edit className="h-5 w-5" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteVehicle(vehicle.id)}
+                                                    className="text-red-600 hover:text-red-900 transition-colors"
+                                                >
+                                                    <Trash2 className="h-5 w-5" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -199,8 +323,8 @@ export function VehiclesPage() {
                                 <label className="block text-sm font-medium text-gray-700 mb-2">Biển số xe</label>
                                 <input
                                     type="text"
-                                    value={newVehicle.plateNumber}
-                                    onChange={(e) => setNewVehicle({ ...newVehicle, plateNumber: e.target.value })}
+                                    value={newVehicle.license_plate}
+                                    onChange={(e) => setNewVehicle({ ...newVehicle, license_plate: e.target.value })}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
                                     placeholder="Ví dụ: 49P1-12345"
                                 />
@@ -227,20 +351,39 @@ export function VehiclesPage() {
                                     placeholder="Ví dụ: Wave Alpha"
                                 />
                             </div>
+
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                <p className="text-sm text-blue-800">
+                                    <strong>Lưu ý:</strong> Hệ thống chỉ hỗ trợ đăng ký xe máy.
+                                </p>
+                            </div>
                         </div>
 
                         <div className="flex space-x-4 mt-6">
                             <button
-                                onClick={() => setShowAddModal(false)}
-                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                                onClick={() => {
+                                    setShowAddModal(false);
+                                    setNewVehicle({ license_plate: "", brand: "", model: "" });
+                                    setError('');
+                                }}
+                                disabled={isSubmitting}
+                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
                             >
                                 Hủy
                             </button>
                             <button
                                 onClick={handleAddVehicle}
-                                className="flex-1 px-4 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-lg hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                                disabled={isSubmitting}
+                                className="flex-1 px-4 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-lg hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Thêm xe
+                                {isSubmitting ? (
+                                    <div className="flex items-center justify-center">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                        Đang thêm...
+                                    </div>
+                                ) : (
+                                    'Thêm xe'
+                                )}
                             </button>
                         </div>
                     </div>

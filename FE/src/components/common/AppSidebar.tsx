@@ -14,7 +14,7 @@ export function AppSidebar({ activeItem, onItemClick, onClose, onProfileClick }:
 
     const menuItems = [
         { id: "home", label: "Trang chủ", icon: Home },
-        { id: "vehicles", label: "Phương tiện", icon: Car },
+        ...(user?.role !== 'admin' ? [{ id: "vehicles", label: "Phương tiện", icon: Car }] : []),
         { id: "history", label: "Lịch sử gửi xe", icon: History },
         ...(user?.role !== 'admin' ? [{ id: "payment", label: "Nạp tiền", icon: CreditCard }] : []),
         { id: "management", label: "Quản lý bãi xe", icon: MapPin },
@@ -87,11 +87,11 @@ export function AppSidebar({ activeItem, onItemClick, onClose, onProfileClick }:
                     </Avatar>
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                            <p className="font-medium text-gray-900 group-hover:text-cyan-700 transition-colors text-sm lg:text-base truncate">{user?.fullName}</p>
+                            <p className="font-medium text-gray-900 group-hover:text-cyan-700 transition-colors text-sm lg:text-base truncate">{user?.username}</p>
                             <User className="h-3 w-3 lg:h-4 lg:w-4 text-gray-400 group-hover:text-cyan-500 transition-colors flex-shrink-0" />
                         </div>
                         <p className="text-xs lg:text-sm text-gray-500 group-hover:text-gray-600 transition-colors truncate">
-                            {user?.studentId || user?.email}
+                            {user?.mssv || user?.email}
                         </p>
                         <div className="flex items-center mt-1">
                             <span className={`inline-flex items-center px-1.5 lg:px-2 py-0.5 rounded-full text-xs font-medium ${user?.role === 'admin'

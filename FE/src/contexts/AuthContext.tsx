@@ -1,14 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { apiUrl } from '../api';
 
 // Types cho user và authentication
 export interface User {
-    id: string;
+    id: number;
     email: string;
-    fullName: string;
-    studentId?: string;
+    username: string;
+    mssv?: string;
     phone?: string;
     role: 'student' | 'admin';
-    createdAt: string;
+    created_at: string;
 }
 
 export interface LoginData {
@@ -20,8 +21,8 @@ export interface RegisterData {
     email: string;
     password: string;
     confirmPassword: string;
-    fullName: string;
-    studentId?: string;
+    username: string;
+    mssv?: string;
     phone?: string;
 }
 
@@ -35,32 +36,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Mock users data (trong thực tế sẽ kết nối với backend)
-const mockUsers: User[] = [
-    {
-        id: '1',
-        email: 'hocquang@student.dlu.edu.vn',
-        fullName: 'Triệu Quang Học',
-        studentId: '2212375',
-        phone: '0123456789',
-        role: 'student',
-        createdAt: '2024-01-01'
-    },
-    {
-        id: '2',
-        email: 'admin@dlu.edu.vn',
-        fullName: 'Quản trị viên',
-        role: 'admin',
-        createdAt: '2024-01-01'
-    }
-];
-
-// Mock passwords (trong thực tế sẽ được hash và lưu trên server)
-const mockPasswords: Record<string, string> = {
-    'hocquang@student.dlu.edu.vn': '123456',
-    'admin@dlu.edu.vn': 'admin123'
-};
 
 interface AuthProviderProps {
     children: ReactNode;
@@ -94,9 +69,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setIsLoading(true);
 
         try {
-            // Simulate API call delay
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
             const { email, password } = data;
 
             // Validate input
@@ -104,25 +76,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 return { success: false, error: 'Vui lòng nhập đầy đủ email và mật khẩu' };
             }
 
-            // Check if user exists
-            const foundUser = mockUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
-            if (!foundUser) {
-                return { success: false, error: 'Email không tồn tại trong hệ thống' };
-            }
+            // Call backend API
+            const response = await fetch(apiUrl('/login'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password }),
+            });
 
-            // Check password
-            const correctPassword = mockPasswords[foundUser.email];
-            if (password !== correctPassword) {
-                return { success: false, error: 'Mật khẩu không chính xác' };
+            const result = await response.json();
+
+            if (!response.ok) {
+                return { success: false, error: result.message || 'Đăng nhập thất bại' };
             }
 
             // Login successful
-            setUser(foundUser);
-            localStorage.setItem('eparking_user', JSON.stringify(foundUser));
+            const loggedInUser = result.user;
+            setUser(loggedInUser);
+            localStorage.setItem('eparking_user', JSON.stringify(loggedInUser));
 
             return { success: true };
         } catch (error) {
-            return { success: false, error: 'Có lỗi xảy ra khi đăng nhập' };
+            console.error('Login error:', error);
+            return { success: false, error: 'Không thể kết nối đến server. Vui lòng thử lại.' };
         } finally {
             setIsLoading(false);
         }
@@ -132,13 +109,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setIsLoading(true);
 
         try {
-            // Simulate API call delay
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            const { email, password, confirmPassword, fullName, studentId, phone } = data;
+            const { email, password, confirmPassword, username, mssv, phone } = data;
 
             // Validate input
-            if (!email || !password || !confirmPassword || !fullName) {
+            if (!email || !password || !confirmPassword || !username) {
                 return { success: false, error: 'Vui lòng điền đầy đủ thông tin bắt buộc' };
             }
 
@@ -150,40 +124,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 return { success: false, error: 'Mật khẩu phải có ít nhất 6 ký tự' };
             }
 
-            // Check if email already exists
-            const existingUser = mockUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
-            if (existingUser) {
-                return { success: false, error: 'Email này đã được đăng ký' };
-            }
-
             // Validate email format
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(email)) {
                 return { success: false, error: 'Email không đúng định dạng' };
             }
 
-            // Create new user
-            const newUser: User = {
-                id: Date.now().toString(),
-                email: email.toLowerCase(),
-                fullName,
-                studentId,
-                phone,
-                role: 'student',
-                createdAt: new Date().toISOString()
-            };
+            // Call backend API
+            const response = await fetch(apiUrl('/register'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    email, 
+                    password, 
+                    username, 
+                    mssv, 
+                    phone 
+                }),
+            });
 
-            // Add to mock data (trong thực tế sẽ gửi lên server)
-            mockUsers.push(newUser);
-            mockPasswords[newUser.email] = password;
+            const result = await response.json();
 
-            // Auto login after registration
-            setUser(newUser);
-            localStorage.setItem('eparking_user', JSON.stringify(newUser));
+            if (!response.ok) {
+                return { success: false, error: result.message || 'Đăng ký thất bại' };
+            }
+
+            // Get user info after registration
+            const userResponse = await fetch(apiUrl(`/users/${result.userId}`));
+            if (userResponse.ok) {
+                const newUser = await userResponse.json();
+                setUser(newUser);
+                localStorage.setItem('eparking_user', JSON.stringify(newUser));
+            }
 
             return { success: true };
         } catch (error) {
-            return { success: false, error: 'Có lỗi xảy ra khi đăng ký' };
+            console.error('Register error:', error);
+            return { success: false, error: 'Không thể kết nối đến server. Vui lòng thử lại.' };
         } finally {
             setIsLoading(false);
         }

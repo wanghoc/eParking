@@ -1,70 +1,83 @@
 import { CreditCard, Building2, QrCode, DollarSign, Plus, History, Download, CheckCircle, AlertCircle } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { apiUrl } from "../api";
+
+interface PaymentMethod {
+    id: number;
+    name: string;
+    type: string;
+    icon: string;
+    status: string;
+}
+
+interface Transaction {
+    id: number;
+    user_id: number;
+    type: string;
+    method?: string;
+    amount: number;
+    status: string;
+    description?: string;
+    created_at: string;
+}
+
+interface WalletInfo {
+    user_id: number;
+    balance: number;
+}
 
 export function PaymentPage() {
+    const { user } = useAuth();
     const [selectedTab, setSelectedTab] = useState("methods");
+    const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [wallet, setWallet] = useState<WalletInfo | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string>("");
 
-    const paymentMethods = [
-        {
-            id: 1,
-            name: "Momo",
-            type: "Ví điện tử",
-            icon: "MOMO",
-            balance: "150,000₫",
-            status: "active"
-        },
-        {
-            id: 2,
-            name: "VNPay",
-            type: "Ví điện tử",
-            icon: "VNPAY",
-            balance: "75,000₫",
-            status: "active"
-        },
-        {
-            id: 3,
-            name: "ZaloPay",
-            type: "Ví điện tử",
-            icon: "ZALOPAY",
-            balance: "0₫",
-            status: "inactive"
+    useEffect(() => {
+        if (user?.id) {
+            fetchPaymentData();
         }
-    ];
+    }, [user?.id]);
 
-    const transactions = [
-        {
-            id: 1,
-            type: "Nạp tiền",
-            method: "Momo",
-            amount: "+50,000₫",
-            time: "2024-01-15 10:30",
-            status: "Thành công"
-        },
-        {
-            id: 2,
-            type: "Trừ phí gửi xe",
-            method: "Tự động",
-            amount: "-2,000₫",
-            time: "2024-01-15 09:15",
-            status: "Thành công"
-        },
-        {
-            id: 3,
-            type: "Nạp tiền",
-            method: "VNPay",
-            amount: "+25,000₫",
-            time: "2024-01-14 16:45",
-            status: "Thành công"
-        },
-        {
-            id: 4,
-            type: "Trừ phí gửi xe",
-            method: "Tự động",
-            amount: "-2,000₫",
-            time: "2024-01-14 14:30",
-            status: "Thành công"
+    const fetchPaymentData = async () => {
+        if (!user?.id) return;
+        
+        try {
+            setIsLoading(true);
+            setError("");
+            
+            // Fetch payment methods, wallet info, and transactions in parallel
+            const [methodsRes, walletRes, transactionsRes] = await Promise.all([
+                fetch(apiUrl(`/payment-methods`)),
+                fetch(apiUrl(`/wallet/${user.id}`)),
+                fetch(apiUrl(`/transactions?user_id=${user.id}`))
+            ]);
+
+            if (methodsRes.ok) {
+                const methodsData = await methodsRes.json();
+                setPaymentMethods(methodsData);
+            }
+
+            if (walletRes.ok) {
+                const walletData = await walletRes.json();
+                setWallet(walletData);
+            }
+
+            if (transactionsRes.ok) {
+                const transactionsData = await transactionsRes.json();
+                setTransactions(transactionsData);
+            }
+
+        } catch (error) {
+            console.error('Error fetching payment data:', error);
+            setError('Không thể tải dữ liệu thanh toán');
+        } finally {
+            setIsLoading(false);
         }
-    ];
+    };
 
     const PaymentMethodIcon = ({ icon }: { icon: string }) => {
         return (
@@ -80,11 +93,57 @@ export function PaymentPage() {
         return "bg-amber-100 text-amber-800";
     };
 
-    const getAmountColor = (amount: string) => {
-        if (amount.startsWith("+")) return "text-emerald-600";
-        if (amount.startsWith("-")) return "text-red-600";
+    const getAmountColor = (transaction: Transaction) => {
+        if (transaction.type === "TOPUP") return "text-emerald-600";
+        if (transaction.type === "FEE") return "text-red-600";
         return "text-gray-600";
     };
+
+    const formatAmount = (transaction: Transaction) => {
+        const sign = transaction.type === "TOPUP" ? "+" : "-";
+        return `${sign}${transaction.amount.toLocaleString('vi-VN')}₫`;
+    };
+
+    const formatDateTime = (dateString: string) => {
+        return new Date(dateString).toLocaleString('vi-VN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    const getTransactionType = (transaction: Transaction) => {
+        switch (transaction.type) {
+            case "TOPUP": return "Nạp tiền";
+            case "FEE": return "Trừ phí gửi xe";
+            case "REFUND": return "Hoàn tiền";
+            default: return transaction.type;
+        }
+    };
+
+    if (isLoading) {
+        return (
+            <div className="space-y-8">
+                <div className="bg-gradient-to-r from-cyan-600 via-blue-600 to-cyan-800 rounded-2xl p-4 lg:p-8 text-white shadow-2xl">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                        <div>
+                            <h1 className="text-2xl lg:text-3xl font-bold mb-2">Nạp tiền</h1>
+                            <p className="text-cyan-100 text-base lg:text-lg">Quản lý phương thức thanh toán và giao dịch</p>
+                        </div>
+                        <div className="bg-white bg-opacity-20 backdrop-blur-sm p-3 lg:p-4 rounded-full border border-white border-opacity-30 self-start lg:self-auto">
+                            <CreditCard className="h-6 w-6 lg:h-8 lg:w-8" />
+                        </div>
+                    </div>
+                </div>
+                <div className="flex justify-center items-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
+                    <span className="ml-3 text-gray-600">Đang tải dữ liệu thanh toán...</span>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-8">
@@ -101,13 +160,22 @@ export function PaymentPage() {
                 </div>
             </div>
 
+            {/* Error Message */}
+            {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                    {error}
+                </div>
+            )}
+
             {/* Quick Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
                 <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm font-medium text-gray-600 mb-1">Tổng số dư</p>
-                            <p className="text-2xl font-bold text-gray-900">45,000₫</p>
+                            <p className="text-2xl font-bold text-gray-900">
+                                {wallet ? `${wallet.balance.toLocaleString('vi-VN')}₫` : "0₫"}
+                            </p>
                         </div>
                         <div className="p-3 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-lg">
                             <DollarSign className="h-6 w-6 text-white" />
@@ -115,23 +183,23 @@ export function PaymentPage() {
                     </div>
                 </div>
 
-                {/* <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100">
+                <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm font-medium text-gray-600 mb-1">Phương thức</p>
-                            <p className="text-2xl font-bold text-gray-900">2</p>
+                            <p className="text-2xl font-bold text-gray-900">{paymentMethods.filter(p => p.status === 'active').length}</p>
                         </div>
                         <div className="p-3 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 shadow-lg">
                             <CreditCard className="h-6 w-6 text-white" />
                         </div>
                     </div>
-                </div> */}
+                </div>
 
                 <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm font-medium text-gray-600 mb-1">Giao dịch tháng</p>
-                            <p className="text-2xl font-bold text-gray-900">12</p>
+                            <p className="text-2xl font-bold text-gray-900">{transactions.length}</p>
                         </div>
                         <div className="p-3 rounded-xl bg-gradient-to-r from-violet-500 to-violet-600 shadow-lg">
                             <History className="h-6 w-6 text-white" />
@@ -182,31 +250,40 @@ export function PaymentPage() {
 
                                 <div className="p-4 lg:p-6">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-                                        {paymentMethods.map((method) => (
-                                            <div key={method.id} className="bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-all duration-300">
-                                                <div className="flex items-center justify-between mb-4">
-                                                    <PaymentMethodIcon icon={method.icon} />
-                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${method.status === "active" ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-800"
-                                                        }`}>
-                                                        {method.status === "active" ? "Hoạt động" : "Không hoạt động"}
-                                                    </span>
-                                                </div>
-                                                <h3 className="text-lg font-semibold text-gray-900 mb-1">{method.name}</h3>
-                                                <p className="text-sm text-gray-500 mb-3">{method.type}</p>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-sm text-gray-600">Số dư:</span>
-                                                    <span className="font-semibold text-gray-900">{method.balance}</span>
-                                                </div>
-                                                <div className="flex space-x-2 mt-4">
-                                                    <button className="flex-1 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white px-3 py-2 rounded-lg text-sm hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300">
-                                                        Nạp tiền
-                                                    </button>
-                                                    <button className="flex-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-200 transition-colors">
-                                                        Chi tiết
-                                                    </button>
-                                                </div>
+                                        {paymentMethods.length === 0 ? (
+                                            <div className="col-span-full text-center py-8">
+                                                <CreditCard className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                                                <p className="text-gray-500">Chưa có phương thức thanh toán</p>
                                             </div>
-                                        ))}
+                                        ) : (
+                                            paymentMethods.map((method) => (
+                                                <div key={method.id} className="bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-all duration-300">
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <PaymentMethodIcon icon={method.icon} />
+                                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${method.status === "active" ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-800"
+                                                            }`}>
+                                                            {method.status === "active" ? "Hoạt động" : "Không hoạt động"}
+                                                        </span>
+                                                    </div>
+                                                    <h3 className="text-lg font-semibold text-gray-900 mb-1">{method.name}</h3>
+                                                    <p className="text-sm text-gray-500 mb-3">{method.type}</p>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-sm text-gray-600">Trạng thái:</span>
+                                                        <span className="font-semibold text-gray-900">
+                                                            {method.status === "active" ? "Sẵn sàng" : "Tạm dừng"}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex space-x-2 mt-4">
+                                                        <button className="flex-1 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white px-3 py-2 rounded-lg text-sm hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300">
+                                                            Nạp tiền
+                                                        </button>
+                                                        <button className="flex-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-200 transition-colors">
+                                                            Chi tiết
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -268,41 +345,54 @@ export function PaymentPage() {
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
-                                            {transactions.map((transaction) => (
-                                                <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
-                                                                                                    <td className="px-3 lg:px-6 py-6 whitespace-nowrap">
-                                                    <div className="flex items-center">
-                                                        <div className={`p-2 rounded-lg ${transaction.type === "Nạp tiền" ? "bg-emerald-100" : "bg-red-100"
-                                                            }`}>
-                                                            {transaction.type === "Nạp tiền" ? (
-                                                                <Plus className="h-4 w-4 text-emerald-600" />
-                                                            ) : (
-                                                                <DollarSign className="h-4 w-4 text-red-600" />
-                                                            )}
-                                                        </div>
-                                                        <div className="ml-3">
-                                                            <div className="text-sm font-medium text-gray-900">{transaction.type}</div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="hidden sm:table-cell px-3 lg:px-6 py-6 whitespace-nowrap text-sm text-gray-900">
-                                                    {transaction.method}
-                                                </td>
-                                                <td className="px-3 lg:px-6 py-6 whitespace-nowrap text-sm font-medium">
-                                                    <span className={getAmountColor(transaction.amount)}>
-                                                        {transaction.amount}
-                                                    </span>
-                                                </td>
-                                                <td className="hidden md:table-cell px-3 lg:px-6 py-6 whitespace-nowrap text-sm text-gray-900">
-                                                    {transaction.time}
-                                                </td>
-                                                <td className="px-3 lg:px-6 py-6 whitespace-nowrap">
-                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(transaction.status)}`}>
-                                                        {transaction.status}
-                                                    </span>
-                                                </td>
+                                            {transactions.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                                                        <History className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                                                        <p className="text-lg font-medium">Chưa có giao dịch nào</p>
+                                                        <p className="text-sm">Hãy nạp tiền để bắt đầu sử dụng dịch vụ</p>
+                                                    </td>
                                                 </tr>
-                                            ))}
+                                            ) : (
+                                                transactions.map((transaction) => (
+                                                    <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
+                                                        <td className="px-3 lg:px-6 py-6 whitespace-nowrap">
+                                                            <div className="flex items-center">
+                                                                <div className={`p-2 rounded-lg ${transaction.type === "TOPUP" ? "bg-emerald-100" : "bg-red-100"
+                                                                    }`}>
+                                                                    {transaction.type === "TOPUP" ? (
+                                                                        <Plus className="h-4 w-4 text-emerald-600" />
+                                                                    ) : (
+                                                                        <DollarSign className="h-4 w-4 text-red-600" />
+                                                                    )}
+                                                                </div>
+                                                                <div className="ml-3">
+                                                                    <div className="text-sm font-medium text-gray-900">{getTransactionType(transaction)}</div>
+                                                                    {transaction.description && (
+                                                                        <div className="text-xs text-gray-500">{transaction.description}</div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="hidden sm:table-cell px-3 lg:px-6 py-6 whitespace-nowrap text-sm text-gray-900">
+                                                            {transaction.method || "Tự động"}
+                                                        </td>
+                                                        <td className="px-3 lg:px-6 py-6 whitespace-nowrap text-sm font-medium">
+                                                            <span className={getAmountColor(transaction)}>
+                                                                {formatAmount(transaction)}
+                                                            </span>
+                                                        </td>
+                                                        <td className="hidden md:table-cell px-3 lg:px-6 py-6 whitespace-nowrap text-sm text-gray-900">
+                                                            {formatDateTime(transaction.created_at)}
+                                                        </td>
+                                                        <td className="px-3 lg:px-6 py-6 whitespace-nowrap">
+                                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(transaction.status)}`}>
+                                                                {transaction.status}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
                                         </tbody>
                                     </table>
                                 </div>

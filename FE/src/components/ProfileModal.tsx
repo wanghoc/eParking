@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, User, Mail, Phone, Lock, Edit2, Save, AlertCircle, CheckCircle, Eye, EyeOff, LogOut } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { apiUrl } from "../api";
 
 interface ProfileModalProps {
     isOpen: boolean;
@@ -16,7 +17,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
 
     // Form states for profile info
     const [profileData, setProfileData] = useState({
-        username: user?.fullName || "",
+        username: user?.username || "",
         phone: user?.phone || "",
     });
 
@@ -44,7 +45,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         setMessage({ type: "", text: "" });
 
         try {
-            const response = await fetch(`http://localhost:3000/api/users/${user?.id}`, {
+            const response = await fetch(apiUrl(`/users/${user?.id}`), {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -95,7 +96,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         }
 
         try {
-            const response = await fetch(`http://localhost:3000/api/users/${user?.id}/password`, {
+            const response = await fetch(apiUrl(`/users/${user?.id}/password`), {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -240,7 +241,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                                     </label>
                                     <input
                                         type="text"
-                                        value={user?.studentId || ""}
+                                        value={user?.mssv || ""}
                                         disabled
                                         className="w-full px-3 sm:px-4 lg:px-5 py-2.5 sm:py-3 lg:py-4 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed text-sm sm:text-base lg:text-lg"
                                     />
@@ -304,7 +305,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                                             onClick={() => {
                                                 setIsEditing(false);
                                                 setProfileData({
-                                                    username: user?.fullName || "",
+                                                    username: user?.username || "",
                                                     phone: user?.phone || "",
                                                 });
                                                 setMessage({ type: "", text: "" });
@@ -449,7 +450,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                                         <User className="h-4 w-4 sm:h-5 sm:w-5 text-cyan-600" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <p className="font-medium text-gray-900 text-sm sm:text-base truncate">{user?.fullName}</p>
+                                        <p className="font-medium text-gray-900 text-sm sm:text-base truncate">{user?.username}</p>
                                         <p className="text-xs sm:text-sm text-gray-500 truncate">{user?.email}</p>
                                         <p className="text-xs text-gray-400">
                                             {user?.role === 'admin' ? 'Quản trị viên' : 'Sinh viên'}

@@ -1,28 +1,70 @@
 import { Home, Car, CreditCard, History, MapPin, Users, DollarSign, CheckCircle, AlertCircle, Camera } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { apiUrl } from "../api";
+
+interface DashboardStats {
+    vehiclesCount: number;
+    currentParking: number;
+    monthlyParking: number;
+    balance: number;
+}
 
 export function HomePage() {
+    const { user } = useAuth();
+    const [stats, setStats] = useState<DashboardStats>({
+        vehiclesCount: 0,
+        currentParking: 0,
+        monthlyParking: 0,
+        balance: 0
+    });
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if (user?.id) {
+            fetchDashboardStats();
+        }
+    }, [user?.id]);
+
+    const fetchDashboardStats = async () => {
+        if (!user?.id) return;
+        
+        try {
+            setIsLoading(true);
+            const response = await fetch(apiUrl(`/dashboard/stats?userId=${user.id}`));
+            if (response.ok) {
+                const data = await response.json();
+                setStats(data);
+            }
+        } catch (error) {
+            console.error('Error fetching dashboard stats:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const quickStats = [
         {
             title: "Xe đang gửi",
-            value: "2",
+            value: isLoading ? "..." : stats.currentParking.toString(),
             icon: Car,
             color: "bg-gradient-to-r from-cyan-500 to-cyan-600"
         },
         {
             title: "Số dư hiện tại",
-            value: "45,000₫",
+            value: isLoading ? "..." : `${stats.balance.toLocaleString('vi-VN')}₫`,
             icon: CreditCard,
             color: "bg-gradient-to-r from-emerald-500 to-emerald-600"
         },
         {
             title: "Lượt gửi tháng này",
-            value: "45",
+            value: isLoading ? "..." : stats.monthlyParking.toString(),
             icon: History,
             color: "bg-gradient-to-r from-blue-500 to-blue-600"
         },
         {
             title: "Phương tiện đã đăng ký",
-            value: "3",
+            value: isLoading ? "..." : stats.vehiclesCount.toString(),
             icon: Car,
             color: "bg-gradient-to-r from-violet-500 to-violet-600"
         }
@@ -101,7 +143,9 @@ export function HomePage() {
                         <h1 className="text-2xl lg:text-4xl font-extrabold mb-3 bg-gradient-to-r from-white to-cyan-100 bg-clip-text text-transparent">
                             Chào mừng trở lại!
                         </h1>
-                        <p className="text-cyan-100 text-base lg:text-xl font-medium mb-1">Triệu Quang Học - 2212375</p>
+                        <p className="text-cyan-100 text-base lg:text-xl font-medium mb-1">
+                            {user?.username} {user?.mssv ? `- ${user.mssv}` : ''}
+                        </p>
                         <p className="text-cyan-200 flex items-center text-sm lg:text-base">
                             <MapPin className="h-4 w-4 mr-2" />
                             Hệ thống eParking - Trường Đại học Đà Lạt

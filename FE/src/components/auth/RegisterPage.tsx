@@ -13,8 +13,8 @@ export function RegisterPage({ onSwitchToLogin, onBack }: RegisterPageProps) {
         email: '',
         password: '',
         confirmPassword: '',
-        fullName: '',
-        studentId: '',
+        username: '',
+        mssv: '',
         phone: ''
     });
     const [errors, setErrors] = useState<Partial<RegisterData>>({});
@@ -44,10 +44,10 @@ export function RegisterPage({ onSwitchToLogin, onBack }: RegisterPageProps) {
             newErrors.confirmPassword = 'Mật khẩu xác nhận không khớp';
         }
 
-        if (!formData.fullName) {
-            newErrors.fullName = 'Họ và tên là bắt buộc';
-        } else if (formData.fullName.length < 2) {
-            newErrors.fullName = 'Họ và tên phải có ít nhất 2 ký tự';
+        if (!formData.username) {
+            newErrors.username = 'Họ và tên là bắt buộc';
+        } else if (formData.username.length < 2) {
+            newErrors.username = 'Họ và tên phải có ít nhất 2 ký tự';
         }
 
         setErrors(newErrors);
@@ -61,8 +61,8 @@ export function RegisterPage({ onSwitchToLogin, onBack }: RegisterPageProps) {
             newErrors.phone = 'Số điện thoại không đúng định dạng';
         }
 
-        if (formData.studentId && !/^[0-9]{7}$/.test(formData.studentId)) {
-            newErrors.studentId = 'Mã sinh viên phải có 7 số';
+        if (formData.mssv && !/^[0-9]{7}$/.test(formData.mssv)) {
+            newErrors.mssv = 'Mã sinh viên phải có 7 số';
         }
 
         setErrors(newErrors);
@@ -187,9 +187,9 @@ export function RegisterPage({ onSwitchToLogin, onBack }: RegisterPageProps) {
                                 )}
                             </div>
 
-                            {/* Full name field */}
+                            {/* Username field */}
                             <div>
-                                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
+                                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
                                     Họ và tên <span className="text-red-500">*</span>
                                 </label>
                                 <div className="relative">
@@ -197,17 +197,17 @@ export function RegisterPage({ onSwitchToLogin, onBack }: RegisterPageProps) {
                                         <User className="h-5 w-5 text-gray-400" />
                                     </div>
                                     <input
-                                        id="fullName"
+                                        id="username"
                                         type="text"
-                                        value={formData.fullName}
-                                        onChange={(e) => handleInputChange('fullName', e.target.value)}
-                                        className={`block w-full pl-10 pr-3 py-3 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors ${errors.fullName ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300'
+                                        value={formData.username}
+                                        onChange={(e) => handleInputChange('username', e.target.value)}
+                                        className={`block w-full pl-10 pr-3 py-3 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors ${errors.username ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300'
                                             }`}
                                         placeholder="Nhập họ và tên đầy đủ"
                                     />
                                 </div>
-                                {errors.fullName && (
-                                    <p className="mt-2 text-sm text-red-600">{errors.fullName}</p>
+                                {errors.username && (
+                                    <p className="mt-2 text-sm text-red-600">{errors.username}</p>
                                 )}
                             </div>
 
@@ -284,9 +284,9 @@ export function RegisterPage({ onSwitchToLogin, onBack }: RegisterPageProps) {
                     ) : (
                         /* Step 2: Additional Information */
                         <form onSubmit={handleSubmit} className="space-y-6">
-                            {/* Student ID field */}
+                            {/* MSSV field */}
                             <div>
-                                <label htmlFor="studentId" className="block text-sm font-medium text-gray-700 mb-2">
+                                <label htmlFor="mssv" className="block text-sm font-medium text-gray-700 mb-2">
                                     Mã sinh viên
                                 </label>
                                 <div className="relative">
@@ -294,17 +294,17 @@ export function RegisterPage({ onSwitchToLogin, onBack }: RegisterPageProps) {
                                         <GraduationCap className="h-5 w-5 text-gray-400" />
                                     </div>
                                     <input
-                                        id="studentId"
+                                        id="mssv"
                                         type="text"
-                                        value={formData.studentId}
-                                        onChange={(e) => handleInputChange('studentId', e.target.value)}
-                                        className={`block w-full pl-10 pr-3 py-3 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors ${errors.studentId ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300'
+                                        value={formData.mssv}
+                                        onChange={(e) => handleInputChange('mssv', e.target.value)}
+                                        className={`block w-full pl-10 pr-3 py-3 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors ${errors.mssv ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300'
                                             }`}
                                         placeholder="Ví dụ: 2212375"
                                     />
                                 </div>
-                                {errors.studentId && (
-                                    <p className="mt-2 text-sm text-red-600">{errors.studentId}</p>
+                                {errors.mssv && (
+                                    <p className="mt-2 text-sm text-red-600">{errors.mssv}</p>
                                 )}
                                 <p className="mt-1 text-xs text-gray-500">Tùy chọn - Để xác thực tài khoản sinh viên</p>
                             </div>
