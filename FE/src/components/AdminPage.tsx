@@ -395,9 +395,9 @@ export function AdminPage() {
                                                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Biển số</th>
                                                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chủ sở hữu</th>
                                                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MSSV</th>
-                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
                                                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhãn hiệu/Mẫu</th>
                                                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày tạo</th>
+                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
@@ -406,9 +406,9 @@ export function AdminPage() {
                                                     <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">{v.license_plate}</td>
                                                     <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">{v.owner.name}</td>
                                                     <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">{v.owner.mssv}</td>
-                                                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">{v.status}</td>
                                                     <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">{v.brand || '-'} / {v.model || '-'}</td>
                                                     <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500">{new Date(v.created_at).toLocaleString('vi-VN')}</td>
+                                                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">{v.status}</td>
                                                 </tr>
                                             ))}
                                         </tbody>

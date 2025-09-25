@@ -400,6 +400,53 @@ app.get('/api/dashboard/stats', async (req, res) => {
   }
 });
 
+// ADMIN: Totals stats (users, vehicles, parking)
+app.get('/api/admin/stats', async (_req, res) => {
+  try {
+    const [totalUsers, totalVehicles, currentParking] = await Promise.all([
+      prisma.user.count(),
+      prisma.vehicle.count(),
+      prisma.parkingSession.count({ where: { exit_time: null } })
+    ]);
+    res.json({ totalUsers, totalVehicles, currentParking });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error fetching admin stats' });
+  }
+});
+
+// ADMIN: Vehicles list with owner and status
+app.get('/api/admin/vehicles', async (_req, res) => {
+  try {
+    const vehicles = await prisma.vehicle.findMany({
+      include: {
+        user: { select: { id: true, username: true, mssv: true } },
+        parking_sessions: {
+          where: { exit_time: null },
+          select: { id: true },
+          take: 1
+        }
+      },
+      orderBy: { created_at: 'desc' }
+    });
+
+    const formatted = vehicles.map(v => ({
+      id: v.id,
+      license_plate: v.license_plate,
+      brand: v.brand,
+      model: v.model,
+      created_at: v.created_at,
+      owner: { id: v.user?.id || null, name: v.user?.username || '', mssv: v.user?.mssv || '' },
+      status: (v.parking_sessions && v.parking_sessions.length > 0) ? 'Đang gửi' : 'Không gửi'
+    }));
+
+    res.json(formatted);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error fetching admin vehicles' });
+  }
+});
+
 // ADMIN: Users list with vehicles count and wallet balance
 app.get('/api/admin/users', async (_req, res) => {
   try {

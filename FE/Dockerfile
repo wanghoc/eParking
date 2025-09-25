@@ -4,11 +4,19 @@ FROM node:18-alpine as build
 # Set working directory
 WORKDIR /app
 
+# Build-time args for CRA envs
+ARG REACT_APP_API_URL
+ARG REACT_APP_ENVIRONMENT
+
 # Copy package files
 COPY package*.json ./
 
 # Install dependencies
 RUN npm ci
+
+# Set env vars so CRA picks them up at build time
+ENV REACT_APP_API_URL=${REACT_APP_API_URL}
+ENV REACT_APP_ENVIRONMENT=${REACT_APP_ENVIRONMENT}
 
 # Copy source code
 COPY . .
