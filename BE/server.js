@@ -300,6 +300,82 @@ app.get('/api/logs', async (_req, res) => {
   }
 });
 
+// ADMIN: Totals stats (users, vehicles, parking)
+app.get('/api/admin/stats', async (_req, res) => {
+  try {
+    const [[usersCount]] = await db.query('SELECT COUNT(*) AS total FROM users');
+    const [[vehiclesCount]] = await db.query('SELECT COUNT(*) AS total FROM vehicles');
+    const [[parkingCount]] = await db.query('SELECT COUNT(*) AS total FROM parking_sessions WHERE exit_time IS NULL');
+    res.json({
+      totalUsers: Number(usersCount.total || 0),
+      totalVehicles: Number(vehiclesCount.total || 0),
+      currentParking: Number(parkingCount.total || 0)
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error fetching admin stats' });
+  }
+});
+
+// ADMIN: Users list with vehicles count and wallet balance
+app.get('/api/admin/users', async (_req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT u.id,
+             u.username AS name,
+             u.mssv      AS studentId,
+             COALESCE(u.phone, '') AS phone,
+             COUNT(v.id) AS vehicles,
+             COALESCE(w.balance, 0.00) AS balance
+      FROM users u
+      LEFT JOIN vehicles v ON v.user_id = u.id
+      LEFT JOIN wallet   w ON w.user_id = u.id
+      GROUP BY u.id, u.username, u.mssv, u.phone, w.balance
+      ORDER BY u.created_at DESC
+    `);
+    res.json(rows.map(r => ({
+      id: r.id,
+      name: r.name,
+      studentId: r.studentId,
+      phone: r.phone,
+      vehicles: Number(r.vehicles),
+      balance: Number(r.balance)
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error fetching admin users' });
+  }
+});
+
+// ADMIN: Vehicles list with owner mssv
+app.get('/api/admin/vehicles', async (_req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT v.id, v.license_plate, v.brand, v.model, v.vehicle_type, v.created_at,
+             u.id AS owner_id, u.username AS owner_name, u.mssv AS owner_mssv,
+             EXISTS (
+               SELECT 1 FROM parking_sessions ps
+               WHERE ps.vehicle_id = v.id AND ps.exit_time IS NULL
+             ) AS is_parking
+      FROM vehicles v
+      JOIN users u ON u.id = v.user_id
+      ORDER BY v.created_at DESC
+    `);
+    res.json(rows.map(r => ({
+      id: r.id,
+      license_plate: r.license_plate,
+      brand: r.brand,
+      model: r.model,
+      created_at: r.created_at,
+      owner: { id: r.owner_id, name: r.owner_name, mssv: r.owner_mssv },
+      status: r.is_parking ? 'Đang gửi' : 'Không gửi'
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error fetching admin vehicles' });
+  }
+});
+
 // USERS LIST (admin)
 app.get('/api/users', async (_req, res) => {
   try {

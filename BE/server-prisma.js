@@ -400,6 +400,70 @@ app.get('/api/dashboard/stats', async (req, res) => {
   }
 });
 
+// ADMIN: Users list with vehicles count and wallet balance
+app.get('/api/admin/users', async (_req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        username: true,
+        mssv: true,
+        phone: true,
+        vehicles: { select: { id: true } },
+        wallet: { select: { balance: true } }
+      },
+      orderBy: { created_at: 'desc' }
+    });
+
+    const formatted = users.map(u => ({
+      id: u.id,
+      name: u.username,
+      studentId: u.mssv,
+      phone: u.phone || '',
+      vehicles: u.vehicles.length,
+      balance: u.wallet ? Number(u.wallet.balance) : 0
+    }));
+
+    res.json(formatted);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error fetching admin users' });
+  }
+});
+
+// ADMIN: Vehicles list with owner info (mssv, username)
+app.get('/api/admin/vehicles', async (_req, res) => {
+  try {
+    const vehicles = await prisma.vehicle.findMany({
+      include: {
+        user: {
+          select: { id: true, username: true, mssv: true }
+        }
+      },
+      orderBy: { created_at: 'desc' }
+    });
+
+    const formatted = vehicles.map(v => ({
+      id: v.id,
+      license_plate: v.license_plate,
+      brand: v.brand,
+      model: v.model,
+      vehicle_type: v.vehicle_type,
+      created_at: v.created_at,
+      owner: {
+        id: v.user?.id || null,
+        name: v.user?.username || '',
+        mssv: v.user?.mssv || ''
+      }
+    }));
+
+    res.json(formatted);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error fetching admin vehicles' });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`eParking backend (Prisma) listening on http://localhost:${PORT}`);

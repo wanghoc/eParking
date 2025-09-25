@@ -1,5 +1,6 @@
 import { Shield, Users, Car, AlertCircle, Camera, FileText, Settings, CheckCircle, Edit, Trash2, Lock, Unlock, DollarSign, Eye, Search } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { apiUrl } from "../api";
 
 interface User {
     id: number;
@@ -10,6 +11,17 @@ interface User {
     balance: number;
 }
 
+interface VehicleRow {
+    id: number;
+    license_plate: string;
+    brand?: string | null;
+    model?: string | null;
+    vehicle_type: string;
+    created_at: string;
+    owner: { id: number | null; name: string; mssv: string };
+    status: string;
+}
+
 export function AdminPage() {
     const [selectedTab, setSelectedTab] = useState("overview");
     const [searchTerm, setSearchTerm] = useState("");
@@ -18,59 +30,52 @@ export function AdminPage() {
     const [newBalance, setNewBalance] = useState("");
     const [adminPassword, setAdminPassword] = useState("");
 
+    const [adminStats, setAdminStats] = useState<{ totalUsers: number; totalVehicles: number; currentParking: number }>({ totalUsers: 0, totalVehicles: 0, currentParking: 0 });
     const systemStats = [
         {
             title: "Tổng người dùng",
-            value: "1,247",
+            value: adminStats.totalUsers.toLocaleString('vi-VN'),
             icon: Users,
             color: "bg-gradient-to-r from-cyan-500 to-cyan-600"
         },
         {
             title: "Tổng phương tiện",
-            value: "2,156",
+            value: adminStats.totalVehicles.toLocaleString('vi-VN'),
             icon: Car,
             color: "bg-gradient-to-r from-emerald-500 to-emerald-600"
         },
         {
-            title: "Lỗi nhận diện",
-            value: "8",
-            icon: AlertCircle,
-            color: "bg-gradient-to-r from-amber-500 to-amber-600"
-        },
-        {
-            title: "Camera hoạt động",
-            value: "4",
-            icon: Camera,
+            title: "Phương tiện đang gửi",
+            value: adminStats.currentParking.toLocaleString('vi-VN'),
+            icon: Car,
             color: "bg-gradient-to-r from-violet-500 to-violet-600"
         }
     ];
 
-    const users: User[] = [
-        {
-            id: 1,
-            name: "Triệu Quang Học",
-            studentId: "2212375",
-            phone: "0123456789",
-            vehicles: 2,
-            balance: 45000
-        },
-        {
-            id: 2,
-            name: "Nguyễn Văn A",
-            studentId: "2212376",
-            phone: "0987654321",
-            vehicles: 1,
-            balance: 25000
-        },
-        {
-            id: 3,
-            name: "Trần Thị B",
-            studentId: "2212377",
-            phone: "0369852147",
-            vehicles: 3,
-            balance: 5000
-        }
-    ];
+    const [users, setUsers] = useState<User[]>([]);
+    const [vehicles, setVehicles] = useState<VehicleRow[]>([]);
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+
+    useEffect(() => {
+        const load = async () => {
+            try {
+                setIsLoading(true);
+                const [uRes, vRes, sRes] = await Promise.all([
+                    fetch(apiUrl('/admin/users')),
+                    fetch(apiUrl('/admin/vehicles')),
+                    fetch(apiUrl('/admin/stats'))
+                ]);
+                if (uRes.ok) setUsers(await uRes.json());
+                if (vRes.ok) setVehicles(await vRes.json());
+                if (sRes.ok) setAdminStats(await sRes.json());
+            } catch (e) {
+                console.error('Failed to fetch admin data', e);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        load();
+    }, []);
 
     const systemLogs = [
         {
@@ -206,6 +211,15 @@ export function AdminPage() {
                             Quản lý người dùng
                         </button>
                         <button
+                            onClick={() => setSelectedTab("vehicles")}
+                            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${selectedTab === "vehicles"
+                                ? "border-cyan-500 text-cyan-600"
+                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                }`}
+                        >
+                            Quản lý phương tiện
+                        </button>
+                        <button
                             onClick={() => setSelectedTab("payment-config")}
                             className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${selectedTab === "payment-config"
                                 ? "border-cyan-500 text-cyan-600"
@@ -308,7 +322,7 @@ export function AdminPage() {
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
-                                            {filteredUsers.map((user) => (
+                                            {(isLoading ? [] : filteredUsers).map((user) => (
                                                 <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                                                     <td className="px-6 py-6 whitespace-nowrap">
                                                         <div className="flex items-center">
@@ -343,6 +357,58 @@ export function AdminPage() {
                                                             </button>
                                                         </div>
                                                     </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {selectedTab === "vehicles" && (
+                        <div className="space-y-6">
+                            {/* Vehicles Management */}
+                            <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
+                                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                                    <div className="flex items-center justify-between">
+                                        <h2 className="text-xl font-semibold text-gray-900">Quản lý phương tiện</h2>
+                                        <div className="relative w-80">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <Search className="h-5 w-5 text-gray-400" />
+                                            </div>
+                                            <input
+                                                type="text"
+                                                placeholder="Tìm kiếm theo MSSV hoặc biển số..."
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Biển số</th>
+                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chủ sở hữu</th>
+                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MSSV</th>
+                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhãn hiệu/Mẫu</th>
+                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày tạo</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {(isLoading ? [] : vehicles.filter(v => v.owner.mssv.toLowerCase().includes(searchTerm.toLowerCase()) || v.license_plate.toLowerCase().includes(searchTerm.toLowerCase()))).map(v => (
+                                                <tr key={v.id} className="hover:bg-gray-50 transition-colors">
+                                                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">{v.license_plate}</td>
+                                                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">{v.owner.name}</td>
+                                                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">{v.owner.mssv}</td>
+                                                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">{v.status}</td>
+                                                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">{v.brand || '-'} / {v.model || '-'}</td>
+                                                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-500">{new Date(v.created_at).toLocaleString('vi-VN')}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
