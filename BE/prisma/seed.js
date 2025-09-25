@@ -140,12 +140,12 @@ async function main() {
   });
 
   const student1 = await prisma.user.upsert({
-    where: { email: 'hocquang@student.dlu.edu.vn' },
+    where: { email: '2212375@dlu.edu.vn' },
     update: {},
     create: {
       username: 'Triệu Quang Học',
       mssv: '2212375',
-      email: 'hocquang@student.dlu.edu.vn',
+      email: '2212375@dlu.edu.vn',
       password: hashedPassword,
       phone: '0123456789',
       role: 'student',
@@ -154,12 +154,12 @@ async function main() {
   });
 
   const student2 = await prisma.user.upsert({
-    where: { email: 'nguyenvana@student.dlu.edu.vn' },
+    where: { email: '2212343@dlu.edu.vn' },
     update: {},
     create: {
-      username: 'Nguyễn Văn A',
-      mssv: '2212376',
-      email: 'nguyenvana@student.dlu.edu.vn',
+      username: 'Đinh Lâm Gia Bảo',
+      mssv: '2212343',
+      email: '2212343@dlu.edu.vn',
       password: hashedPassword,
       phone: '0987654321',
       role: 'student',
@@ -168,12 +168,12 @@ async function main() {
   });
 
   const student3 = await prisma.user.upsert({
-    where: { email: 'tranthib@student.dlu.edu.vn' },
+    where: { email: '2212456@dlu.edu.vn' },
     update: {},
     create: {
-      username: 'Trần Thị B',
-      mssv: '2212377',
-      email: 'tranthib@student.dlu.edu.vn',
+      username: 'Lê Thành Thái',
+      mssv: '2212456',
+      email: '2212456@dlu.edu.vn',
       password: hashedPassword,
       phone: '0369852147',
       role: 'student',
@@ -187,7 +187,7 @@ async function main() {
   await prisma.wallet.createMany({
     data: [
       { user_id: admin.id, balance: 100000.00 },
-      { user_id: student1.id, balance: 45000.00 },
+      { user_id: student1.id, balance: 36000000.00 },
       { user_id: student2.id, balance: 25000.00 },
       { user_id: student3.id, balance: 5000.00 }
     ],
@@ -196,37 +196,38 @@ async function main() {
 
   console.log('✅ Created wallets');
 
-  // Create demo vehicles
-  await prisma.vehicle.createMany({
-    data: [
-      {
-        user_id: student1.id,
-        license_plate: '49P1-12345',
-        brand: 'Honda',
-        model: 'Wave Alpha',
-        vehicle_type: 'Xe_may'
-      },
-      {
-        user_id: student1.id,
-        license_plate: '49P2-67890',
-        brand: 'Yamaha',
-        model: 'Exciter 150',
-        vehicle_type: 'Xe_may'
-      },
-      {
-        user_id: student2.id,
-        license_plate: '49P3-54321',
-        brand: 'Honda',
-        model: 'Winner X',
-        vehicle_type: 'Xe_may'
-      }
-    ],
-    skipDuplicates: true
-  });
+//   // Create demo vehicles
+//   await prisma.vehicle.createMany({
+//     data: [
+//       {
+//         user_id: student1.id,
+//         license_plate: '49P1-12345',
+//         brand: 'Honda',
+//         model: 'Wave Alpha',
+//         vehicle_type: 'Xe_may'
+//       },
+//       {
+//         user_id: student1.id,
+//         license_plate: '49P2-67890',
+//         brand: 'Yamaha',
+//         model: 'Exciter 150',
+//         vehicle_type: 'Xe_may'
+//       },
+//       {
+//         user_id: student2.id,
+//         license_plate: '49P3-54321',
+//         brand: 'Honda',
+//         model: 'Winner X',
+//         vehicle_type: 'Xe_may'
+//       }
+//     ],
+//     skipDuplicates: true
+//   });
 
-  console.log('✅ Created demo vehicles');
+//   console.log('✅ Created demo vehicles');
 
-  console.log('🎉 Seed completed successfully!');
+//   console.log('🎉 Seed completed successfully!');
+// }
 }
 
 main()
