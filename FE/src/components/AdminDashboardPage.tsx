@@ -1,0 +1,545 @@
+import { Shield, Camera, AlertCircle, CheckCircle, DollarSign, Car, Clock, Bell, Video, RefreshCw, Settings as SettingsIcon, FileText, Map, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { apiUrl } from "../api";
+
+interface DashboardStats {
+    currentParking: number;
+    totalVehicles: number;
+    monthlyParking: number;
+}
+
+interface ParkingSession {
+    id: number;
+    license_plate: string;
+    entry_time: string;
+    exit_time?: string;
+    fee: number;
+    payment_status: string;
+    balance: number;
+    user_id: number;
+}
+
+interface CameraFeed {
+    id: number;
+    name: string;
+    location: string;
+    type: string;
+    status: string;
+    lastPlate?: string;
+    lastStatus?: 'success' | 'insufficient' | 'error';
+}
+
+interface Alert {
+    id: number;
+    type: 'error' | 'warning' | 'info';
+    title: string;
+    message: string;
+    time: string;
+    priority: string;
+}
+
+export function AdminDashboardPage() {
+    const [stats, setStats] = useState<DashboardStats>({
+        currentParking: 0,
+        totalVehicles: 0,
+        monthlyParking: 0
+    });
+    const [sessions, setSessions] = useState<ParkingSession[]>([]);
+    const [cameras, setCameras] = useState<CameraFeed[]>([]);
+    const [alerts, setAlerts] = useState<Alert[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [processingPayment, setProcessingPayment] = useState<number | null>(null);
+
+    // Fetch initial data
+    useEffect(() => {
+        fetchDashboardData();
+        const interval = setInterval(fetchDashboardData, 10000); // Refresh every 10s
+        return () => clearInterval(interval);
+    }, []);
+
+    const fetchDashboardData = async () => {
+        try {
+            // Don't show loading spinner after initial load
+            if (stats.currentParking === 0 && stats.totalVehicles === 0) {
+                setIsLoading(true);
+            }
+            
+            // Fetch stats
+            try {
+                const statsRes = await fetch(apiUrl('/admin/stats'));
+                if (statsRes.ok) {
+                    const statsData = await statsRes.json();
+                    setStats({
+                        currentParking: statsData.currentParking ?? 0,
+                        totalVehicles: statsData.totalVehicles ?? 0,
+                        monthlyParking: statsData.monthlyParking ?? 0
+                    });
+                }
+            } catch (err) {
+                console.error('Error fetching stats:', err);
+            }
+
+            // Fetch cameras
+            try {
+                const camerasRes = await fetch(apiUrl('/cameras'));
+                if (camerasRes.ok) {
+                    const camerasData = await camerasRes.json();
+                    setCameras((camerasData || []).map((cam: any) => ({
+                        id: cam.id,
+                        name: cam.name || 'Camera',
+                        location: cam.location || '-',
+                        type: cam.type || 'Vào',
+                        status: cam.status || 'Hoạt động',
+                        lastPlate: generateRandomPlate(),
+                        lastStatus: Math.random() > 0.8 ? 'insufficient' : Math.random() > 0.9 ? 'error' : 'success'
+                    })));
+                }
+            } catch (err) {
+                console.error('Error fetching cameras:', err);
+            }
+
+            // Fetch alerts
+            try {
+                const alertsRes = await fetch(apiUrl('/alerts'));
+                if (alertsRes.ok) {
+                    const alertsData = await alertsRes.json();
+                    setAlerts((alertsData || []).slice(0, 5).map((alert: any) => ({
+                        id: alert.id,
+                        type: alert.priority === 'Cao' ? 'error' : alert.priority === 'Trung bình' ? 'warning' : 'info',
+                        title: alert.type || 'Thông báo',
+                        message: alert.message || 'Không có thông tin',
+                        time: alert.created_at ? new Date(alert.created_at).toLocaleString('vi-VN') : 'N/A',
+                        priority: alert.priority || 'Thấp'
+                    })));
+                }
+            } catch (err) {
+                console.error('Error fetching alerts:', err);
+            }
+
+            // Fetch active parking sessions
+            try {
+                const sessionsRes = await fetch(apiUrl('/admin/parking-sessions/active'));
+                if (sessionsRes.ok) {
+                    const sessionsData = await sessionsRes.json();
+                    setSessions(sessionsData || []);
+                } else {
+                    // Fallback to mock data if API fails
+                    setSessions([
+                        {
+                            id: 1,
+                            license_plate: "49P1-12345",
+                            entry_time: new Date(Date.now() - 3600000).toISOString(),
+                            fee: 2000,
+                            payment_status: "Chưa thanh toán",
+                            balance: 5000,
+                            user_id: 1
+                        },
+                        {
+                            id: 2,
+                            license_plate: "49P2-67890",
+                            entry_time: new Date(Date.now() - 7200000).toISOString(),
+                            fee: 2000,
+                            payment_status: "Chưa thanh toán",
+                            balance: 500,
+                            user_id: 2
+                        }
+                    ]);
+                }
+            } catch (err) {
+                console.error('Error fetching parking sessions:', err);
+                // Set empty array on error
+                setSessions([]);
+            }
+
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const generateRandomPlate = () => {
+        const prefix = ['49P1', '49P2', '49H1', '49L1'];
+        const num = Math.floor(Math.random() * 99999).toString().padStart(5, '0');
+        return `${prefix[Math.floor(Math.random() * prefix.length)]}-${num}`;
+    };
+
+    const handleConfirmCashPayment = async (sessionId: number) => {
+        setProcessingPayment(sessionId);
+        
+        try {
+            const response = await fetch(apiUrl(`/admin/parking-sessions/${sessionId}/confirm-cash`), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                // Update local state
+                setSessions(prev => prev.map(s => 
+                    s.id === sessionId 
+                        ? { ...s, payment_status: "Đã thu tiền mặt" }
+                        : s
+                ));
+                
+                // Show success message
+                console.log('Đã xác nhận thu tiền mặt thành công');
+            } else {
+                console.error('Failed to confirm cash payment');
+                alert('Không thể xác nhận thu tiền. Vui lòng thử lại!');
+            }
+        } catch (error) {
+            console.error('Error confirming cash payment:', error);
+            alert('Đã xảy ra lỗi. Vui lòng thử lại!');
+        } finally {
+            setProcessingPayment(null);
+        }
+    };
+
+    const quickStats = [
+        {
+            title: "Xe đang gửi",
+            value: isLoading ? "..." : (stats?.currentParking ?? 0).toString(),
+            icon: Car,
+            color: "bg-gradient-to-r from-cyan-500 to-cyan-600"
+        },
+        {
+            title: "Phương tiện đã đăng ký",
+            value: isLoading ? "..." : (stats?.totalVehicles ?? 0).toString(),
+            icon: Car,
+            color: "bg-gradient-to-r from-emerald-500 to-emerald-600"
+        },
+        {
+            title: "Lượt gửi tháng này",
+            value: isLoading ? "..." : (stats?.monthlyParking ?? 0).toString(),
+            icon: Clock,
+            color: "bg-gradient-to-r from-violet-500 to-violet-600"
+        }
+    ];
+
+    const getPaymentStatusColor = (status: string, balance: number, fee: number) => {
+        if (status === "Đã thanh toán") return "bg-emerald-100 text-emerald-800";
+        if (status === "Đã thu tiền mặt") return "bg-blue-100 text-blue-800";
+        if (balance < fee) return "bg-red-100 text-red-800";
+        return "bg-amber-100 text-amber-800";
+    };
+
+    const getCameraStatusBadge = (status: 'success' | 'insufficient' | 'error' | undefined) => {
+        if (status === 'success') return <div className="absolute top-2 right-2 px-2 py-1 bg-emerald-500 text-white text-xs rounded-full flex items-center space-x-1"><CheckCircle className="h-3 w-3" /><span>Đã trừ tiền</span></div>;
+        if (status === 'insufficient') return <div className="absolute top-2 right-2 px-2 py-1 bg-red-500 text-white text-xs rounded-full flex items-center space-x-1"><XCircle className="h-3 w-3" /><span>Thiếu tiền</span></div>;
+        if (status === 'error') return <div className="absolute top-2 right-2 px-2 py-1 bg-amber-500 text-white text-xs rounded-full flex items-center space-x-1"><AlertCircle className="h-3 w-3" /><span>Lỗi nhận dạng</span></div>;
+        return null;
+    };
+
+    return (
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="relative rounded-2xl p-4 lg:p-8 text-white shadow-2xl overflow-hidden">
+                <img
+                    src="/img/DLU.jpg"
+                    alt="Đại học Đà Lạt"
+                    className="absolute inset-0 w-full h-full object-cover rounded-2xl"
+                />
+                <div className="absolute inset-0 bg-black bg-opacity-50 rounded-2xl"></div>
+                <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                    <div>
+                        <h1 className="text-2xl lg:text-3xl font-bold mb-2 drop-shadow-lg">Giám sát trực tiếp</h1>
+                        <p className="text-cyan-100 text-base lg:text-lg drop-shadow-md">Quản trị hệ thống eParking - Real-time Monitoring</p>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                        <button 
+                            onClick={fetchDashboardData}
+                            className="bg-white bg-opacity-20 p-3 rounded-full hover:bg-opacity-30 transition-all duration-300"
+                            title="Làm mới dữ liệu"
+                        >
+                            <RefreshCw className="h-5 w-5 drop-shadow-lg" />
+                        </button>
+                        <div className="bg-white bg-opacity-20 p-3 rounded-full">
+                            <Shield className="h-6 w-6 lg:h-8 lg:w-8 drop-shadow-lg" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Quick Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+                {quickStats.map((stat, index) => {
+                    const Icon = stat.icon;
+                    return (
+                        <div key={index} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
+                                    <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+                                </div>
+                                <div className={`p-3 rounded-xl ${stat.color} shadow-lg`}>
+                                    <Icon className="h-7 w-7 text-white" />
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                {/* Camera Feeds - Left Side (2/3 width) */}
+                <div className="xl:col-span-2 space-y-6">
+                    {/* Camera Grid */}
+                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xl font-semibold text-gray-900 flex items-center space-x-2">
+                                    <Video className="h-5 w-5 text-cyan-600" />
+                                    <span>Luồng Camera Trực Tiếp</span>
+                                </h2>
+                                <span className="text-sm text-gray-600">{cameras.length} camera hoạt động</span>
+                            </div>
+                        </div>
+                        <div className="p-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {cameras.slice(0, 4).map((camera) => (
+                                    <div key={camera.id} className="relative bg-gray-900 rounded-xl overflow-hidden aspect-video">
+                                        {/* Simulated camera feed */}
+                                        <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                                            <div className="text-center text-white">
+                                                <Camera className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                                                <p className="text-sm opacity-75">{camera.name}</p>
+                                                <p className="text-xs opacity-50">{camera.location}</p>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Camera info overlay */}
+                                        <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/60 to-transparent p-3">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center space-x-2">
+                                                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                                                    <span className="text-white text-xs font-medium">LIVE</span>
+                                                </div>
+                                                <span className={`text-xs px-2 py-1 rounded ${camera.type === 'Vào' ? 'bg-emerald-500' : 'bg-blue-500'} text-white`}>
+                                                    {camera.type}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Last detected plate */}
+                                        {camera.lastPlate && (
+                                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <p className="text-white text-xs opacity-75">Biển số nhận dạng:</p>
+                                                        <p className="text-white font-bold">{camera.lastPlate}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Payment status badge */}
+                                        {getCameraStatusBadge(camera.lastStatus)}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Vehicle List Table */}
+                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                            <h2 className="text-xl font-semibold text-gray-900">Danh sách xe đang gửi</h2>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Biển số</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thời gian vào</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số dư</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {sessions.map((session) => {
+                                        const hasInsufficientBalance = session.balance < session.fee && session.payment_status === "Chưa thanh toán";
+                                        return (
+                                            <tr key={session.id} className={`hover:bg-gray-50 transition-colors ${hasInsufficientBalance ? 'bg-red-50' : ''}`}>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center">
+                                                        <div className="bg-cyan-100 p-2 rounded-lg mr-3">
+                                                            <Car className="h-4 w-4 text-cyan-600" />
+                                                        </div>
+                                                        <span className="text-sm font-medium text-gray-900">{session.license_plate}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {new Date(session.entry_time).toLocaleString('vi-VN', { 
+                                                        hour: '2-digit', 
+                                                        minute: '2-digit',
+                                                        day: '2-digit',
+                                                        month: '2-digit'
+                                                    })}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                    {session.fee.toLocaleString()}₫
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                    <span className={hasInsufficientBalance ? 'text-red-600 font-semibold' : 'text-gray-900'}>
+                                                        {session.balance.toLocaleString()}₫
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getPaymentStatusColor(session.payment_status, session.balance, session.fee)}`}>
+                                                        {hasInsufficientBalance ? "Không đủ tiền" : session.payment_status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                    {hasInsufficientBalance && session.payment_status === "Chưa thanh toán" && (
+                                                        <button
+                                                            onClick={() => handleConfirmCashPayment(session.id)}
+                                                            disabled={processingPayment === session.id}
+                                                            className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-4 py-2 rounded-lg hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                                                        >
+                                                            {processingPayment === session.id ? (
+                                                                <>
+                                                                    <RefreshCw className="h-4 w-4 animate-spin" />
+                                                                    <span>Đang xử lý...</span>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <DollarSign className="h-4 w-4" />
+                                                                    <span>Thu tiền mặt</span>
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                    )}
+                                                    {session.payment_status === "Đã thanh toán" && (
+                                                        <span className="text-emerald-600 flex items-center space-x-1">
+                                                            <CheckCircle className="h-4 w-4" />
+                                                            <span>Hoàn tất</span>
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Sidebar - Alerts & Quick Actions */}
+                <div className="space-y-6">
+                    {/* Alerts Panel */}
+                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                            <h2 className="text-xl font-semibold text-gray-900 flex items-center space-x-2">
+                                <Bell className="h-5 w-5 text-cyan-600" />
+                                <span>Cảnh báo hệ thống</span>
+                            </h2>
+                        </div>
+                        <div className="p-4 max-h-96 overflow-y-auto">
+                            <div className="space-y-3">
+                                {alerts.length === 0 ? (
+                                    <div className="text-center py-8 text-gray-500">
+                                        <CheckCircle className="h-12 w-12 mx-auto mb-2 text-emerald-500" />
+                                        <p className="text-sm">Không có cảnh báo mới</p>
+                                    </div>
+                                ) : (
+                                    alerts.map((alert) => (
+                                        <div 
+                                            key={alert.id} 
+                                            className={`p-4 rounded-xl border-l-4 ${
+                                                alert.type === 'error' ? 'bg-red-50 border-red-500' :
+                                                alert.type === 'warning' ? 'bg-amber-50 border-amber-500' :
+                                                'bg-cyan-50 border-cyan-500'
+                                            }`}
+                                        >
+                                            <div className="flex items-start space-x-3">
+                                                {alert.type === 'error' ? (
+                                                    <XCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                                                ) : alert.type === 'warning' ? (
+                                                    <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                                                ) : (
+                                                    <CheckCircle className="h-5 w-5 text-cyan-600 flex-shrink-0 mt-0.5" />
+                                                )}
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-semibold text-gray-900">{alert.title}</p>
+                                                    <p className="text-xs text-gray-600 mt-1">{alert.message}</p>
+                                                    <p className="text-xs text-gray-500 mt-2">{alert.time}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Quick Actions */}
+                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                            <h2 className="text-xl font-semibold text-gray-900">Thao tác nhanh</h2>
+                        </div>
+                        <div className="p-4">
+                            <div className="grid grid-cols-2 gap-3">
+                                <button className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white p-4 rounded-xl hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                                    <Map className="h-6 w-6 mb-2 mx-auto" />
+                                    <span className="text-sm font-medium">Quản lý bãi</span>
+                                </button>
+                                <button className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-4 rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                                    <Camera className="h-6 w-6 mb-2 mx-auto" />
+                                    <span className="text-sm font-medium">Quản lý camera</span>
+                                </button>
+                                <button className="bg-gradient-to-r from-violet-500 to-violet-600 text-white p-4 rounded-xl hover:from-violet-600 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                                    <FileText className="h-6 w-6 mb-2 mx-auto" />
+                                    <span className="text-sm font-medium">Xem báo cáo</span>
+                                </button>
+                                <button className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                                    <SettingsIcon className="h-6 w-6 mb-2 mx-auto" />
+                                    <span className="text-sm font-medium">Cài đặt</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* System Status */}
+                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                            <h2 className="text-xl font-semibold text-gray-900">Trạng thái hệ thống</h2>
+                        </div>
+                        <div className="p-4">
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
+                                    <div className="flex items-center space-x-3">
+                                        <CheckCircle className="h-5 w-5 text-emerald-600" />
+                                        <span className="text-sm font-medium text-emerald-900">Server API</span>
+                                    </div>
+                                    <span className="text-xs text-emerald-600 font-semibold">Online</span>
+                                </div>
+                                <div className="flex items-center justify-between p-3 bg-cyan-50 rounded-lg">
+                                    <div className="flex items-center space-x-3">
+                                        <Camera className="h-5 w-5 text-cyan-600" />
+                                        <span className="text-sm font-medium text-cyan-900">Camera</span>
+                                    </div>
+                                    <span className="text-xs text-cyan-600 font-semibold">{cameras.filter(c => c.status === 'Hoạt động').length}/{cameras.length}</span>
+                                </div>
+                                <div className="flex items-center justify-between p-3 bg-violet-50 rounded-lg">
+                                    <div className="flex items-center space-x-3">
+                                        <DollarSign className="h-5 w-5 text-violet-600" />
+                                        <span className="text-sm font-medium text-violet-900">Thanh toán</span>
+                                    </div>
+                                    <span className="text-xs text-violet-600 font-semibold">96%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+

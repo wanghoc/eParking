@@ -672,6 +672,68 @@ app.put('/api/system-settings', async (req, res) => {
   }
 });
 
+// ADMIN DASHBOARD: Active Parking Sessions with Balance Info
+app.get('/api/admin/parking-sessions/active', async (_req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT 
+        ps.id,
+        v.license_plate,
+        ps.entry_time,
+        ps.exit_time,
+        ps.fee,
+        ps.payment_status,
+        v.user_id,
+        COALESCE(w.balance, 0) as balance
+      FROM parking_sessions ps
+      JOIN vehicles v ON ps.vehicle_id = v.id
+      LEFT JOIN wallet w ON w.user_id = v.user_id
+      WHERE ps.exit_time IS NULL
+      ORDER BY ps.entry_time DESC
+      LIMIT 50
+    `);
+    
+    const sessions = rows.map(row => ({
+      id: row.id,
+      license_plate: row.license_plate,
+      entry_time: row.entry_time,
+      exit_time: row.exit_time || null,
+      fee: Number(row.fee),
+      payment_status: row.payment_status,
+      user_id: row.user_id,
+      balance: Number(row.balance)
+    }));
+    
+    res.json(sessions);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error fetching active parking sessions' });
+  }
+});
+
+// ADMIN DASHBOARD: Confirm Cash Payment
+app.post('/api/admin/parking-sessions/:sessionId/confirm-cash', async (req, res) => {
+  const { sessionId } = req.params;
+  try {
+    // Update session payment status
+    await db.query(
+      'UPDATE parking_sessions SET payment_status = ? WHERE id = ?',
+      ['Đã thu tiền mặt', sessionId]
+    );
+    
+    // Log the action
+    await db.query(
+      'INSERT INTO system_logs (action, user_id, type) VALUES (?, NULL, ?)',
+      [`Admin xác nhận thu tiền mặt cho phiên ${sessionId}`, 'Admin']
+    );
+    
+    res.json({ message: 'Đã xác nhận thu tiền mặt' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error confirming cash payment' });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`eParking backend listening on http://localhost:${PORT}`);

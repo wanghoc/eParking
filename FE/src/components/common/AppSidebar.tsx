@@ -1,4 +1,4 @@
-import { Home, Car, History, CreditCard, MapPin, Settings, HelpCircle, Building2, Camera, LogOut, User } from "lucide-react";
+import { Home, Car, History, CreditCard, MapPin, Settings, HelpCircle, Building2, Camera, LogOut, User, Monitor } from "lucide-react";
 import { Avatar } from "../ui/avatar";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -15,6 +15,7 @@ export function AppSidebar({ activeItem, onItemClick, onClose, onProfileClick }:
     const menuItems = user?.role === 'admin'
         ? [
             { id: "home", label: "Trang chủ", icon: Home },
+            { id: "dashboard", label: "Giám sát trực tiếp", icon: Monitor },
             { id: "history", label: "Lịch sử gửi xe", icon: History },
             { id: "management", label: "Quản lý bãi xe", icon: MapPin },
             { id: "camera", label: "Quản lý Camera", icon: Camera },
