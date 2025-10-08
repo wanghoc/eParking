@@ -1,10 +1,19 @@
 import { X, Camera, Video, VideoOff, Maximize2, Minimize2, Play, Pause, Volume2, VolumeX, Settings, Cloud, Mic } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 
+interface Camera {
+    id: number;
+    name: string;
+    location: string | null;
+    type: string;
+    status: string;
+}
+
 interface LiveCameraModalProps {
-    isOpen: boolean;
+    isOpen?: boolean;
     onClose: () => void;
     cameraCount?: number;
+    camera?: Camera;
 }
 
 interface CameraDevice {
@@ -16,7 +25,7 @@ interface CameraDevice {
     type: 'Vào' | 'Ra';
 }
 
-export function LiveCameraModal({ isOpen, onClose, cameraCount = 4 }: LiveCameraModalProps) {
+export function LiveCameraModal({ isOpen = true, onClose, cameraCount = 4, camera }: LiveCameraModalProps) {
     const [cameras, setCameras] = useState<CameraDevice[]>([]);
     const [selectedCamera, setSelectedCamera] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);

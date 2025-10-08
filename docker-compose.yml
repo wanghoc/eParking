@@ -63,7 +63,7 @@ services:
       context: ./FE
       dockerfile: Dockerfile
       args:
-        - REACT_APP_API_URL=http://backend:5000
+        - REACT_APP_API_URL=http://localhost:5001
         - REACT_APP_ENVIRONMENT=production
     container_name: eparking_frontend
     restart: unless-stopped
@@ -71,7 +71,7 @@ services:
       backend:
         condition: service_healthy
     environment:
-      REACT_APP_API_URL: ${REACT_APP_API_URL:-http://backend:5000}
+      REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:5001}
       REACT_APP_ENVIRONMENT: ${NODE_ENV:-production}
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
@@ -116,14 +116,14 @@ services:
     container_name: eparking_adminer
     restart: unless-stopped
     depends_on:
-      database:
+      postgres:
         condition: service_healthy
     ports:
       - "${ADMINER_PORT:-8080}:8080"
     networks:
       - eparking_network
     environment:
-      ADMINER_DEFAULT_SERVER: database
+      ADMINER_DEFAULT_SERVER: postgres
     profiles:
       - tools
 

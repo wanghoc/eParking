@@ -21,29 +21,50 @@ function AuthenticatedApp() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [showProfileModal, setShowProfileModal] = useState(false);
 
-    // Enforce role-based accessible pages by auto-redirecting to home when not allowed
+    // Enforce role-based accessible pages by auto-redirecting when not allowed
     useEffect(() => {
         if (!user) return;
         const studentBlocked = ["management", "camera", "admin", "dashboard"];
-        const adminBlocked = ["vehicles", "payment"];
+        const adminBlocked = ["vehicles", "payment", "home"];
+        
         if (user.role === 'student' && studentBlocked.includes(activeItem)) {
             setActiveItem("home");
         }
         if (user.role === 'admin' && adminBlocked.includes(activeItem)) {
-            setActiveItem("home");
+            setActiveItem("dashboard"); // Admin redirects to dashboard instead of home
         }
     }, [user?.role, activeItem]);
+
+    // Set default page based on user role on mount
+    useEffect(() => {
+        if (!user) return;
+        if (user.role === 'admin' && activeItem === "home") {
+            setActiveItem("dashboard");
+        }
+    }, [user?.role]);
 
     const renderContent = () => {
         switch (activeItem) {
             case "home":
-                return <HomePage />;
+                return user?.role === 'admin' ? (
+                    <ProtectedRoute requiredRole="admin">
+                        <AdminDashboardPage />
+                    </ProtectedRoute>
+                ) : <HomePage />;
             case "vehicles":
-                return user?.role === 'admin' ? <HomePage /> : <VehiclesPage />;
+                return user?.role === 'admin' ? (
+                    <ProtectedRoute requiredRole="admin">
+                        <AdminDashboardPage />
+                    </ProtectedRoute>
+                ) : <VehiclesPage />;
             case "history":
                 return <HistoryPage />;
             case "payment":
-                return user?.role === 'admin' ? <HomePage /> : <PaymentPage />;
+                return user?.role === 'admin' ? (
+                    <ProtectedRoute requiredRole="admin">
+                        <AdminDashboardPage />
+                    </ProtectedRoute>
+                ) : <PaymentPage />;
             case "dashboard":
                 return (
                     <ProtectedRoute requiredRole="admin">

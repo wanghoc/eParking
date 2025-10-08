@@ -122,7 +122,7 @@ async function main() {
   console.log(`✅ Created ${cameras.count} cameras`);
 
   // Hash password for demo users
-  const hashedPassword = await bcrypt.hash('123456', 12);
+  const hashedPassword = await bcrypt.hash('admin123', 12);
 
   // Insert demo users
   const admin = await prisma.user.upsert({
@@ -154,12 +154,12 @@ async function main() {
   });
 
   const student2 = await prisma.user.upsert({
-    where: { email: '2212343@dlu.edu.vn' },
+    where: { email: 'student@dlu.edu.vn' },
     update: {},
     create: {
-      username: 'Đinh Lâm Gia Bảo',
+      username: 'Student Demo',
       mssv: '2212343',
-      email: '2212343@dlu.edu.vn',
+      email: 'student@dlu.edu.vn',
       password: hashedPassword,
       phone: '0987654321',
       role: 'student',
