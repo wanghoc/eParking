@@ -1,9 +1,18 @@
 # eParking - Hệ thống quản lý bãi xe thông minh
 
-![eParking](https://img.shields.io/badge/eParking-v1.0.0-blue.svg)
-![React](https://img.shields.io/badge/React-18.2.0-61DAFB.svg)
-![Node.js](https://img.shields.io/badge/Node.js-16+-green.svg)
-![MySQL](https://img.shields.io/badge/MySQL-8.0+-orange.svg)
+# Backend
+cd BE
+npm install
+npm run dev
+
+# Frontend  
+cd FE
+npm install
+npm start
+
+# Database
+npx prisma generate
+npx prisma db push
 
 Hệ thống quản lý bãi xe thông minh dành cho Trường Đại học Đà Lạt, hỗ trợ nhận diện biển số tự động, thanh toán không tiền mặt và quản lý hiệu quả.
 
