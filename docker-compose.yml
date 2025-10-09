@@ -44,7 +44,7 @@ services:
       DATABASE_URL: "postgresql://${DB_USER:-eparking_user}:${DB_PASSWORD:-eparking_password_2024}@postgres:5432/${DB_DATABASE_NAME:-eParking_db}?schema=public"
       USE_PRISMA: ${USE_PRISMA:-true}
     ports:
-      - "5001:5000"
+      - "5000:5000"
     volumes:
       - ./BE:/app
       - /app/node_modules
@@ -63,7 +63,7 @@ services:
       context: ./FE
       dockerfile: Dockerfile
       args:
-        - REACT_APP_API_URL=http://localhost:5001
+        - REACT_APP_API_URL=http://localhost:5000
         - REACT_APP_ENVIRONMENT=production
     container_name: eparking_frontend
     restart: unless-stopped
@@ -71,7 +71,7 @@ services:
       backend:
         condition: service_healthy
     environment:
-      REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:5001}
+      REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:5000}
       REACT_APP_ENVIRONMENT: ${NODE_ENV:-production}
     ports:
       - "${FRONTEND_PORT:-3000}:3000"

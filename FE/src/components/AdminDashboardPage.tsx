@@ -495,7 +495,7 @@ export function AdminDashboardPage() {
                                 </button>
                                 <button className="bg-gradient-to-r from-violet-500 to-violet-600 text-white p-4 rounded-xl hover:from-violet-600 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl">
                                     <FileText className="h-6 w-6 mb-2 mx-auto" />
-                                    <span className="text-sm font-medium">Xem báo cáo</span>
+                                    <span className="text-sm font-medium">Lịch sử gửi xe</span>
                                 </button>
                                 <button className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl">
                                     <SettingsIcon className="h-6 w-6 mb-2 mx-auto" />
