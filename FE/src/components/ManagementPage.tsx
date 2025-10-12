@@ -1,4 +1,4 @@
-import { Building2, Car, DollarSign, Activity, QrCode, Plus, Edit, Eye, Video, X } from "lucide-react";
+import { Building2, Car, DollarSign, Activity, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { apiUrl } from "../api";
 import { LiveCameraModal } from "./LiveCameraModal";
@@ -37,11 +37,9 @@ interface DashboardStats {
 }
 
 export function ManagementPage() {
-    const [selectedTab, setSelectedTab] = useState("overview");
+    const [selectedTab, setSelectedTab] = useState("parking");
     const [parkingLots, setParkingLots] = useState<ParkingLot[]>([]);
     const [activities, setActivities] = useState<RecentActivity[]>([]);
-    const [cameras, setCameras] = useState<Camera[]>([]);
-    const [selectedCamera, setSelectedCamera] = useState<Camera | null>(null);
     const [showCameraModal, setShowCameraModal] = useState(false);
     const [showManualCheckIn, setShowManualCheckIn] = useState(false);
     const [showManualCheckOut, setShowManualCheckOut] = useState(false);
@@ -62,10 +60,9 @@ export function ManagementPage() {
     const loadData = async () => {
         try {
             setIsLoading(true);
-            const [lotsRes, activitiesRes, camerasRes] = await Promise.all([
+            const [lotsRes, activitiesRes] = await Promise.all([
                 fetch(apiUrl('/parking-lots/overview')),
-                fetch(apiUrl('/activities/recent')),
-                fetch(apiUrl('/cameras'))
+                fetch(apiUrl('/activities/recent'))
             ]);
 
             if (lotsRes.ok) {
@@ -105,13 +102,6 @@ export function ManagementPage() {
                 });
             }
             
-            if (camerasRes.ok) {
-                const camerasData = await camerasRes.json();
-                setCameras(camerasData);
-                if (camerasData.length > 0) {
-                    setSelectedCamera(camerasData[0]);
-                }
-            }
         } catch (error) {
             console.error('Failed to load management data:', error);
         } finally {
@@ -211,34 +201,8 @@ export function ManagementPage() {
                 <div className="absolute inset-0 bg-black bg-opacity-40 rounded-2xl"></div>
                 <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
                     <div>
-                        <h1 className="text-2xl lg:text-3xl font-bold mb-2 drop-shadow-lg">Quản lý trực tiếp</h1>
-                        <p className="text-cyan-100 text-base lg:text-lg drop-shadow-md">Theo dõi và quản lý bãi xe thời gian thực</p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <div className="relative">
-                            <select 
-                                className="bg-white bg-opacity-20 backdrop-blur-sm px-4 py-2 rounded-xl text-white border border-white border-opacity-30 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 appearance-none pr-10"
-                                value={selectedCamera?.id || ''}
-                                onChange={(e) => {
-                                    const camera = cameras.find(c => c.id === parseInt(e.target.value));
-                                    setSelectedCamera(camera || null);
-                                }}
-                            >
-                                {cameras.map(cam => (
-                                    <option key={cam.id} value={cam.id} className="text-gray-900">
-                                        {cam.name} - {cam.location}
-                                    </option>
-                                ))}
-                            </select>
-                            <Video className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 pointer-events-none" />
-                        </div>
-                        <button 
-                            onClick={() => setShowCameraModal(true)}
-                            className="bg-white bg-opacity-20 backdrop-blur-sm px-6 py-2 rounded-xl flex items-center justify-center space-x-2 hover:bg-opacity-30 transition-all duration-300 border border-white border-opacity-30"
-                        >
-                            <Eye className="h-5 w-5" />
-                            <span>Xem camera</span>
-                        </button>
+                        <h1 className="text-2xl lg:text-3xl font-bold mb-2 drop-shadow-lg">Quản lý bãi xe</h1>
+                        <p className="text-cyan-100 text-base lg:text-lg drop-shadow-md">Quản lý thông tin bãi xe</p>
                     </div>
                 </div>
             </div>
@@ -299,15 +263,6 @@ export function ManagementPage() {
                 <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
                     <nav className="flex space-x-8">
                         <button
-                            onClick={() => setSelectedTab("overview")}
-                            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${selectedTab === "overview"
-                                ? "border-cyan-500 text-cyan-600"
-                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                            }`}
-                        >
-                            Tổng quan
-                        </button>
-                        <button
                             onClick={() => setSelectedTab("parking")}
                             className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${selectedTab === "parking"
                                 ? "border-cyan-500 text-cyan-600"
@@ -329,35 +284,6 @@ export function ManagementPage() {
                 </div>
 
                 <div className="p-6">
-                    {selectedTab === "overview" && (
-                        <div className="space-y-6">
-                            {/* Quick Support */}
-                            <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
-                                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-                                    <h2 className="text-xl font-semibold text-gray-900">Hỗ trợ nhanh</h2>
-                                </div>
-                                <div className="p-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <button 
-                                            onClick={() => setShowManualCheckIn(true)}
-                                            className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white p-4 rounded-xl flex items-center space-x-3 hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl"
-                                        >
-                                            <Car className="h-5 w-5" />
-                                            <span>Nhập xe thủ công</span>
-                                        </button>
-                                        <button 
-                                            onClick={() => setShowManualCheckOut(true)}
-                                            className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-4 rounded-xl flex items-center space-x-3 hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl"
-                                        >
-                                            <QrCode className="h-5 w-5" />
-                                            <span>Xuất xe thủ công</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                     {selectedTab === "parking" && (
                         <div className="space-y-6">
                             {/* Parking Lots */}
@@ -529,10 +455,11 @@ export function ManagementPage() {
             </div>
 
             {/* Live Camera Modal */}
-            {showCameraModal && selectedCamera && (
+            {showCameraModal && (
                 <LiveCameraModal
-                    camera={selectedCamera}
+                    isOpen={showCameraModal}
                     onClose={() => setShowCameraModal(false)}
+                    cameraCount={0}
                 />
             )}
 

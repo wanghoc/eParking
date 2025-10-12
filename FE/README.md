@@ -11,7 +11,7 @@ npm install
 npm start
 
 # Database
-npx prisma generate
+npx prisma db push
 npx prisma db push
 
 Hệ thống quản lý bãi xe thông minh dành cho Trường Đại học Đà Lạt, hỗ trợ nhận diện biển số tự động, thanh toán không tiền mặt và quản lý hiệu quả.

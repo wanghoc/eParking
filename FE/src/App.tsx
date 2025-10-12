@@ -48,13 +48,13 @@ function AuthenticatedApp() {
             case "home":
                 return user?.role === 'admin' ? (
                     <ProtectedRoute requiredRole="admin">
-                        <AdminDashboardPage />
+                        <AdminDashboardPage onNavigate={setActiveItem} />
                     </ProtectedRoute>
                 ) : <HomePage />;
             case "vehicles":
                 return user?.role === 'admin' ? (
                     <ProtectedRoute requiredRole="admin">
-                        <AdminDashboardPage />
+                        <AdminDashboardPage onNavigate={setActiveItem} />
                     </ProtectedRoute>
                 ) : <VehiclesPage />;
             case "history":
@@ -62,13 +62,13 @@ function AuthenticatedApp() {
             case "payment":
                 return user?.role === 'admin' ? (
                     <ProtectedRoute requiredRole="admin">
-                        <AdminDashboardPage />
+                        <AdminDashboardPage onNavigate={setActiveItem} />
                     </ProtectedRoute>
                 ) : <PaymentPage />;
             case "dashboard":
                 return (
                     <ProtectedRoute requiredRole="admin">
-                        <AdminDashboardPage />
+                        <AdminDashboardPage onNavigate={setActiveItem} />
                     </ProtectedRoute>
                 );
             case "management":

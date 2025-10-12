@@ -1,12 +1,63 @@
-import { Camera, Video, Settings, AlertCircle, CheckCircle, Eye, Edit, Trash2, Wifi, WifiOff, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { Camera, Video, AlertCircle, CheckCircle, Eye, Edit, Trash2, Wifi, WifiOff, RefreshCw, ChevronDown } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { LiveCameraModal } from "./LiveCameraModal";
+import { apiUrl } from "../api";
+
+interface CameraData {
+    id: number;
+    name: string;
+    location: string | null;
+    type: string;
+    status: string;
+    ipAddress?: string;
+    resolution?: string;
+    fps?: number;
+    lastActivity?: string;
+    recognitionAccuracy?: string;
+    connection?: string;
+    battery?: string;
+}
 
 export function CameraPage() {
-    const [selectedTab, setSelectedTab] = useState("overview");
     const [showLiveModal, setShowLiveModal] = useState(false);
+    const [cameras, setCameras] = useState<CameraData[]>([]);
+    const [showCameraSelector, setShowCameraSelector] = useState(false);
+    const cameraRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
 
-    const cameras = [
+    useEffect(() => {
+        loadCameras();
+    }, []);
+
+    const loadCameras = async () => {
+        try {
+            const response = await fetch(apiUrl('/cameras'));
+            if (response.ok) {
+                const data = await response.json();
+                setCameras(data);
+            }
+        } catch (error) {
+            console.error('Failed to load cameras:', error);
+        }
+    };
+
+    const handleCameraSelect = (cameraId: number) => {
+        setShowCameraSelector(false);
+        
+        // Scroll to selected camera
+        setTimeout(() => {
+            const element = cameraRefs.current[cameraId];
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Add highlight effect
+                element.classList.add('ring-4', 'ring-cyan-500');
+                setTimeout(() => {
+                    element.classList.remove('ring-4', 'ring-cyan-500');
+                }, 2000);
+            }
+        }, 100);
+    };
+
+    const mockCameras = [
         {
             id: 1,
             name: "Camera A1",
@@ -65,40 +116,6 @@ export function CameraPage() {
         }
     ];
 
-    const cameraAlerts = [
-        {
-            id: 1,
-            type: "Camera lỗi",
-            message: "Camera B2 không phản hồi",
-            time: "08:30 AM",
-            priority: "Cao",
-            camera: "Camera B2"
-        },
-        {
-            id: 2,
-            type: "Pin yếu",
-            message: "Pin Camera A2 dưới 20%",
-            time: "10:15 AM",
-            priority: "Trung bình",
-            camera: "Camera A2"
-        },
-        {
-            id: 3,
-            type: "Kết nối chậm",
-            message: "Độ trễ Camera B1 cao",
-            time: "09:45 AM",
-            priority: "Thấp",
-            camera: "Camera B1"
-        }
-    ];
-
-    const recognitionStats = {
-        totalRecognitions: 156,
-        successfulRecognitions: 148,
-        failedRecognitions: 8,
-        averageAccuracy: "94.8%",
-        averageResponseTime: "1.2s"
-    };
 
     const getStatusColor = (status: string) => {
         if (status === "Hoạt động") return "bg-emerald-100 text-emerald-800";
@@ -142,261 +159,208 @@ export function CameraPage() {
                 </div>
             </div>
 
-            {/* Tab Navigation */}
+            {/* Camera Grid Section */}
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                 <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-                    <nav className="flex space-x-8">
-                        <button
-                            onClick={() => setSelectedTab("overview")}
-                            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${selectedTab === "overview"
-                                    ? "border-cyan-500 text-cyan-600"
-                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                                }`}
-                        >
-                            Tổng quan
-                        </button>
-                        <button
-                            onClick={() => setSelectedTab("cameras")}
-                            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${selectedTab === "cameras"
-                                    ? "border-cyan-500 text-cyan-600"
-                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                                }`}
-                        >
-                            Quản lý camera
-                        </button>
-                    </nav>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                            <Video className="h-5 w-5 text-cyan-600" />
+                            <h2 className="text-xl font-semibold text-gray-900">Luồng camera trực tiếp</h2>
+                        </div>
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowCameraSelector(!showCameraSelector)}
+                                className="bg-cyan-500 text-white px-4 py-2 rounded-lg hover:bg-cyan-600 transition-colors flex items-center space-x-2"
+                            >
+                                <Eye className="h-5 w-5" />
+                                <span>Xem camera</span>
+                                <ChevronDown className="h-4 w-4" />
+                            </button>
+                            
+                            {showCameraSelector && (
+                                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-10">
+                                    <div className="p-2 max-h-64 overflow-y-auto">
+                                        {(cameras.length > 0 ? cameras : mockCameras).map((camera) => (
+                                            <button
+                                                key={camera.id}
+                                                onClick={() => handleCameraSelect(camera.id)}
+                                                className="w-full text-left px-4 py-2 hover:bg-cyan-50 rounded-lg transition-colors flex items-center justify-between"
+                                            >
+                                                <div>
+                                                    <p className="font-medium text-gray-900">{camera.name}</p>
+                                                    <p className="text-xs text-gray-500">{camera.location}</p>
+                                                </div>
+                                                {camera.status === "Hoạt động" && (
+                                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 <div className="p-6">
-                    {/* Tab Content */}
-                    {selectedTab === "overview" && (
-                        <div className="space-y-8">
-                            {/* Thống kê tổng quan */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                <div className="bg-gradient-to-r from-cyan-500 to-cyan-600 p-6 rounded-2xl text-white shadow-lg">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {(cameras.length > 0 ? cameras : mockCameras).filter(cam => cam.status === "Hoạt động").map((camera) => (
+                            <div
+                                key={camera.id}
+                                ref={(el) => cameraRefs.current[camera.id] = el}
+                                className="relative bg-gray-900 rounded-xl overflow-hidden aspect-video transition-all duration-300"
+                            >
+                                {/* Simulated camera feed */}
+                                <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                                    <div className="text-center text-white">
+                                        <Camera className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                                        <p className="text-sm opacity-75">{camera.name}</p>
+                                        <p className="text-xs opacity-50">{camera.location}</p>
+                                    </div>
+                                </div>
+                                
+                                {/* Camera info overlay */}
+                                <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/60 to-transparent p-3">
                                     <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-cyan-100 text-sm font-medium">Tổng camera</p>
-                                            <p className="text-3xl font-bold">4</p>
+                                        <div className="flex items-center space-x-2">
+                                            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                                            <span className="text-white text-xs font-medium">LIVE</span>
                                         </div>
-                                        <Camera className="h-8 w-8 text-cyan-200" />
+                                        <span className={`text-xs px-2 py-1 rounded ${camera.type === 'Vào' ? 'bg-emerald-500' : 'bg-blue-500'} text-white`}>
+                                            {camera.type}
+                                        </span>
                                     </div>
                                 </div>
 
-                                <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 p-6 rounded-2xl text-white shadow-lg">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-emerald-100 text-sm font-medium">Đang hoạt động</p>
-                                            <p className="text-3xl font-bold">3</p>
-                                        </div>
-                                        <CheckCircle className="h-8 w-8 text-emerald-200" />
-                                    </div>
-                                </div>
-
-                                <div className="bg-gradient-to-r from-violet-500 to-violet-600 p-6 rounded-2xl text-white shadow-lg">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-violet-100 text-sm font-medium">Độ chính xác TB</p>
-                                            <p className="text-3xl font-bold">{recognitionStats.averageAccuracy}</p>
-                                        </div>
-                                        <Video className="h-8 w-8 text-violet-200" />
-                                    </div>
-                                </div>
-
-                                <div className="bg-gradient-to-r from-amber-500 to-amber-600 p-6 rounded-2xl text-white shadow-lg">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-amber-100 text-sm font-medium">Cảnh báo</p>
-                                            <p className="text-3xl font-bold">3</p>
-                                        </div>
-                                        <AlertCircle className="h-8 w-8 text-amber-200" />
-                                    </div>
+                                {/* Camera name at bottom */}
+                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                                    <p className="text-white text-sm font-medium">{camera.name}</p>
+                                    <p className="text-white text-xs opacity-75">{camera.location}</p>
                                 </div>
                             </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
 
-                            {/* Thống kê nhận diện */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
-                                    <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-                                        <h2 className="text-xl font-semibold text-gray-900">Thống kê nhận diện hôm nay</h2>
-                                    </div>
-                                    <div className="p-6">
-                                        <div className="space-y-6">
-                                            <div className="flex justify-between items-center p-4 bg-cyan-50 rounded-xl">
-                                                <span className="text-sm text-gray-600">Tổng lượt nhận diện</span>
-                                                <span className="font-bold text-cyan-600">{recognitionStats.totalRecognitions}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center p-4 bg-emerald-50 rounded-xl">
-                                                <span className="text-sm text-gray-600">Thành công</span>
-                                                <span className="font-bold text-emerald-600">{recognitionStats.successfulRecognitions}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center p-4 bg-red-50 rounded-xl">
-                                                <span className="text-sm text-gray-600">Thất bại</span>
-                                                <span className="font-bold text-red-600">{recognitionStats.failedRecognitions}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center p-4 bg-violet-50 rounded-xl">
-                                                <span className="text-sm text-gray-600">Độ chính xác trung bình</span>
-                                                <span className="font-bold text-violet-600">{recognitionStats.averageAccuracy}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center p-4 bg-amber-50 rounded-xl">
-                                                <span className="text-sm text-gray-600">Thời gian phản hồi TB</span>
-                                                <span className="font-bold text-amber-600">{recognitionStats.averageResponseTime}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+            {/* Camera Management Table */}
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                    <h2 className="text-xl font-semibold text-gray-900">Quản lý camera</h2>
+                </div>
 
-                                <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
-                                    <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-                                        <h2 className="text-xl font-semibold text-gray-900">Hỗ trợ nhanh</h2>
-                                    </div>
-                                    <div className="p-6">
-                                        <div className="space-y-4">
-                                            <button 
-                                                onClick={() => setShowLiveModal(true)}
-                                                className="w-full bg-gradient-to-r from-cyan-500 to-cyan-600 text-white p-4 rounded-xl flex items-center space-x-3 hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl"
-                                            >
-                                                <Camera className="h-5 w-5" />
-                                                <span>Xem trực tiếp camera</span>
-                                            </button>
-                                            <button className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-4 rounded-xl flex items-center space-x-3 hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-                                                <RefreshCw className="h-5 w-5" />
-                                                <span>Khởi động lại camera</span>
-                                            </button>
-                                            <button className="w-full bg-gradient-to-r from-amber-500 to-amber-600 text-white p-4 rounded-xl flex items-center space-x-3 hover:from-amber-600 hover:to-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-                                                <Video className="h-5 w-5" />
-                                                <span>Xem lịch sử video</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {selectedTab === "cameras" && (
-                        <div className="space-y-6">
-                            {/* Danh sách camera */}
-                            <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
-                                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-                                    <h2 className="text-xl font-semibold text-gray-900">Danh sách camera</h2>
-                                </div>
-
-                                <div className="overflow-x-auto">
-                                    <table className="w-full">
-                                        <thead className="bg-gray-50">
-                                            <tr>
-                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Camera
-                                                </th>
-                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Vị trí
-                                                </th>
-                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Loại
-                                                </th>
-                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Trạng thái
-                                                </th>
-                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Kết nối
-                                                </th>
-                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Pin
-                                                </th>
-                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Độ chính xác
-                                                </th>
-                                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Thao tác
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="bg-white divide-y divide-gray-200">
-                                            {cameras.map((camera) => (
-                                                <tr key={camera.id} className="hover:bg-gray-50 transition-colors">
-                                                    <td className="px-6 py-6 whitespace-nowrap">
-                                                        <div className="flex items-center">
-                                                            <div className="bg-cyan-100 p-3 rounded-full mr-4">
-                                                                <Camera className="h-5 w-5 text-cyan-600" />
-                                                            </div>
-                                                            <div>
-                                                                <div className="text-sm font-medium text-gray-900">{camera.name}</div>
-                                                                <div className="text-sm text-gray-500">{camera.ipAddress}</div>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">
-                                                        {camera.location}
-                                                    </td>
-                                                    <td className="px-6 py-6 whitespace-nowrap">
-                                                        <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${camera.type === "Vào" ? "bg-emerald-100 text-emerald-800" : "bg-blue-100 text-blue-800"
-                                                            }`}>
-                                                            {camera.type}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-6 whitespace-nowrap">
-                                                        <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(camera.status)}`}>
-                                                            {camera.status === "Hoạt động" ? (
-                                                                <CheckCircle className="h-4 w-4 mr-1" />
-                                                            ) : (
-                                                                <AlertCircle className="h-4 w-4 mr-1" />
-                                                            )}
-                                                            {camera.status}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-6 whitespace-nowrap">
-                                                        <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getConnectionColor(camera.connection)}`}>
-                                                            {camera.connection === "Online" ? (
-                                                                <Wifi className="h-4 w-4 mr-1" />
-                                                            ) : (
-                                                                <WifiOff className="h-4 w-4 mr-1" />
-                                                            )}
-                                                            {camera.connection}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-6 whitespace-nowrap">
-                                                        <div className="flex items-center">
-                                                            <div className="w-20 bg-gray-200 rounded-full h-3 mr-3">
-                                                                <div
-                                                                    className={`h-3 rounded-full transition-all duration-300 ${parseInt(camera.battery) > 50 ? "bg-emerald-500" :
-                                                                            parseInt(camera.battery) > 20 ? "bg-amber-500" : "bg-red-500"
-                                                                        }`}
-                                                                    style={{ width: `${camera.battery}` }}
-                                                                ></div>
-                                                            </div>
-                                                            <span className="text-sm text-gray-900">{camera.battery}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">
-                                                        {camera.recognitionAccuracy}
-                                                    </td>
-                                                    <td className="px-6 py-6 whitespace-nowrap text-sm font-medium">
-                                                        <div className="flex space-x-3">
-                                                            <button 
-                                                                onClick={() => setShowLiveModal(true)}
-                                                                className="text-cyan-600 hover:text-cyan-900 transition-colors"
-                                                                title="Xem trực tiếp"
-                                                            >
-                                                                <Eye className="h-5 w-5" />
-                                                            </button>
-                                                            <button className="text-emerald-600 hover:text-emerald-900 transition-colors">
-                                                                <Edit className="h-5 w-5" />
-                                                            </button>
-                                                            <button className="text-red-600 hover:text-red-900 transition-colors">
-                                                                <Trash2 className="h-5 w-5" />
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
+                <div className="p-6">
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Camera
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Vị trí
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Loại
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Trạng thái
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Kết nối
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Pin
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Độ chính xác
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Thao tác
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {(cameras.length > 0 ? cameras : mockCameras).map((camera) => (
+                                    <tr key={camera.id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-6 py-6 whitespace-nowrap">
+                                            <div className="flex items-center">
+                                                <div className="bg-cyan-100 p-3 rounded-full mr-4">
+                                                    <Camera className="h-5 w-5 text-cyan-600" />
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-medium text-gray-900">{camera.name}</div>
+                                                    <div className="text-sm text-gray-500">{camera.ipAddress}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">
+                                            {camera.location}
+                                        </td>
+                                        <td className="px-6 py-6 whitespace-nowrap">
+                                            <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${camera.type === "Vào" ? "bg-emerald-100 text-emerald-800" : "bg-blue-100 text-blue-800"
+                                                }`}>
+                                                {camera.type}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-6 whitespace-nowrap">
+                                            <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(camera.status)}`}>
+                                                {camera.status === "Hoạt động" ? (
+                                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                                ) : (
+                                                    <AlertCircle className="h-4 w-4 mr-1" />
+                                                )}
+                                                {camera.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-6 whitespace-nowrap">
+                                            <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getConnectionColor(camera.connection || "Offline")}`}>
+                                                {camera.connection === "Online" ? (
+                                                    <Wifi className="h-4 w-4 mr-1" />
+                                                ) : (
+                                                    <WifiOff className="h-4 w-4 mr-1" />
+                                                )}
+                                                {camera.connection || "Offline"}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-6 whitespace-nowrap">
+                                            <div className="flex items-center">
+                                                <div className="w-20 bg-gray-200 rounded-full h-3 mr-3">
+                                                    <div
+                                                        className={`h-3 rounded-full transition-all duration-300 ${parseInt(camera.battery || "0") > 50 ? "bg-emerald-500" :
+                                                                parseInt(camera.battery || "0") > 20 ? "bg-amber-500" : "bg-red-500"
+                                                            }`}
+                                                        style={{ width: `${camera.battery}` }}
+                                                    ></div>
+                                                </div>
+                                                <span className="text-sm text-gray-900">{camera.battery}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">
+                                            {camera.recognitionAccuracy}
+                                        </td>
+                                        <td className="px-6 py-6 whitespace-nowrap text-sm font-medium">
+                                            <div className="flex space-x-3">
+                                                <button 
+                                                    onClick={() => setShowLiveModal(true)}
+                                                    className="text-cyan-600 hover:text-cyan-900 transition-colors"
+                                                    title="Xem trực tiếp"
+                                                >
+                                                    <Eye className="h-5 w-5" />
+                                                </button>
+                                                <button className="text-emerald-600 hover:text-emerald-900 transition-colors">
+                                                    <Edit className="h-5 w-5" />
+                                                </button>
+                                                <button className="text-red-600 hover:text-red-900 transition-colors">
+                                                    <Trash2 className="h-5 w-5" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -404,7 +368,7 @@ export function CameraPage() {
             <LiveCameraModal 
                 isOpen={showLiveModal}
                 onClose={() => setShowLiveModal(false)}
-                cameraCount={cameras.length}
+                cameraCount={(cameras.length > 0 ? cameras : mockCameras).length}
             />
         </div>
     );

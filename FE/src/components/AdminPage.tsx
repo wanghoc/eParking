@@ -1,4 +1,4 @@
-import { Shield, Users, Car, AlertCircle, Camera, FileText, Settings, CheckCircle, Edit, Trash2, Lock, Unlock, DollarSign, Eye, Search } from "lucide-react";
+import { Shield, Users, Edit, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiUrl } from "../api";
 
@@ -23,34 +23,12 @@ interface VehicleRow {
 }
 
 export function AdminPage() {
-    const [selectedTab, setSelectedTab] = useState("overview");
+    const [selectedTab, setSelectedTab] = useState("users");
     const [searchTerm, setSearchTerm] = useState("");
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [newBalance, setNewBalance] = useState("");
     const [adminPassword, setAdminPassword] = useState("");
-
-    const [adminStats, setAdminStats] = useState<{ totalUsers: number; totalVehicles: number; currentParking: number }>({ totalUsers: 0, totalVehicles: 0, currentParking: 0 });
-    const systemStats = [
-        {
-            title: "Tổng người dùng",
-            value: adminStats.totalUsers.toLocaleString('vi-VN'),
-            icon: Users,
-            color: "bg-gradient-to-r from-cyan-500 to-cyan-600"
-        },
-        {
-            title: "Tổng phương tiện",
-            value: adminStats.totalVehicles.toLocaleString('vi-VN'),
-            icon: Car,
-            color: "bg-gradient-to-r from-emerald-500 to-emerald-600"
-        },
-        {
-            title: "Phương tiện đang gửi",
-            value: adminStats.currentParking.toLocaleString('vi-VN'),
-            icon: Car,
-            color: "bg-gradient-to-r from-violet-500 to-violet-600"
-        }
-    ];
 
     const [users, setUsers] = useState<User[]>([]);
     const [vehicles, setVehicles] = useState<VehicleRow[]>([]);
@@ -60,14 +38,12 @@ export function AdminPage() {
         const load = async () => {
             try {
                 setIsLoading(true);
-                const [uRes, vRes, sRes] = await Promise.all([
+                const [uRes, vRes] = await Promise.all([
                     fetch(apiUrl('/admin/users')),
-                    fetch(apiUrl('/admin/vehicles')),
-                    fetch(apiUrl('/admin/stats'))
+                    fetch(apiUrl('/admin/vehicles'))
                 ]);
                 if (uRes.ok) setUsers(await uRes.json());
                 if (vRes.ok) setVehicles(await vRes.json());
-                if (sRes.ok) setAdminStats(await sRes.json());
             } catch (e) {
                 console.error('Failed to fetch admin data', e);
             } finally {
@@ -77,36 +53,36 @@ export function AdminPage() {
         load();
     }, []);
 
-    const systemLogs = [
-        {
-            id: 1,
-            action: "Nhận diện biển số",
-            user: "Hệ thống",
-            time: "2024-01-15 10:30",
-            type: "Recognition"
-        },
-        {
-            id: 2,
-            action: "Trừ phí gửi xe",
-            user: "Hệ thống",
-            time: "2024-01-15 09:15",
-            type: "Payment"
-        },
-        {
-            id: 3,
-            action: "Nạp tiền thành công",
-            user: "Triệu Quang Học",
-            time: "2024-01-15 08:45",
-            type: "Payment"
-        },
-        {
-            id: 4,
-            action: "Đăng ký xe mới",
-            user: "Nguyễn Văn A",
-            time: "2024-01-15 08:30",
-            type: "Vehicle"
-        }
-    ];
+    // const systemLogs = [
+    //     {
+    //         id: 1,
+    //         action: "Nhận diện biển số",
+    //         user: "Hệ thống",
+    //         time: "2024-01-15 10:30",
+    //         type: "Recognition"
+    //     },
+    //     {
+    //         id: 2,
+    //         action: "Trừ phí gửi xe",
+    //         user: "Hệ thống",
+    //         time: "2024-01-15 09:15",
+    //         type: "Payment"
+    //     },
+    //     {
+    //         id: 3,
+    //         action: "Nạp tiền thành công",
+    //         user: "Triệu Quang Học",
+    //         time: "2024-01-15 08:45",
+    //         type: "Payment"
+    //     },
+    //     {
+    //         id: 4,
+    //         action: "Đăng ký xe mới",
+    //         user: "Nguyễn Văn A",
+    //         time: "2024-01-15 08:30",
+    //         type: "Vehicle"
+    //     }
+    // ];
 
     // Filter users based on search term
     const filteredUsers = users.filter(user => 
@@ -141,11 +117,11 @@ export function AdminPage() {
         alert("Cập nhật số dư thành công!");
     };
 
-    const getLogIcon = (type: string) => {
-        if (type === "Recognition") return <Camera className="h-4 w-4 text-cyan-600" />;
-        if (type === "Payment") return <DollarSign className="h-4 w-4 text-emerald-600" />;
-        return <Car className="h-4 w-4 text-violet-600" />;
-    };
+    // const getLogIcon = (type: string) => {
+    //     if (type === "Recognition") return <Camera className="h-4 w-4 text-cyan-600" />;
+    //     if (type === "Payment") return <DollarSign className="h-4 w-4 text-emerald-600" />;
+    //     return <Car className="h-4 w-4 text-violet-600" />;
+    // };
 
     return (
         <div className="space-y-8">
@@ -168,39 +144,10 @@ export function AdminPage() {
                 </div>
             </div>
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-                {systemStats.map((stat, index) => {
-                    const Icon = stat.icon;
-                    return (
-                        <div key={index} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
-                                    <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                                </div>
-                                <div className={`p-3 rounded-xl ${stat.color} shadow-lg`}>
-                                    <Icon className="h-6 w-6 text-white" />
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-
             {/* Tab Navigation */}
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                 <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
                     <nav className="flex space-x-8">
-                        <button
-                            onClick={() => setSelectedTab("overview")}
-                            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${selectedTab === "overview"
-                                ? "border-cyan-500 text-cyan-600"
-                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                                }`}
-                        >
-                            Tổng quan
-                        </button>
                         <button
                             onClick={() => setSelectedTab("users")}
                             className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${selectedTab === "users"
@@ -232,49 +179,6 @@ export function AdminPage() {
                 </div>
 
                 <div className="p-6">
-                    {selectedTab === "overview" && (
-                        <div className="space-y-6">
-                            {/* System Overview */}
-                            <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
-                                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-                                    <h2 className="text-xl font-semibold text-gray-900">Tổng quan hệ thống</h2>
-                                </div>
-                                <div className="p-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-4">
-                                            <div className="flex justify-between items-center p-4 bg-cyan-50 rounded-xl">
-                                                <span className="text-sm text-gray-600">Tổng lượt gửi xe</span>
-                                                <span className="font-bold text-cyan-600">15,678</span>
-                                            </div>
-                                            <div className="flex justify-between items-center p-4 bg-emerald-50 rounded-xl">
-                                                <span className="text-sm text-gray-600">Doanh thu tháng</span>
-                                                <span className="font-bold text-emerald-600">31,356,000₫</span>
-                                            </div>
-                                            <div className="flex justify-between items-center p-4 bg-violet-50 rounded-xl">
-                                                <span className="text-sm text-gray-600">Độ chính xác TB</span>
-                                                <span className="font-bold text-violet-600">96.5%</span>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-4">
-                                            <div className="flex justify-between items-center p-4 bg-amber-50 rounded-xl">
-                                                <span className="text-sm text-gray-600">Lỗi nhận diện</span>
-                                                <span className="font-bold text-amber-600">8</span>
-                                            </div>
-                                            <div className="flex justify-between items-center p-4 bg-blue-50 rounded-xl">
-                                                <span className="text-sm text-gray-600">Camera hoạt động</span>
-                                                <span className="font-bold text-blue-600">4/4</span>
-                                            </div>
-                                            <div className="flex justify-between items-center p-4 bg-red-50 rounded-xl">
-                                                <span className="text-sm text-gray-600">Cảnh báo hệ thống</span>
-                                                <span className="font-bold text-red-600">3</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                     {selectedTab === "users" && (
                         <div className="space-y-6">
                             {/* Users Management */}

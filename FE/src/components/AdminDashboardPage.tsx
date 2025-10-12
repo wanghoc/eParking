@@ -1,4 +1,4 @@
-import { Shield, Camera, AlertCircle, CheckCircle, DollarSign, Car, Clock, Bell, Video, RefreshCw, Settings as SettingsIcon, FileText, Map, XCircle } from "lucide-react";
+import { Shield, Camera, AlertCircle, CheckCircle, DollarSign, Car, Clock, Video, RefreshCw, Settings as SettingsIcon, FileText, Map, XCircle, ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiUrl } from "../api";
 
@@ -29,16 +29,27 @@ interface CameraFeed {
     lastStatus?: 'success' | 'insufficient' | 'error';
 }
 
-interface Alert {
+// interface Alert {
+//     id: number;
+//     type: 'error' | 'warning' | 'info';
+//     title: string;
+//     message: string;
+//     time: string;
+//     priority: string;
+// }
+
+interface ParkingLot {
     id: number;
-    type: 'error' | 'warning' | 'info';
-    title: string;
-    message: string;
-    time: string;
-    priority: string;
+    name: string;
+    capacity: number;
+    occupied: number;
 }
 
-export function AdminDashboardPage() {
+interface AdminDashboardPageProps {
+    onNavigate?: (page: string) => void;
+}
+
+export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {}) {
     const [stats, setStats] = useState<DashboardStats>({
         currentParking: 0,
         totalVehicles: 0,
@@ -46,9 +57,11 @@ export function AdminDashboardPage() {
     });
     const [sessions, setSessions] = useState<ParkingSession[]>([]);
     const [cameras, setCameras] = useState<CameraFeed[]>([]);
-    const [alerts, setAlerts] = useState<Alert[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [processingPayment, setProcessingPayment] = useState<number | null>(null);
+    const [parkingLots, setParkingLots] = useState<ParkingLot[]>([]);
+    const [selectedParkingLot, setSelectedParkingLot] = useState<number | null>(null);
+    const [showParkingLotSelector, setShowParkingLotSelector] = useState(false);
 
     // Fetch initial data
     useEffect(() => {
@@ -98,22 +111,15 @@ export function AdminDashboardPage() {
                 console.error('Error fetching cameras:', err);
             }
 
-            // Fetch alerts
+            // Fetch parking lots
             try {
-                const alertsRes = await fetch(apiUrl('/alerts'));
-                if (alertsRes.ok) {
-                    const alertsData = await alertsRes.json();
-                    setAlerts((alertsData || []).slice(0, 5).map((alert: any) => ({
-                        id: alert.id,
-                        type: alert.priority === 'Cao' ? 'error' : alert.priority === 'Trung bình' ? 'warning' : 'info',
-                        title: alert.type || 'Thông báo',
-                        message: alert.message || 'Không có thông tin',
-                        time: alert.created_at ? new Date(alert.created_at).toLocaleString('vi-VN') : 'N/A',
-                        priority: alert.priority || 'Thấp'
-                    })));
+                const lotsRes = await fetch(apiUrl('/parking-lots/overview'));
+                if (lotsRes.ok) {
+                    const lotsData = await lotsRes.json();
+                    setParkingLots(lotsData || []);
                 }
             } catch (err) {
-                console.error('Error fetching alerts:', err);
+                console.error('Error fetching parking lots:', err);
             }
 
             // Fetch active parking sessions
@@ -290,16 +296,63 @@ export function AdminDashboardPage() {
                     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                         <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
                             <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-semibold text-gray-900 flex items-center space-x-2">
+                                <div className="flex items-center space-x-2">
                                     <Video className="h-5 w-5 text-cyan-600" />
-                                    <span>Luồng Camera Trực Tiếp</span>
-                                </h2>
-                                <span className="text-sm text-gray-600">{cameras.length} camera hoạt động</span>
+                                    <h2 className="text-xl font-semibold text-gray-900">Luồng Camera Trực Tiếp</h2>
+                                </div>
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setShowParkingLotSelector(!showParkingLotSelector)}
+                                        className="bg-cyan-500 text-white px-4 py-2 rounded-lg hover:bg-cyan-600 transition-colors flex items-center space-x-2"
+                                    >
+                                        <Map className="h-5 w-5" />
+                                        <span>{selectedParkingLot ? parkingLots.find(l => l.id === selectedParkingLot)?.name : 'Chọn bãi xe'}</span>
+                                        <ChevronDown className="h-4 w-4" />
+                                    </button>
+                                    
+                                    {showParkingLotSelector && (
+                                        <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-10">
+                                            <div className="p-2 max-h-64 overflow-y-auto">
+                                                {parkingLots.map((lot) => (
+                                                    <button
+                                                        key={lot.id}
+                                                        onClick={() => {
+                                                            setSelectedParkingLot(lot.id);
+                                                            setShowParkingLotSelector(false);
+                                                        }}
+                                                        className="w-full text-left px-4 py-2 hover:bg-cyan-50 rounded-lg transition-colors"
+                                                    >
+                                                        <p className="font-medium text-gray-900">{lot.name}</p>
+                                                        <p className="text-xs text-gray-500">Đã sử dụng: {lot.occupied}/{lot.capacity}</p>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                         <div className="p-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {cameras.slice(0, 4).map((camera) => (
+                            {!selectedParkingLot ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {[1, 2].map((idx) => (
+                                        <div key={idx} className="relative bg-gray-200 rounded-xl overflow-hidden aspect-video flex items-center justify-center">
+                                            <div className="text-center text-gray-500">
+                                                <Camera className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                                                <p className="text-sm font-medium">Vui lòng chọn bãi xe</p>
+                                                <p className="text-xs opacity-75">Camera {idx === 1 ? 'Vào' : 'Ra'}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {cameras.filter(cam => {
+                                    // Filter cameras by selected parking lot
+                                    const selectedLot = parkingLots.find(l => l.id === selectedParkingLot);
+                                    if (!selectedLot) return false;
+                                    return cam.location?.includes(selectedLot.name);
+                                }).slice(0, 2).map((camera) => (
                                     <div key={camera.id} className="relative bg-gray-900 rounded-xl overflow-hidden aspect-video">
                                         {/* Simulated camera feed */}
                                         <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
@@ -339,29 +392,41 @@ export function AdminDashboardPage() {
                                         {getCameraStatusBadge(camera.lastStatus)}
                                     </div>
                                 ))}
-                            </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     {/* Vehicle List Table */}
                     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                         <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-                            <h2 className="text-xl font-semibold text-gray-900">Danh sách xe đang gửi</h2>
+                            <h2 className="text-xl font-semibold text-gray-900">
+                                {selectedParkingLot 
+                                    ? `Xe đang gửi tại ${parkingLots.find(l => l.id === selectedParkingLot)?.name}`
+                                    : 'Danh sách xe đang gửi'}
+                            </h2>
                         </div>
                         <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Biển số</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thời gian vào</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số dư</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {sessions.map((session) => {
+                            {!selectedParkingLot ? (
+                                <div className="p-12 text-center text-gray-500">
+                                    <Car className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                                    <p className="text-lg font-medium">Chọn bãi xe để xem danh sách</p>
+                                    <p className="text-sm mt-2">Vui lòng chọn bãi xe từ menu bên trên</p>
+                                </div>
+                            ) : (
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Biển số</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thời gian vào</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số dư</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {sessions.map((session) => {
                                         const hasInsufficientBalance = session.balance < session.fee && session.payment_status === "Chưa thanh toán";
                                         return (
                                             <tr key={session.id} className={`hover:bg-gray-50 transition-colors ${hasInsufficientBalance ? 'bg-red-50' : ''}`}>
@@ -423,61 +488,16 @@ export function AdminDashboardPage() {
                                                 </td>
                                             </tr>
                                         );
-                                    })}
-                                </tbody>
-                            </table>
+                                        })}
+                                    </tbody>
+                                </table>
+                            )}
                         </div>
                     </div>
                 </div>
 
-                {/* Right Sidebar - Alerts & Quick Actions */}
+                {/* Right Sidebar - Quick Actions */}
                 <div className="space-y-6">
-                    {/* Alerts Panel */}
-                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-                            <h2 className="text-xl font-semibold text-gray-900 flex items-center space-x-2">
-                                <Bell className="h-5 w-5 text-cyan-600" />
-                                <span>Cảnh báo hệ thống</span>
-                            </h2>
-                        </div>
-                        <div className="p-4 max-h-96 overflow-y-auto">
-                            <div className="space-y-3">
-                                {alerts.length === 0 ? (
-                                    <div className="text-center py-8 text-gray-500">
-                                        <CheckCircle className="h-12 w-12 mx-auto mb-2 text-emerald-500" />
-                                        <p className="text-sm">Không có cảnh báo mới</p>
-                                    </div>
-                                ) : (
-                                    alerts.map((alert) => (
-                                        <div 
-                                            key={alert.id} 
-                                            className={`p-4 rounded-xl border-l-4 ${
-                                                alert.type === 'error' ? 'bg-red-50 border-red-500' :
-                                                alert.type === 'warning' ? 'bg-amber-50 border-amber-500' :
-                                                'bg-cyan-50 border-cyan-500'
-                                            }`}
-                                        >
-                                            <div className="flex items-start space-x-3">
-                                                {alert.type === 'error' ? (
-                                                    <XCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                                                ) : alert.type === 'warning' ? (
-                                                    <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                                                ) : (
-                                                    <CheckCircle className="h-5 w-5 text-cyan-600 flex-shrink-0 mt-0.5" />
-                                                )}
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-semibold text-gray-900">{alert.title}</p>
-                                                    <p className="text-xs text-gray-600 mt-1">{alert.message}</p>
-                                                    <p className="text-xs text-gray-500 mt-2">{alert.time}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
                     {/* Quick Actions */}
                     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                         <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
@@ -485,19 +505,31 @@ export function AdminDashboardPage() {
                         </div>
                         <div className="p-4">
                             <div className="grid grid-cols-2 gap-3">
-                                <button className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white p-4 rounded-xl hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                                <button 
+                                    onClick={() => onNavigate?.('management')}
+                                    className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white p-4 rounded-xl hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                                >
                                     <Map className="h-6 w-6 mb-2 mx-auto" />
                                     <span className="text-sm font-medium">Quản lý bãi</span>
                                 </button>
-                                <button className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-4 rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                                <button 
+                                    onClick={() => onNavigate?.('camera')}
+                                    className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-4 rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                                >
                                     <Camera className="h-6 w-6 mb-2 mx-auto" />
                                     <span className="text-sm font-medium">Quản lý camera</span>
                                 </button>
-                                <button className="bg-gradient-to-r from-violet-500 to-violet-600 text-white p-4 rounded-xl hover:from-violet-600 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                                <button 
+                                    onClick={() => onNavigate?.('history')}
+                                    className="bg-gradient-to-r from-violet-500 to-violet-600 text-white p-4 rounded-xl hover:from-violet-600 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                                >
                                     <FileText className="h-6 w-6 mb-2 mx-auto" />
                                     <span className="text-sm font-medium">Lịch sử gửi xe</span>
                                 </button>
-                                <button className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                                <button 
+                                    onClick={() => onNavigate?.('admin')}
+                                    className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                                >
                                     <SettingsIcon className="h-6 w-6 mb-2 mx-auto" />
                                     <span className="text-sm font-medium">Cài đặt</span>
                                 </button>
