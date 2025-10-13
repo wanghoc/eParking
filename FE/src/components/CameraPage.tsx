@@ -1,4 +1,4 @@
-import { Camera, Video, AlertCircle, CheckCircle, Eye, Edit, Trash2, Wifi, WifiOff, RefreshCw, ChevronDown } from "lucide-react";
+import { Camera, Video, AlertCircle, CheckCircle, Eye, Edit, Trash2, Wifi, WifiOff, RefreshCw, ChevronDown, X, Maximize2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { LiveCameraModal } from "./LiveCameraModal";
 import { apiUrl } from "../api";
@@ -18,15 +18,98 @@ interface CameraData {
     battery?: string;
 }
 
+interface WebcamStream {
+    id: number;
+    stream: MediaStream | null;
+    cameraData: CameraData;
+}
+
 export function CameraPage() {
     const [showLiveModal, setShowLiveModal] = useState(false);
     const [cameras, setCameras] = useState<CameraData[]>([]);
     const [showCameraSelector, setShowCameraSelector] = useState(false);
+    const [webcamStreams, setWebcamStreams] = useState<WebcamStream[]>([]);
+    const [selectedCameraForFull, setSelectedCameraForFull] = useState<number | null>(null);
     const cameraRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
+    const videoRefs = useRef<{ [key: number]: HTMLVideoElement | null }>({});
 
     useEffect(() => {
         loadCameras();
     }, []);
+
+    useEffect(() => {
+        // Initialize webcam streams for cameras
+        const initWebcams = async () => {
+            const camerasToUse = cameras.length > 0 ? cameras : mockCameras;
+            
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                if (videoDevices.length === 0) {
+                    console.warn('No camera devices found');
+                    return;
+                }
+
+                const streams: WebcamStream[] = [];
+                
+                for (let i = 0; i < camerasToUse.length; i++) {
+                    const camera = camerasToUse[i];
+                    if (camera.status !== "Hoạt động") continue;
+                    
+                    try {
+                        const deviceId = videoDevices[i % videoDevices.length].deviceId;
+                        const stream = await navigator.mediaDevices.getUserMedia({
+                            video: {
+                                deviceId: deviceId ? { exact: deviceId } : undefined,
+                                width: { ideal: 640 },
+                                height: { ideal: 480 }
+                            },
+                            audio: false
+                        });
+                        
+                        streams.push({
+                            id: camera.id,
+                            stream: stream,
+                            cameraData: camera
+                        });
+                    } catch (err) {
+                        console.warn(`Failed to initialize webcam for camera ${camera.id}:`, err);
+                        streams.push({
+                            id: camera.id,
+                            stream: null,
+                            cameraData: camera
+                        });
+                    }
+                }
+                
+                setWebcamStreams(streams);
+            } catch (err) {
+                console.error('Failed to enumerate devices:', err);
+            }
+        };
+
+        initWebcams();
+
+        // Cleanup streams on unmount
+        return () => {
+            webcamStreams.forEach(ws => {
+                if (ws.stream) {
+                    ws.stream.getTracks().forEach(track => track.stop());
+                }
+            });
+        };
+    }, [cameras]);
+
+    // Assign video streams to video elements
+    useEffect(() => {
+        webcamStreams.forEach(ws => {
+            const videoElement = videoRefs.current[ws.id];
+            if (videoElement && ws.stream) {
+                videoElement.srcObject = ws.stream;
+            }
+        });
+    }, [webcamStreams]);
 
     const loadCameras = async () => {
         try {
@@ -42,19 +125,8 @@ export function CameraPage() {
 
     const handleCameraSelect = (cameraId: number) => {
         setShowCameraSelector(false);
-        
-        // Scroll to selected camera
-        setTimeout(() => {
-            const element = cameraRefs.current[cameraId];
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                // Add highlight effect
-                element.classList.add('ring-4', 'ring-cyan-500');
-                setTimeout(() => {
-                    element.classList.remove('ring-4', 'ring-cyan-500');
-                }, 2000);
-            }
-        }, 100);
+        // Open camera in full view mode
+        setSelectedCameraForFull(cameraId);
     };
 
     const mockCameras = [
@@ -128,6 +200,38 @@ export function CameraPage() {
         return "bg-red-100 text-red-800";
     };
 
+    // Organize cameras by parking lot (2 cameras per row)
+    const organizeCamerasByParkingLot = () => {
+        const camerasToUse = cameras.length > 0 ? cameras : mockCameras;
+        const activeCameras = camerasToUse.filter(cam => cam.status === "Hoạt động");
+        
+        // Group cameras by parking lot
+        const parkingLotMap = new Map<string, CameraData[]>();
+        
+        activeCameras.forEach(camera => {
+            // Extract parking lot name from location (e.g., "Bãi xe A - Cổng vào" -> "Bãi xe A")
+            const location = camera.location || '';
+            const parkingLot = location.split('-')[0].trim();
+            
+            if (!parkingLotMap.has(parkingLot)) {
+                parkingLotMap.set(parkingLot, []);
+            }
+            parkingLotMap.get(parkingLot)!.push(camera);
+        });
+        
+        // Convert to array of rows (2 cameras per row from same parking lot)
+        const rows: CameraData[][] = [];
+        
+        parkingLotMap.forEach((cameras) => {
+            for (let i = 0; i < cameras.length; i += 2) {
+                const row = cameras.slice(i, i + 2);
+                rows.push(row);
+            }
+        });
+        
+        return rows;
+    };
+
     return (
         <div className="space-y-8">
             {/* Header */}
@@ -160,7 +264,7 @@ export function CameraPage() {
             </div>
 
             {/* Camera Grid Section */}
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-visible">
                 <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
@@ -178,7 +282,7 @@ export function CameraPage() {
                             </button>
                             
                             {showCameraSelector && (
-                                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-10">
+                                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
                                     <div className="p-2 max-h-64 overflow-y-auto">
                                         {(cameras.length > 0 ? cameras : mockCameras).map((camera) => (
                                             <button
@@ -203,40 +307,64 @@ export function CameraPage() {
                 </div>
 
                 <div className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {(cameras.length > 0 ? cameras : mockCameras).filter(cam => cam.status === "Hoạt động").map((camera) => (
-                            <div
-                                key={camera.id}
-                                ref={(el) => cameraRefs.current[camera.id] = el}
-                                className="relative bg-gray-900 rounded-xl overflow-hidden aspect-video transition-all duration-300"
-                            >
-                                {/* Simulated camera feed */}
-                                <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-                                    <div className="text-center text-white">
-                                        <Camera className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                                        <p className="text-sm opacity-75">{camera.name}</p>
-                                        <p className="text-xs opacity-50">{camera.location}</p>
-                                    </div>
-                                </div>
-                                
-                                {/* Camera info overlay */}
-                                <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/60 to-transparent p-3">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center space-x-2">
-                                            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                                            <span className="text-white text-xs font-medium">LIVE</span>
-                                        </div>
-                                        <span className={`text-xs px-2 py-1 rounded ${camera.type === 'Vào' ? 'bg-emerald-500' : 'bg-blue-500'} text-white`}>
-                                            {camera.type}
-                                        </span>
-                                    </div>
-                                </div>
+                    {/* 2-N Grid Layout organized by parking lot */}
+                    <div className="space-y-4">
+                        {organizeCamerasByParkingLot().map((row, rowIndex) => (
+                            <div key={rowIndex} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {row.map((camera) => {
+                                    const webcamStream = webcamStreams.find(ws => ws.id === camera.id);
+                                    return (
+                                        <div
+                                            key={camera.id}
+                                            ref={(el) => cameraRefs.current[camera.id] = el}
+                                            className="relative bg-gray-900 rounded-xl overflow-hidden aspect-video transition-all duration-300 cursor-pointer hover:ring-2 hover:ring-cyan-500"
+                                            onClick={() => setSelectedCameraForFull(camera.id)}
+                                        >
+                                            {/* Webcam video feed */}
+                                            {webcamStream?.stream ? (
+                                                <video
+                                                    ref={(el) => videoRefs.current[camera.id] = el}
+                                                    autoPlay
+                                                    playsInline
+                                                    muted
+                                                    className="absolute inset-0 w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                                                    <div className="text-center text-white">
+                                                        <Camera className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                                                        <p className="text-sm opacity-75">{camera.name}</p>
+                                                        <p className="text-xs opacity-50">{camera.location}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            {/* Camera info overlay */}
+                                            <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/60 to-transparent p-3">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center space-x-2">
+                                                        <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                                                        <span className="text-white text-xs font-medium">LIVE</span>
+                                                    </div>
+                                                    <span className={`text-xs px-2 py-1 rounded ${camera.type === 'Vào' ? 'bg-emerald-500' : 'bg-blue-500'} text-white`}>
+                                                        {camera.type}
+                                                    </span>
+                                                </div>
+                                            </div>
 
-                                {/* Camera name at bottom */}
-                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-                                    <p className="text-white text-sm font-medium">{camera.name}</p>
-                                    <p className="text-white text-xs opacity-75">{camera.location}</p>
-                                </div>
+                                            {/* Camera name at bottom */}
+                                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <p className="text-white text-sm font-medium">{camera.name}</p>
+                                                        <p className="text-white text-xs opacity-75">{camera.location}</p>
+                                                    </div>
+                                                    <Maximize2 className="h-5 w-5 text-white opacity-75" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         ))}
                     </div>
@@ -268,12 +396,6 @@ export function CameraPage() {
                                     </th>
                                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Kết nối
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Pin
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Độ chính xác
                                     </th>
                                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Thao tác
@@ -323,26 +445,10 @@ export function CameraPage() {
                                                 {camera.connection || "Offline"}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-6 whitespace-nowrap">
-                                            <div className="flex items-center">
-                                                <div className="w-20 bg-gray-200 rounded-full h-3 mr-3">
-                                                    <div
-                                                        className={`h-3 rounded-full transition-all duration-300 ${parseInt(camera.battery || "0") > 50 ? "bg-emerald-500" :
-                                                                parseInt(camera.battery || "0") > 20 ? "bg-amber-500" : "bg-red-500"
-                                                            }`}
-                                                        style={{ width: `${camera.battery}` }}
-                                                    ></div>
-                                                </div>
-                                                <span className="text-sm text-gray-900">{camera.battery}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">
-                                            {camera.recognitionAccuracy}
-                                        </td>
                                         <td className="px-6 py-6 whitespace-nowrap text-sm font-medium">
                                             <div className="flex space-x-3">
                                                 <button 
-                                                    onClick={() => setShowLiveModal(true)}
+                                                    onClick={() => setSelectedCameraForFull(camera.id)}
                                                     className="text-cyan-600 hover:text-cyan-900 transition-colors"
                                                     title="Xem trực tiếp"
                                                 >
@@ -370,6 +476,79 @@ export function CameraPage() {
                 onClose={() => setShowLiveModal(false)}
                 cameraCount={(cameras.length > 0 ? cameras : mockCameras).length}
             />
+
+            {/* Full Camera View Modal */}
+            {selectedCameraForFull && (
+                <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
+                    <div className="relative w-full h-full max-w-7xl max-h-[90vh] bg-white rounded-2xl overflow-hidden shadow-2xl">
+                        {/* Close button */}
+                        <button
+                            onClick={() => setSelectedCameraForFull(null)}
+                            className="absolute top-4 right-4 z-10 bg-black bg-opacity-50 p-2 rounded-full text-white hover:bg-opacity-70 transition-all"
+                        >
+                            <X className="h-6 w-6" />
+                        </button>
+
+                        {/* Camera info header */}
+                        <div className="absolute top-4 left-4 z-10 bg-black bg-opacity-50 px-4 py-2 rounded-lg text-white">
+                            <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                                <span className="text-sm font-medium">LIVE</span>
+                            </div>
+                        </div>
+
+                        {/* Full camera view */}
+                        {(() => {
+                            const camera = (cameras.length > 0 ? cameras : mockCameras).find(c => c.id === selectedCameraForFull);
+                            const webcamStream = webcamStreams.find(ws => ws.id === selectedCameraForFull);
+                            
+                            if (!camera) return null;
+
+                            return (
+                                <>
+                                    {webcamStream?.stream ? (
+                                        <video
+                                            ref={(el) => {
+                                                if (el && webcamStream.stream) {
+                                                    el.srcObject = webcamStream.stream;
+                                                }
+                                            }}
+                                            autoPlay
+                                            playsInline
+                                            muted
+                                            className="w-full h-full object-contain bg-black"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                                            <div className="text-center text-white">
+                                                <Camera className="h-24 w-24 mx-auto mb-4 opacity-50" />
+                                                <p className="text-xl opacity-75">{camera.name}</p>
+                                                <p className="text-sm opacity-50 mt-2">{camera.location}</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Camera info bottom */}
+                                    <div className="absolute bottom-4 left-4 right-4 bg-black bg-opacity-60 px-6 py-4 rounded-lg text-white">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h3 className="text-lg font-semibold">{camera.name}</h3>
+                                                <p className="text-sm opacity-90">{camera.location}</p>
+                                            </div>
+                                            <div className="flex items-center space-x-4">
+                                                <span className={`px-3 py-1 rounded-full text-sm ${camera.type === 'Vào' ? 'bg-emerald-500' : 'bg-blue-500'}`}>
+                                                    {camera.type}
+                                                </span>
+                                                <span className="text-sm opacity-90">1080p @ 30fps</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            );
+                        })()}
+                    </div>
+                </div>
+            )}
         </div>
     );
 } 

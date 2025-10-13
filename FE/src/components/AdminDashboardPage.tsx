@@ -26,7 +26,8 @@ interface CameraFeed {
     type: string;
     status: string;
     lastPlate?: string;
-    lastStatus?: 'success' | 'insufficient' | 'error';
+    lastStatus?: 'success' | 'insufficient' | 'error' | 'detected';
+    detectionTime?: number;
 }
 
 // interface Alert {
@@ -97,15 +98,70 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                 const camerasRes = await fetch(apiUrl('/cameras'));
                 if (camerasRes.ok) {
                     const camerasData = await camerasRes.json();
-                    setCameras((camerasData || []).map((cam: any) => ({
-                        id: cam.id,
-                        name: cam.name || 'Camera',
-                        location: cam.location || '-',
-                        type: cam.type || 'Vào',
-                        status: cam.status || 'Hoạt động',
-                        lastPlate: generateRandomPlate(),
-                        lastStatus: Math.random() > 0.8 ? 'insufficient' : Math.random() > 0.9 ? 'error' : 'success'
-                    })));
+                    setCameras(prevCameras => {
+                        const newCameras = (camerasData || []).map((cam: any) => {
+                            const prevCam = prevCameras.find(c => c.id === cam.id);
+                            const now = Date.now();
+                            
+                            // For entrance cameras: randomly show "detected" status
+                            if (cam.type === 'Vào') {
+                                // Check if we should trigger a new detection (random 10% chance)
+                                const shouldDetect = Math.random() > 0.9;
+                                
+                                // If previous detection is still active (within 2 seconds), keep it
+                                if (prevCam?.lastStatus === 'detected' && prevCam.detectionTime && (now - prevCam.detectionTime) < 2000) {
+                                    return {
+                                        id: cam.id,
+                                        name: cam.name || 'Camera',
+                                        location: cam.location || '-',
+                                        type: cam.type || 'Vào',
+                                        status: cam.status || 'Hoạt động',
+                                        lastPlate: generateRandomPlate(),
+                                        lastStatus: 'detected' as const,
+                                        detectionTime: prevCam.detectionTime
+                                    };
+                                }
+                                
+                                // Trigger new detection
+                                if (shouldDetect) {
+                                    return {
+                                        id: cam.id,
+                                        name: cam.name || 'Camera',
+                                        location: cam.location || '-',
+                                        type: cam.type || 'Vào',
+                                        status: cam.status || 'Hoạt động',
+                                        lastPlate: generateRandomPlate(),
+                                        lastStatus: 'detected' as const,
+                                        detectionTime: now
+                                    };
+                                }
+                                
+                                // No detection - normal state
+                                return {
+                                    id: cam.id,
+                                    name: cam.name || 'Camera',
+                                    location: cam.location || '-',
+                                    type: cam.type || 'Vào',
+                                    status: cam.status || 'Hoạt động',
+                                    lastPlate: generateRandomPlate(),
+                                    lastStatus: undefined
+                                };
+                            }
+                            
+                            // For exit cameras: show payment status
+                            return {
+                                id: cam.id,
+                                name: cam.name || 'Camera',
+                                location: cam.location || '-',
+                                type: cam.type || 'Ra',
+                                status: cam.status || 'Hoạt động',
+                                lastPlate: generateRandomPlate(),
+                                lastStatus: Math.random() > 0.8 ? 'insufficient' as const : Math.random() > 0.9 ? 'error' as const : 'success' as const
+                            };
+                        });
+                        
+                        return newCameras;
+                    });
                 }
             } catch (err) {
                 console.error('Error fetching cameras:', err);
@@ -231,10 +287,25 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
         return "bg-amber-100 text-amber-800";
     };
 
-    const getCameraStatusBadge = (status: 'success' | 'insufficient' | 'error' | undefined) => {
-        if (status === 'success') return <div className="absolute top-2 right-2 px-2 py-1 bg-emerald-500 text-white text-xs rounded-full flex items-center space-x-1"><CheckCircle className="h-3 w-3" /><span>Đã trừ tiền</span></div>;
-        if (status === 'insufficient') return <div className="absolute top-2 right-2 px-2 py-1 bg-red-500 text-white text-xs rounded-full flex items-center space-x-1"><XCircle className="h-3 w-3" /><span>Thiếu tiền</span></div>;
-        if (status === 'error') return <div className="absolute top-2 right-2 px-2 py-1 bg-amber-500 text-white text-xs rounded-full flex items-center space-x-1"><AlertCircle className="h-3 w-3" /><span>Lỗi nhận dạng</span></div>;
+    const getCameraStatusBadge = (camera: CameraFeed) => {
+        const status = camera.lastStatus;
+        
+        // For entrance cameras: show "Đã nhận diện xe" when vehicle is detected
+        if (camera.type === 'Vào') {
+            if (status === 'detected') {
+                return <div className="absolute top-2 right-2 px-2 py-1 bg-emerald-500 text-white text-xs rounded-full flex items-center space-x-1 animate-pulse"><CheckCircle className="h-3 w-3" /><span>Đã nhận diện xe</span></div>;
+            }
+            // Normal state for entrance cameras - no badge
+            return null;
+        }
+        
+        // For exit cameras: show payment status
+        if (camera.type === 'Ra') {
+            if (status === 'success') return <div className="absolute top-2 right-2 px-2 py-1 bg-emerald-500 text-white text-xs rounded-full flex items-center space-x-1"><CheckCircle className="h-3 w-3" /><span>Đã trừ tiền</span></div>;
+            if (status === 'insufficient') return <div className="absolute top-2 right-2 px-2 py-1 bg-red-500 text-white text-xs rounded-full flex items-center space-x-1"><XCircle className="h-3 w-3" /><span>Lỗi thanh toán</span></div>;
+            if (status === 'error') return <div className="absolute top-2 right-2 px-2 py-1 bg-amber-500 text-white text-xs rounded-full flex items-center space-x-1"><AlertCircle className="h-3 w-3" /><span>Lỗi thanh toán</span></div>;
+        }
+        
         return null;
     };
 
@@ -289,9 +360,9 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
             </div>
 
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                {/* Camera Feeds - Left Side (2/3 width) */}
-                <div className="xl:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+                {/* Camera Feeds - Left Side (3/4 width) */}
+                <div className="xl:col-span-3 space-y-6">
                     {/* Camera Grid */}
                     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                         <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
@@ -389,7 +460,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                                         )}
 
                                         {/* Payment status badge */}
-                                        {getCameraStatusBadge(camera.lastStatus)}
+                                        {getCameraStatusBadge(camera)}
                                     </div>
                                 ))}
                                 </div>
@@ -497,40 +568,40 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                 </div>
 
                 {/* Right Sidebar - Quick Actions */}
-                <div className="space-y-6">
+                <div className="space-y-4">
                     {/* Quick Actions */}
                     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-                            <h2 className="text-xl font-semibold text-gray-900">Thao tác nhanh</h2>
+                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
+                            <h2 className="text-lg font-semibold text-gray-900">Thao tác nhanh</h2>
                         </div>
-                        <div className="p-4">
-                            <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3">
+                            <div className="grid grid-cols-1 gap-2">
                                 <button 
                                     onClick={() => onNavigate?.('management')}
-                                    className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white p-4 rounded-xl hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                                    className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white p-3 rounded-xl hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
                                 >
-                                    <Map className="h-6 w-6 mb-2 mx-auto" />
+                                    <Map className="h-5 w-5" />
                                     <span className="text-sm font-medium">Quản lý bãi</span>
                                 </button>
                                 <button 
                                     onClick={() => onNavigate?.('camera')}
-                                    className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-4 rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                                    className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-3 rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
                                 >
-                                    <Camera className="h-6 w-6 mb-2 mx-auto" />
+                                    <Camera className="h-5 w-5" />
                                     <span className="text-sm font-medium">Quản lý camera</span>
                                 </button>
                                 <button 
                                     onClick={() => onNavigate?.('history')}
-                                    className="bg-gradient-to-r from-violet-500 to-violet-600 text-white p-4 rounded-xl hover:from-violet-600 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                                    className="bg-gradient-to-r from-violet-500 to-violet-600 text-white p-3 rounded-xl hover:from-violet-600 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
                                 >
-                                    <FileText className="h-6 w-6 mb-2 mx-auto" />
-                                    <span className="text-sm font-medium">Lịch sử gửi xe</span>
+                                    <FileText className="h-5 w-5" />
+                                    <span className="text-sm font-medium">Lịch sử</span>
                                 </button>
                                 <button 
                                     onClick={() => onNavigate?.('admin')}
-                                    className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                                    className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-3 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
                                 >
-                                    <SettingsIcon className="h-6 w-6 mb-2 mx-auto" />
+                                    <SettingsIcon className="h-5 w-5" />
                                     <span className="text-sm font-medium">Cài đặt</span>
                                 </button>
                             </div>
@@ -539,29 +610,29 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
 
                     {/* System Status */}
                     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-                            <h2 className="text-xl font-semibold text-gray-900">Trạng thái hệ thống</h2>
+                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
+                            <h2 className="text-lg font-semibold text-gray-900">Trạng thái</h2>
                         </div>
-                        <div className="p-4">
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
-                                    <div className="flex items-center space-x-3">
-                                        <CheckCircle className="h-5 w-5 text-emerald-600" />
-                                        <span className="text-sm font-medium text-emerald-900">Server API</span>
+                        <div className="p-3">
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between p-2 bg-emerald-50 rounded-lg">
+                                    <div className="flex items-center space-x-2">
+                                        <CheckCircle className="h-4 w-4 text-emerald-600" />
+                                        <span className="text-xs font-medium text-emerald-900">Server</span>
                                     </div>
                                     <span className="text-xs text-emerald-600 font-semibold">Online</span>
                                 </div>
-                                <div className="flex items-center justify-between p-3 bg-cyan-50 rounded-lg">
-                                    <div className="flex items-center space-x-3">
-                                        <Camera className="h-5 w-5 text-cyan-600" />
-                                        <span className="text-sm font-medium text-cyan-900">Camera</span>
+                                <div className="flex items-center justify-between p-2 bg-cyan-50 rounded-lg">
+                                    <div className="flex items-center space-x-2">
+                                        <Camera className="h-4 w-4 text-cyan-600" />
+                                        <span className="text-xs font-medium text-cyan-900">Camera</span>
                                     </div>
                                     <span className="text-xs text-cyan-600 font-semibold">{cameras.filter(c => c.status === 'Hoạt động').length}/{cameras.length}</span>
                                 </div>
-                                <div className="flex items-center justify-between p-3 bg-violet-50 rounded-lg">
-                                    <div className="flex items-center space-x-3">
-                                        <DollarSign className="h-5 w-5 text-violet-600" />
-                                        <span className="text-sm font-medium text-violet-900">Thanh toán</span>
+                                <div className="flex items-center justify-between p-2 bg-violet-50 rounded-lg">
+                                    <div className="flex items-center space-x-2">
+                                        <DollarSign className="h-4 w-4 text-violet-600" />
+                                        <span className="text-xs font-medium text-violet-900">Thanh toán</span>
                                     </div>
                                     <span className="text-xs text-violet-600 font-semibold">96%</span>
                                 </div>
