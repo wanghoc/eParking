@@ -5,14 +5,13 @@ version: '3.8'
 
 services:
   # Database - same as production but with exposed port for direct access
-  database:
+  postgres:
     ports:
-      - "3306:3306"
+      - "5432:5432"
     environment:
-      MYSQL_ROOT_PASSWORD: root_dev_password
-      MYSQL_DATABASE: eParking_db_dev
-      MYSQL_USER: dev_user
-      MYSQL_PASSWORD: dev_password
+      POSTGRES_USER: eparking_user
+      POSTGRES_PASSWORD: eparking_password_2024
+      POSTGRES_DB: eParking_db
 
   # Backend - with volume mounting for live reload
   backend:
@@ -21,10 +20,10 @@ services:
       dockerfile: Dockerfile.dev
     environment:
       NODE_ENV: development
-      DB_HOST: database
-      DB_USER: dev_user
-      DB_PASSWORD: dev_password
-      DB_DATABASE_NAME: eParking_db_dev
+      DB_HOST: postgres
+      DB_USER: eparking_user
+      DB_PASSWORD: eparking_password_2024
+      DB_DATABASE_NAME: eParking_db
     volumes:
       - ./BE:/app
       - /app/node_modules
