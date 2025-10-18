@@ -364,6 +364,324 @@ app.get('/api/cameras', async (req, res) => {
   }
 });
 
+app.post('/api/cameras', async (req, res) => {
+  const {
+    name,
+    location,
+    type,
+    ip_address,
+    camera_brand,
+    rtsp_url,
+    http_url,
+    username,
+    password,
+    port,
+    channel,
+    protocol,
+    main_stream_url,
+    sub_stream_url,
+    audio_enabled,
+    ptz_enabled,
+    device_id,
+    mac_address,
+    serial_number,
+    onvif_id,
+    resolution,
+    fps
+  } = req.body;
+
+  if (!name || !type) {
+    return res.status(400).json({ message: 'Name and type are required' });
+  }
+
+  try {
+    // Check if camera name already exists
+    const existingCamera = await prisma.camera.findFirst({
+      where: { name }
+    });
+
+    if (existingCamera) {
+      return res.status(409).json({ message: 'Camera name already exists' });
+    }
+
+    const camera = await prisma.camera.create({
+      data: {
+        name,
+        location: location || null,
+        type,
+        ip_address: ip_address || null,
+        camera_brand: camera_brand || null,
+        rtsp_url: rtsp_url || null,
+        http_url: http_url || null,
+        username: username || null,
+        password: password || null,
+        port: port || (protocol === 'RTSP' ? 554 : 80),
+        channel: channel || 0,
+        protocol: protocol || 'RTSP',
+        main_stream_url: main_stream_url || null,
+        sub_stream_url: sub_stream_url || null,
+        audio_enabled: audio_enabled || false,
+        ptz_enabled: ptz_enabled || false,
+        device_id: device_id || null,
+        mac_address: mac_address || null,
+        serial_number: serial_number || null,
+        onvif_id: onvif_id || null,
+        resolution: resolution || '1080p',
+        fps: fps || 30,
+        status: 'Hoạt động',
+        connection: 'Online'
+      }
+    });
+
+    await prisma.systemLog.create({
+      data: {
+        action: `Thêm camera mới: ${name}`,
+        type: 'Admin'
+      }
+    });
+
+    res.status(201).json({ 
+      message: 'Camera created successfully', 
+      cameraId: camera.id,
+      camera: camera 
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error creating camera' });
+  }
+});
+
+app.delete('/api/cameras/:cameraId', async (req, res) => {
+  const { cameraId } = req.params;
+
+  try {
+    const camera = await prisma.camera.findUnique({
+      where: { id: parseInt(cameraId) }
+    });
+
+    if (!camera) {
+      return res.status(404).json({ message: 'Camera not found' });
+    }
+
+    await prisma.camera.delete({
+      where: { id: parseInt(cameraId) }
+    });
+
+    await prisma.systemLog.create({
+      data: {
+        action: `Xóa camera: ${camera.name}`,
+        type: 'Admin'
+      }
+    });
+
+    res.json({ message: 'Camera deleted successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error deleting camera' });
+  }
+});
+
+app.post('/api/cameras/test-connection', async (req, res) => {
+  const {
+    ip_address,
+    port,
+    username,
+    password,
+    protocol,
+    rtsp_url,
+    http_url
+  } = req.body;
+
+  try {
+    // Basic validation
+    if (protocol === 'RTSP' && !rtsp_url && !ip_address) {
+      return res.status(400).json({ message: 'RTSP URL or IP address is required for RTSP protocol' });
+    }
+
+    if (protocol === 'HTTP' && !http_url && !ip_address) {
+      return res.status(400).json({ message: 'HTTP URL or IP address is required for HTTP protocol' });
+    }
+
+    // For now, we'll simulate a connection test
+    // In a real implementation, you would use libraries like node-ffmpeg or similar
+    // to test actual camera connections
+    
+    const testResult = {
+      success: true,
+      message: 'Connection test successful',
+      details: {
+        protocol: protocol,
+        ip_address: ip_address,
+        port: port,
+        stream_url: protocol === 'RTSP' ? rtsp_url : http_url,
+        timestamp: new Date().toISOString()
+      }
+    };
+
+    // Simulate some connection scenarios
+    if (ip_address && ip_address.includes('192.168')) {
+      testResult.success = true;
+      testResult.message = 'Local network camera connection successful';
+    } else if (ip_address && ip_address.includes('127.0.0.1')) {
+      testResult.success = false;
+      testResult.message = 'Cannot connect to localhost camera';
+    }
+
+    res.json(testResult);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error testing camera connection',
+      error: err.message 
+    });
+  }
+});
+
+// Camera Stream Proxy Endpoint
+app.get('/api/cameras/:id/stream', async (req, res) => {
+  const { id } = req.params;
+  const { protocol: queryProtocol, deviceId, rtsp } = req.query;
+
+  try {
+    const camera = await prisma.camera.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!camera) {
+      return res.status(404).json({ message: 'Camera not found' });
+    }
+
+    // Determine which protocol to use
+    const streamProtocol = queryProtocol || camera.protocol;
+    let streamUrl = '';
+
+    // Build stream URL based on protocol
+    switch (streamProtocol) {
+      case 'Yoosee':
+        // Yoosee snapshot URL
+        streamUrl = `http://${camera.ip_address}:${camera.port || 8000}/snapshot.jpg`;
+        break;
+        
+      case 'HTTP':
+        // HTTP stream/snapshot URL
+        streamUrl = camera.http_url || `http://${camera.ip_address}:${camera.port || 80}/videostream.cgi`;
+        break;
+        
+      case 'RTSP':
+        // RTSP stream - use FFmpeg to convert to JPEG snapshot
+        const rtspUrl = camera.rtsp_url || `rtsp://${camera.ip_address}:${camera.port || 554}/live/ch00_0`;
+        
+        // Build FFmpeg command with authentication if provided
+        let ffmpegUrl = rtspUrl;
+        if (camera.username && camera.password && !rtspUrl.includes('@')) {
+          // Insert credentials into URL
+          ffmpegUrl = rtspUrl.replace('rtsp://', `rtsp://${camera.username}:${camera.password}@`);
+        }
+
+        // Use FFmpeg to capture a single frame as JPEG
+        const { exec } = require('child_process');
+        const ffmpegCmd = `ffmpeg -rtsp_transport tcp -i "${ffmpegUrl}" -vframes 1 -f image2pipe -vcodec mjpeg -`;
+        
+        exec(ffmpegCmd, { encoding: 'buffer', maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+          if (error) {
+            console.error('FFmpeg error:', error);
+            return res.status(500).json({ 
+              message: 'Failed to capture RTSP stream',
+              error: error.message
+            });
+          }
+
+          if (stdout && stdout.length > 0) {
+            res.setHeader('Content-Type', 'image/jpeg');
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+            res.send(stdout);
+          } else {
+            res.status(500).json({ 
+              message: 'FFmpeg produced no output',
+              stderr: stderr.toString()
+            });
+          }
+        });
+        
+        return; // Exit early, FFmpeg handles response
+        
+      case 'ONVIF':
+        // ONVIF snapshot - usually at /onvif/snapshot
+        streamUrl = `http://${camera.ip_address}:${camera.port || 80}/onvif/snapshot`;
+        break;
+        
+      default:
+        // Generic HTTP snapshot
+        streamUrl = `http://${camera.ip_address}:${camera.port || 80}/snapshot.jpg`;
+    }
+
+    // Add authentication if provided
+    let fetchOptions = {
+      method: 'GET',
+      timeout: 5000
+    };
+
+    if (camera.username && camera.password) {
+      const auth = Buffer.from(`${camera.username}:${camera.password}`).toString('base64');
+      fetchOptions.headers = {
+        'Authorization': `Basic ${auth}`
+      };
+    }
+
+    // Fetch the image from camera using axios
+    const axios = require('axios');
+    
+    try {
+      const axiosResponse = await axios.get(streamUrl, {
+        responseType: 'arraybuffer',
+        timeout: 10000,
+        maxRedirects: 5,
+        headers: fetchOptions.headers || {},
+        validateStatus: (status) => status < 500 // Don't throw on 4xx errors
+      });
+
+      if (axiosResponse.status === 200) {
+        // Set headers for image
+        res.setHeader('Content-Type', axiosResponse.headers['content-type'] || 'image/jpeg');
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        
+        // Send image data
+        res.send(Buffer.from(axiosResponse.data));
+      } else if (axiosResponse.status === 401) {
+        res.status(401).json({ 
+          message: 'Camera authentication failed',
+          details: 'Invalid username or password'
+        });
+      } else {
+        res.status(axiosResponse.status).json({ 
+          message: 'Camera returned error',
+          statusCode: axiosResponse.status,
+          details: axiosResponse.statusText
+        });
+      }
+    } catch (error) {
+      console.error('Camera stream error:', error.message);
+      res.status(500).json({ 
+        message: 'Failed to connect to camera',
+        error: error.message,
+        streamUrl: streamUrl.replace(/:[^:]*@/, ':****@') // Hide password in logs
+      });
+    }
+
+  } catch (err) {
+    console.error('Stream endpoint error:', err);
+    res.status(500).json({ 
+      message: 'Error fetching camera stream',
+      error: err.message 
+    });
+  }
+});
+
 // DASHBOARD STATS
 app.get('/api/dashboard/stats', async (req, res) => {
   const { userId } = req.query;

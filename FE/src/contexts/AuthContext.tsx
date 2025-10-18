@@ -77,7 +77,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
 
             // Call backend API
-            const response = await fetch(apiUrl('/login'), {
+            const loginUrl = apiUrl('/login');
+            console.log('🔗 Login URL:', loginUrl);
+            
+            const response = await fetch(loginUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

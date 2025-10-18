@@ -13,8 +13,8 @@ RUN npm ci --only=production
 # Copy source code
 COPY . .
 
-# Install netcat for database health check
-RUN apk add --no-cache netcat-openbsd
+# Install netcat for database health check and FFmpeg for RTSP streaming
+RUN apk add --no-cache netcat-openbsd ffmpeg
 
 # Copy and make entrypoint script executable
 COPY docker-entrypoint.sh /docker-entrypoint.sh

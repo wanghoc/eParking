@@ -136,6 +136,32 @@ model Camera {
   recognition_accuracy  String?
   connection            String        @default("Online")
   battery               String?
+  
+  // Camera connection fields for external cameras (Yoosee, etc.)
+  camera_brand          String?       // "Yoosee", "Hikvision", etc.
+  rtsp_url              String?       // RTSP stream URL
+  http_url              String?       // HTTP stream URL
+  username              String?       // Camera username
+  password              String?       // Camera password
+  port                  Int?          // Camera port (default 554 for RTSP)
+  channel               Int?          // Camera channel (usually 0 or 1)
+  protocol              CameraProtocol @default(RTSP)
+  
+  // Stream settings
+  main_stream_url       String?       // Main stream URL
+  sub_stream_url        String?       // Sub stream URL
+  audio_enabled         Boolean       @default(false)
+  ptz_enabled           Boolean       @default(false) // Pan-Tilt-Zoom support
+  
+  // Device specific
+  device_id             String?       // Unique device ID for Yoosee
+  mac_address           String?       // MAC address
+  serial_number         String?       // Serial number
+  onvif_id              String?       // ONVIF ID (found on camera label)
+  firmware_version      String?       // Firmware version
+  
+  created_at            DateTime      @default(now())
+  updated_at            DateTime      @default(now()) @updatedAt
 
   // Relations
   alerts Alert[]
@@ -223,6 +249,14 @@ enum PaymentStatus {
 enum CameraType {
   Vao @map("Vào")
   Ra @map("Ra")
+}
+
+enum CameraProtocol {
+  RTSP
+  HTTP
+  ONVIF
+  Yoosee
+  Custom
 }
 
 enum Priority {

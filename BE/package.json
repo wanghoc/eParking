@@ -19,16 +19,17 @@
   "license": "ISC",
   "description": "eParking backend server",
   "dependencies": {
-    "@prisma/client": "^6.16.2",
+    "@prisma/client": "^6.17.1",
+    "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^5.1.0",
-    "pg": "^8.12.0",
-    "prisma": "^6.16.2"
+    "pg": "^8.12.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "prisma": "^6.17.1"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

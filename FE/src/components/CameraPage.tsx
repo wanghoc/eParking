@@ -1,6 +1,8 @@
 import { Camera, Video, AlertCircle, CheckCircle, Eye, Edit, Trash2, Wifi, WifiOff, RefreshCw, ChevronDown, X, Maximize2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { LiveCameraModal } from "./LiveCameraModal";
+import { AddCameraModal } from "./AddCameraModal";
+import { IPCameraStream } from "./IPCameraStream";
 import { apiUrl } from "../api";
 
 interface CameraData {
@@ -9,7 +11,15 @@ interface CameraData {
     location: string | null;
     type: string;
     status: string;
-    ipAddress?: string;
+    ip_address?: string;
+    port?: number;
+    protocol?: string;
+    device_id?: string;
+    username?: string;
+    password?: string;
+    rtsp_url?: string;
+    http_url?: string;
+    camera_brand?: string;
     resolution?: string;
     fps?: number;
     lastActivity?: string;
@@ -18,98 +28,19 @@ interface CameraData {
     battery?: string;
 }
 
-interface WebcamStream {
-    id: number;
-    stream: MediaStream | null;
-    cameraData: CameraData;
-}
-
 export function CameraPage() {
     const [showLiveModal, setShowLiveModal] = useState(false);
+    const [showAddModal, setShowAddModal] = useState(false);
     const [cameras, setCameras] = useState<CameraData[]>([]);
     const [showCameraSelector, setShowCameraSelector] = useState(false);
-    const [webcamStreams, setWebcamStreams] = useState<WebcamStream[]>([]);
     const [selectedCameraForFull, setSelectedCameraForFull] = useState<number | null>(null);
     const cameraRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
-    const videoRefs = useRef<{ [key: number]: HTMLVideoElement | null }>({});
 
     useEffect(() => {
         loadCameras();
     }, []);
 
-    useEffect(() => {
-        // Initialize webcam streams for cameras
-        const initWebcams = async () => {
-            const camerasToUse = cameras.length > 0 ? cameras : mockCameras;
-            
-            try {
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                const videoDevices = devices.filter(device => device.kind === 'videoinput');
-                
-                if (videoDevices.length === 0) {
-                    console.warn('No camera devices found');
-                    return;
-                }
-
-                const streams: WebcamStream[] = [];
-                
-                for (let i = 0; i < camerasToUse.length; i++) {
-                    const camera = camerasToUse[i];
-                    if (camera.status !== "Hoạt động") continue;
-                    
-                    try {
-                        const deviceId = videoDevices[i % videoDevices.length].deviceId;
-                        const stream = await navigator.mediaDevices.getUserMedia({
-                            video: {
-                                deviceId: deviceId ? { exact: deviceId } : undefined,
-                                width: { ideal: 640 },
-                                height: { ideal: 480 }
-                            },
-                            audio: false
-                        });
-                        
-                        streams.push({
-                            id: camera.id,
-                            stream: stream,
-                            cameraData: camera
-                        });
-                    } catch (err) {
-                        console.warn(`Failed to initialize webcam for camera ${camera.id}:`, err);
-                        streams.push({
-                            id: camera.id,
-                            stream: null,
-                            cameraData: camera
-                        });
-                    }
-                }
-                
-                setWebcamStreams(streams);
-            } catch (err) {
-                console.error('Failed to enumerate devices:', err);
-            }
-        };
-
-        initWebcams();
-
-        // Cleanup streams on unmount
-        return () => {
-            webcamStreams.forEach(ws => {
-                if (ws.stream) {
-                    ws.stream.getTracks().forEach(track => track.stop());
-                }
-            });
-        };
-    }, [cameras]);
-
-    // Assign video streams to video elements
-    useEffect(() => {
-        webcamStreams.forEach(ws => {
-            const videoElement = videoRefs.current[ws.id];
-            if (videoElement && ws.stream) {
-                videoElement.srcObject = ws.stream;
-            }
-        });
-    }, [webcamStreams]);
+    // No longer need webcam initialization - using IP camera streams instead
 
     const loadCameras = async () => {
         try {
@@ -129,14 +60,14 @@ export function CameraPage() {
         setSelectedCameraForFull(cameraId);
     };
 
-    const mockCameras = [
+    const mockCameras: CameraData[] = [
         {
             id: 1,
             name: "Camera A1",
             location: "Bãi xe A - Cổng vào",
             type: "Vào",
             status: "Hoạt động",
-            ipAddress: "192.168.1.101",
+            ip_address: "192.168.1.101",
             resolution: "1080p",
             fps: 30,
             lastActivity: "2024-01-15 10:30",
@@ -150,7 +81,7 @@ export function CameraPage() {
             location: "Bãi xe A - Cổng ra",
             type: "Ra",
             status: "Hoạt động",
-            ipAddress: "192.168.1.102",
+            ip_address: "192.168.1.102",
             resolution: "1080p",
             fps: 30,
             lastActivity: "2024-01-15 11:15",
@@ -164,7 +95,7 @@ export function CameraPage() {
             location: "Bãi xe B - Cổng vào",
             type: "Vào",
             status: "Hoạt động",
-            ipAddress: "192.168.1.103",
+            ip_address: "192.168.1.103",
             resolution: "1080p",
             fps: 30,
             lastActivity: "2024-01-15 09:45",
@@ -178,7 +109,7 @@ export function CameraPage() {
             location: "Bãi xe B - Cổng ra",
             type: "Ra",
             status: "Lỗi",
-            ipAddress: "192.168.1.104",
+            ip_address: "192.168.1.104",
             resolution: "1080p",
             fps: 0,
             lastActivity: "2024-01-15 08:30",
@@ -248,7 +179,10 @@ export function CameraPage() {
                         <p className="text-cyan-100 text-base lg:text-lg drop-shadow-md">Hệ thống nhận diện biển số - Đại học Đà Lạt</p>
                     </div>
                     <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-                        <button className="bg-white bg-opacity-20 px-4 lg:px-6 py-2 lg:py-3 rounded-xl flex items-center justify-center space-x-2 hover:bg-opacity-30 transition-all duration-300">
+                        <button 
+                            onClick={() => setShowAddModal(true)}
+                            className="bg-white bg-opacity-20 px-4 lg:px-6 py-2 lg:py-3 rounded-xl flex items-center justify-center space-x-2 hover:bg-opacity-30 transition-all duration-300"
+                        >
                             <Camera className="h-4 w-4 lg:h-5 lg:w-5" />
                             <span className="text-sm lg:text-base">Thêm camera</span>
                         </button>
@@ -312,7 +246,6 @@ export function CameraPage() {
                         {organizeCamerasByParkingLot().map((row, rowIndex) => (
                             <div key={rowIndex} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {row.map((camera) => {
-                                    const webcamStream = webcamStreams.find(ws => ws.id === camera.id);
                                     return (
                                         <div
                                             key={camera.id}
@@ -320,14 +253,19 @@ export function CameraPage() {
                                             className="relative bg-gray-900 rounded-xl overflow-hidden aspect-video transition-all duration-300 cursor-pointer hover:ring-2 hover:ring-cyan-500"
                                             onClick={() => setSelectedCameraForFull(camera.id)}
                                         >
-                                            {/* Webcam video feed */}
-                                            {webcamStream?.stream ? (
-                                                <video
-                                                    ref={(el) => videoRefs.current[camera.id] = el}
-                                                    autoPlay
-                                                    playsInline
-                                                    muted
-                                                    className="absolute inset-0 w-full h-full object-cover"
+                                            {/* IP Camera Stream */}
+                                            {camera.ip_address || camera.device_id ? (
+                                                <IPCameraStream
+                                                    cameraId={camera.id}
+                                                    name={camera.name}
+                                                    ipAddress={camera.ip_address}
+                                                    port={camera.port}
+                                                    protocol={camera.protocol}
+                                                    deviceId={camera.device_id}
+                                                    username={camera.username}
+                                                    password={camera.password}
+                                                    rtspUrl={camera.rtsp_url}
+                                                    httpUrl={camera.http_url}
                                                 />
                                             ) : (
                                                 <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
@@ -335,6 +273,7 @@ export function CameraPage() {
                                                         <Camera className="h-12 w-12 mx-auto mb-2 opacity-50" />
                                                         <p className="text-sm opacity-75">{camera.name}</p>
                                                         <p className="text-xs opacity-50">{camera.location}</p>
+                                                        <p className="text-xs opacity-50 mt-2">Chưa cấu hình IP/Device ID</p>
                                                     </div>
                                                 </div>
                                             )}
@@ -412,7 +351,7 @@ export function CameraPage() {
                                                 </div>
                                                 <div>
                                                     <div className="text-sm font-medium text-gray-900">{camera.name}</div>
-                                                    <div className="text-sm text-gray-500">{camera.ipAddress}</div>
+                                                    <div className="text-sm text-gray-500">{camera.ip_address}</div>
                                                 </div>
                                             </div>
                                         </td>
@@ -477,6 +416,16 @@ export function CameraPage() {
                 cameraCount={(cameras.length > 0 ? cameras : mockCameras).length}
             />
 
+            {/* Add Camera Modal */}
+            <AddCameraModal
+                isOpen={showAddModal}
+                onClose={() => setShowAddModal(false)}
+                onCameraAdded={() => {
+                    loadCameras();
+                    setShowAddModal(false);
+                }}
+            />
+
             {/* Full Camera View Modal */}
             {selectedCameraForFull && (
                 <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
@@ -500,23 +449,23 @@ export function CameraPage() {
                         {/* Full camera view */}
                         {(() => {
                             const camera = (cameras.length > 0 ? cameras : mockCameras).find(c => c.id === selectedCameraForFull);
-                            const webcamStream = webcamStreams.find(ws => ws.id === selectedCameraForFull);
                             
                             if (!camera) return null;
 
                             return (
                                 <>
-                                    {webcamStream?.stream ? (
-                                        <video
-                                            ref={(el) => {
-                                                if (el && webcamStream.stream) {
-                                                    el.srcObject = webcamStream.stream;
-                                                }
-                                            }}
-                                            autoPlay
-                                            playsInline
-                                            muted
-                                            className="w-full h-full object-contain bg-black"
+                                    {camera.ip_address || camera.device_id ? (
+                                        <IPCameraStream
+                                            cameraId={camera.id}
+                                            name={camera.name}
+                                            ipAddress={camera.ip_address}
+                                            port={camera.port}
+                                            protocol={camera.protocol}
+                                            deviceId={camera.device_id}
+                                            username={camera.username}
+                                            password={camera.password}
+                                            rtspUrl={camera.rtsp_url}
+                                            httpUrl={camera.http_url}
                                         />
                                     ) : (
                                         <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
@@ -524,6 +473,7 @@ export function CameraPage() {
                                                 <Camera className="h-24 w-24 mx-auto mb-4 opacity-50" />
                                                 <p className="text-xl opacity-75">{camera.name}</p>
                                                 <p className="text-sm opacity-50 mt-2">{camera.location}</p>
+                                                <p className="text-xs opacity-50 mt-2">Chưa cấu hình IP/Device ID</p>
                                             </div>
                                         </div>
                                     )}
