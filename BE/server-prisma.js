@@ -992,21 +992,98 @@ app.put('/api/vehicles/:vehicleId', async (req, res) => {
   }
 });
 
+// PARKING LOT CREATE
+app.post('/api/parking-lots', async (req, res) => {
+  const { name, capacity, status } = req.body;
+  
+  if (!name || !capacity) {
+    return res.status(400).json({ message: 'Tên bãi xe và sức chứa là bắt buộc' });
+  }
+  
+  try {
+    // Get fee from system settings
+    const feeSettings = await prisma.systemSetting.findUnique({
+      where: { setting_key: 'fee_per_turn' }
+    });
+    
+    const feePerTurn = feeSettings ? parseFloat(feeSettings.setting_value) : 2000;
+    
+    const lot = await prisma.parkingLot.create({
+      data: {
+        name,
+        capacity: parseInt(capacity),
+        fee_per_turn: feePerTurn,
+        status: status || 'Hoạt động'
+      }
+    });
+    
+    res.status(201).json({ 
+      message: 'Tạo bãi xe thành công', 
+      parkingLot: lot 
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi khi tạo bãi xe' });
+  }
+});
+
 // PARKING LOT UPDATE
 app.put('/api/parking-lots/:lotId', async (req, res) => {
   const { lotId } = req.params;
-  const { name, capacity, fee_per_turn, status } = req.body;
+  const { name, capacity, status } = req.body;
   
   try {
+    // Get fee from system settings
+    const feeSettings = await prisma.systemSetting.findUnique({
+      where: { setting_key: 'fee_per_turn' }
+    });
+    
+    const feePerTurn = feeSettings ? parseFloat(feeSettings.setting_value) : 2000;
+    
     const lot = await prisma.parkingLot.update({
       where: { id: parseInt(lotId) },
-      data: { name, capacity, fee_per_turn, status }
+      data: { 
+        name, 
+        capacity: parseInt(capacity), 
+        fee_per_turn: feePerTurn,
+        status 
+      }
     });
     
     res.json(lot);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Error updating parking lot' });
+    res.status(500).json({ message: 'Lỗi khi cập nhật bãi xe' });
+  }
+});
+
+// PARKING LOT DELETE
+app.delete('/api/parking-lots/:lotId', async (req, res) => {
+  const { lotId } = req.params;
+  
+  try {
+    // Check if there are active parking sessions
+    const activeSessions = await prisma.parkingSession.count({
+      where: {
+        lot_id: parseInt(lotId),
+        exit_time: null
+      }
+    });
+    
+    if (activeSessions > 0) {
+      return res.status(400).json({ 
+        message: 'Không thể xóa bãi xe đang có xe gửi' 
+      });
+    }
+    
+    await prisma.parkingLot.delete({
+      where: { id: parseInt(lotId) }
+    });
+    
+    res.json({ message: 'Xóa bãi xe thành công' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi khi xóa bãi xe' });
   }
 });
 
