@@ -21,13 +21,6 @@ interface RecentActivity {
     recognitionMethod: string;
 }
 
-interface Camera {
-    id: number;
-    name: string;
-    location: string | null;
-    type: string;
-    status: string;
-}
 
 interface DashboardStats {
     vehiclesIn: number;
@@ -257,7 +250,7 @@ export function ManagementPage() {
     };
 
     const handleDeleteParkingLot = async (lot: ParkingLot) => {
-        if (!confirm(`Bạn có chắc chắn muốn xóa bãi xe "${lot.name}"?`)) {
+        if (!window.confirm(`Bạn có chắc chắn muốn xóa bãi xe "${lot.name}"?`)) {
             return;
         }
 
