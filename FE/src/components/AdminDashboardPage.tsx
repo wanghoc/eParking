@@ -23,6 +23,7 @@ interface CameraFeed {
     id: number;
     name: string;
     location: string;
+    parking_lot_id: number;
     type: string;
     status: string;
     lastPlate?: string;
@@ -419,10 +420,8 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {cameras.filter(cam => {
-                                    // Filter cameras by selected parking lot
-                                    const selectedLot = parkingLots.find(l => l.id === selectedParkingLot);
-                                    if (!selectedLot) return false;
-                                    return cam.location?.includes(selectedLot.name);
+                                    // Filter cameras by selected parking lot using parking_lot_id
+                                    return cam.parking_lot_id === selectedParkingLot;
                                 }).slice(0, 2).map((camera) => (
                                     <div key={camera.id} className="relative bg-gray-900 rounded-xl overflow-hidden aspect-video">
                                         {/* Simulated camera feed */}

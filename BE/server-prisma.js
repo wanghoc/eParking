@@ -368,6 +368,7 @@ app.post('/api/cameras', async (req, res) => {
   const {
     name,
     location,
+    parking_lot_id,
     type,
     ip_address,
     camera_brand,
@@ -408,6 +409,7 @@ app.post('/api/cameras', async (req, res) => {
       data: {
         name,
         location: location || null,
+        parking_lot_id: parking_lot_id ? parseInt(parking_lot_id) : null,
         type,
         ip_address: ip_address || null,
         camera_brand: camera_brand || null,
@@ -1467,6 +1469,7 @@ app.put('/api/cameras/:cameraId', async (req, res) => {
   const {
     name,
     location,
+    parking_lot_id,
     type,
     status,
     ip_address,
@@ -1496,6 +1499,7 @@ app.put('/api/cameras/:cameraId', async (req, res) => {
       data: {
         name,
         location: location || null,
+        parking_lot_id: parking_lot_id ? parseInt(parking_lot_id) : null,
         type,
         status: status || 'Hoạt động',
         ip_address: ip_address || null,

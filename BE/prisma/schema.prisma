@@ -128,6 +128,7 @@ model Camera {
   id                    Int           @id @default(autoincrement())
   name                  String
   location              String?
+  parking_lot_id        Int?          // Liên kết với bãi xe
   type                  CameraType
   status                String        @default("Hoạt động")
   ip_address            String?

@@ -9,6 +9,7 @@ interface CameraData {
     id: number;
     name: string;
     location: string | null;
+    parking_lot_id: number | null;
     type: string;
     status: string;
     ip_address?: string;
@@ -132,66 +133,6 @@ export function CameraPage() {
         }
     };
 
-    const mockCameras: CameraData[] = [
-        {
-            id: 1,
-            name: "Camera A1",
-            location: "Bãi xe A - Cổng vào",
-            type: "Vào",
-            status: "Hoạt động",
-            ip_address: "192.168.1.101",
-            resolution: "1080p",
-            fps: 30,
-            lastActivity: "2024-01-15 10:30",
-            recognitionAccuracy: "96%",
-            connection: "Online",
-            battery: "100%"
-        },
-        {
-            id: 2,
-            name: "Camera A2",
-            location: "Bãi xe A - Cổng ra",
-            type: "Ra",
-            status: "Hoạt động",
-            ip_address: "192.168.1.102",
-            resolution: "1080p",
-            fps: 30,
-            lastActivity: "2024-01-15 11:15",
-            recognitionAccuracy: "94%",
-            connection: "Online",
-            battery: "95%"
-        },
-        {
-            id: 3,
-            name: "Camera B1",
-            location: "Bãi xe B - Cổng vào",
-            type: "Vào",
-            status: "Hoạt động",
-            ip_address: "192.168.1.103",
-            resolution: "1080p",
-            fps: 30,
-            lastActivity: "2024-01-15 09:45",
-            recognitionAccuracy: "92%",
-            connection: "Online",
-            battery: "88%"
-        },
-        {
-            id: 4,
-            name: "Camera B2",
-            location: "Bãi xe B - Cổng ra",
-            type: "Ra",
-            status: "Lỗi",
-            ip_address: "192.168.1.104",
-            resolution: "1080p",
-            fps: 0,
-            lastActivity: "2024-01-15 08:30",
-            recognitionAccuracy: "0%",
-            connection: "Offline",
-            battery: "45%"
-        }
-    ];
-
-
     const getStatusColor = (status: string) => {
         if (status === "Hoạt động") return "bg-emerald-100 text-emerald-800";
         if (status === "Lỗi") return "bg-red-100 text-red-800";
@@ -205,7 +146,7 @@ export function CameraPage() {
 
     // Organize cameras by parking lot (2 cameras per row)
     const organizeCamerasByParkingLot = () => {
-        const camerasToUse = cameras.length > 0 ? cameras : mockCameras;
+        const camerasToUse = cameras;
         const activeCameras = camerasToUse.filter(cam => cam.status === "Hoạt động");
         
         // Group cameras by parking lot
@@ -311,7 +252,7 @@ export function CameraPage() {
                                             {showCameraSelector && (
                                                 <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
                                                     <div className="p-2 max-h-64 overflow-y-auto">
-                                                        {(cameras.length > 0 ? cameras : mockCameras).map((camera) => (
+                                                        {cameras.map((camera) => (
                                                             <button
                                                                 key={camera.id}
                                                                 onClick={() => handleCameraSelect(camera.id)}
@@ -448,7 +389,7 @@ export function CameraPage() {
                                                 </tr>
                                             </thead>
                                             <tbody className="bg-white divide-y divide-gray-200">
-                                                {(cameras.length > 0 ? cameras : mockCameras).map((camera) => (
+                                                {cameras.map((camera) => (
                                                     <tr key={camera.id} className="hover:bg-gray-50 transition-colors">
                                                         <td className="px-6 py-6 whitespace-nowrap">
                                                             <div className="flex items-center">
@@ -531,7 +472,7 @@ export function CameraPage() {
             <LiveCameraModal 
                 isOpen={showLiveModal}
                 onClose={() => setShowLiveModal(false)}
-                cameraCount={(cameras.length > 0 ? cameras : mockCameras).length}
+                cameraCount={cameras.length}
             />
 
             {/* Add Camera Modal */}
@@ -735,7 +676,7 @@ export function CameraPage() {
 
                         {/* Full camera view */}
                         {(() => {
-                            const camera = (cameras.length > 0 ? cameras : mockCameras).find(c => c.id === selectedCameraForFull);
+                            const camera = cameras.find(c => c.id === selectedCameraForFull);
                             
                             if (!camera) return null;
 

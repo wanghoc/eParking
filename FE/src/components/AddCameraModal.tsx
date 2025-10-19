@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Camera, X, TestTube, Save, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { apiUrl } from '../api';
 
@@ -8,9 +8,17 @@ interface AddCameraModalProps {
     onCameraAdded: () => void;
 }
 
+interface ParkingLot {
+    id: number;
+    name: string;
+    capacity: number;
+    occupied: number;
+    status: string;
+}
+
 interface CameraFormData {
     name: string;
-    location: string;
+    parking_lot_id: number;
     type: 'Vao' | 'Ra';
     ip_address: string;
     camera_brand: string;
@@ -33,10 +41,36 @@ interface CameraFormData {
     fps: number;
 }
 
+interface CameraFormErrors {
+    name?: string;
+    parking_lot_id?: string;
+    type?: string;
+    ip_address?: string;
+    camera_brand?: string;
+    protocol?: string;
+    username?: string;
+    password?: string;
+    port?: string;
+    channel?: string;
+    rtsp_url?: string;
+    http_url?: string;
+    main_stream_url?: string;
+    sub_stream_url?: string;
+    audio_enabled?: string;
+    ptz_enabled?: string;
+    device_id?: string;
+    mac_address?: string;
+    serial_number?: string;
+    onvif_id?: string;
+    resolution?: string;
+    fps?: string;
+}
+
 export function AddCameraModal({ isOpen, onClose, onCameraAdded }: AddCameraModalProps) {
+    const [parkingLots, setParkingLots] = useState<ParkingLot[]>([]);
     const [formData, setFormData] = useState<CameraFormData>({
         name: '',
-        location: '',
+        parking_lot_id: 0,
         type: 'Vao',
         ip_address: '',
         camera_brand: 'Yoosee',
@@ -59,21 +93,44 @@ export function AddCameraModal({ isOpen, onClose, onCameraAdded }: AddCameraModa
         fps: 30
     });
 
-    const [errors, setErrors] = useState<Partial<CameraFormData>>({});
+    const [errors, setErrors] = useState<CameraFormErrors>({});
     const [isLoading, setIsLoading] = useState(false);
     const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
     const [showPassword, setShowPassword] = useState(false);
     const [currentStep, setCurrentStep] = useState(1);
+
+    // Load parking lots when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            loadParkingLots();
+        }
+    }, [isOpen]);
+
+    const loadParkingLots = async () => {
+        try {
+            const response = await fetch(apiUrl('/parking-lots'));
+            if (response.ok) {
+                const lots = await response.json();
+                setParkingLots(lots);
+            }
+        } catch (error) {
+            console.error('Error loading parking lots:', error);
+        }
+    };
 
     const brands = ['Yoosee', 'Hikvision', 'Dahua', 'TP-Link', 'Xiaomi', 'Generic', 'Other'];
     const protocols = ['RTSP', 'HTTP', 'ONVIF', 'Yoosee', 'Custom'];
     const resolutions = ['720p', '1080p', '4K', '2K'];
 
     const validateForm = (): boolean => {
-        const newErrors: Partial<CameraFormData> = {};
+        const newErrors: CameraFormErrors = {};
 
         if (!formData.name) {
             newErrors.name = 'Tên camera là bắt buộc';
+        }
+
+        if (!formData.parking_lot_id) {
+            newErrors.parking_lot_id = 'Vui lòng chọn bãi xe';
         }
 
         // IP address is required for most protocols except Yoosee (can use Device ID only)
@@ -220,7 +277,7 @@ export function AddCameraModal({ isOpen, onClose, onCameraAdded }: AddCameraModa
     const resetForm = () => {
         setFormData({
             name: '',
-            location: '',
+            parking_lot_id: 0,
             type: 'Vao',
             ip_address: '',
             camera_brand: 'Yoosee',
@@ -250,10 +307,11 @@ export function AddCameraModal({ isOpen, onClose, onCameraAdded }: AddCameraModa
     const nextStep = () => {
         if (currentStep === 1) {
             // Validate basic info before proceeding
-            if (!formData.name || !formData.type) {
-                const newErrors: Partial<CameraFormData> = {};
+            if (!formData.name || !formData.type || !formData.parking_lot_id) {
+                const newErrors: CameraFormErrors = {};
                 if (!formData.name) newErrors.name = 'Tên camera là bắt buộc';
-                if (!formData.type) newErrors.type = 'Loại camera là bắt buộc' as any;
+                if (!formData.type) newErrors.type = 'Loại camera là bắt buộc';
+                if (!formData.parking_lot_id) newErrors.parking_lot_id = 'Vui lòng chọn bãi xe';
                 setErrors(newErrors);
                 return;
             }
@@ -329,15 +387,23 @@ export function AddCameraModal({ isOpen, onClose, onCameraAdded }: AddCameraModa
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Vị trí
+                                        Bãi xe *
                                     </label>
-                                    <input
-                                        type="text"
-                                        value={formData.location}
-                                        onChange={(e) => handleInputChange('location', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                        placeholder="Ví dụ: Bãi xe A - Cổng vào"
-                                    />
+                                    <select
+                                        value={formData.parking_lot_id}
+                                        onChange={(e) => handleInputChange('parking_lot_id', parseInt(e.target.value))}
+                                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
+                                            errors.parking_lot_id ? 'border-red-300' : 'border-gray-300'
+                                        }`}
+                                    >
+                                        <option value={0}>Chọn bãi xe</option>
+                                        {parkingLots.map(lot => (
+                                            <option key={lot.id} value={lot.id}>
+                                                {lot.name} ({lot.occupied}/{lot.capacity})
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {errors.parking_lot_id && <p className="mt-1 text-sm text-red-600">{errors.parking_lot_id}</p>}
                                 </div>
 
                                 <div>
