@@ -91,6 +91,7 @@ model ParkingLot {
   id           Int      @id @default(autoincrement())
   name         String
   capacity     Int
+  occupied     Int      @default(0)
   fee_per_turn Decimal  @default(2000.00)
   status       String   @default("Hoạt động")
   created_at   DateTime @default(now())
