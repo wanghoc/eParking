@@ -1,4 +1,4 @@
-import { Home, Car, History, CreditCard, MapPin, Settings, HelpCircle, Building2, Camera, LogOut, User, Monitor } from "lucide-react";
+import { Home, Bike, History, CreditCard, MapPin, Settings, HelpCircle, Building2, Camera, LogOut, User, Monitor } from "lucide-react";
 import { Avatar } from "../ui/avatar";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -23,7 +23,7 @@ export function AppSidebar({ activeItem, onItemClick, onClose, onProfileClick }:
         ]
         : [
             { id: "home", label: "Trang chủ", icon: Home },
-            { id: "vehicles", label: "Phương tiện", icon: Car },
+            { id: "vehicles", label: "Phương tiện", icon: Bike },
             { id: "history", label: "Lịch sử gửi xe", icon: History },
             { id: "payment", label: "Nạp tiền", icon: CreditCard },
             { id: "faq", label: "FAQ", icon: HelpCircle },

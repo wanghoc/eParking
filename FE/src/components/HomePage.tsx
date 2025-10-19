@@ -1,4 +1,4 @@
-import { Home, Car, CreditCard, History, MapPin, Users, DollarSign, CheckCircle, AlertCircle, Camera } from "lucide-react";
+import { Home, Bike, CreditCard, History, MapPin, Users, DollarSign, CheckCircle, AlertCircle, Camera } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { apiUrl } from "../api";
@@ -47,7 +47,7 @@ export function HomePage() {
         {
             title: "Xe đang gửi",
             value: isLoading ? "..." : stats.currentParking.toString(),
-            icon: Car,
+            icon: Bike,
             color: "bg-gradient-to-r from-cyan-500 to-cyan-600"
         },
         {
@@ -65,7 +65,7 @@ export function HomePage() {
         {
             title: "Phương tiện đã đăng ký",
             value: isLoading ? "..." : stats.vehiclesCount.toString(),
-            icon: Car,
+            icon: Bike,
             color: "bg-gradient-to-r from-violet-500 to-violet-600"
         }
     ];
@@ -200,9 +200,9 @@ export function HomePage() {
                                                     "bg-violet-100"
                                                 }`}>
                                                 {activity.type === "Xe vào bãi" ? (
-                                                    <Car className="h-5 w-5 text-emerald-600" />
+                                                    <Bike className="h-5 w-5 text-emerald-600" />
                                                 ) : activity.type === "Xe ra bãi" ? (
-                                                    <Car className="h-5 w-5 text-blue-600" />
+                                                    <Bike className="h-5 w-5 text-blue-600" />
                                                 ) : (
                                                     <CreditCard className="h-5 w-5 text-violet-600" />
                                                 )}
@@ -261,7 +261,7 @@ export function HomePage() {
                         <div className="p-6">
                             <div className="grid grid-cols-2 gap-4">
                                 <button className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white p-4 rounded-xl hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-                                    <Car className="h-6 w-6 mb-2" />
+                                    <Bike className="h-6 w-6 mb-2" />
                                     <span className="text-sm font-medium">Thêm xe</span>
                                 </button>
                                 <button className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-4 rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">

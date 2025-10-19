@@ -1,4 +1,4 @@
-import { Building2, Car, DollarSign, Activity, X, Plus, Edit, Trash2 } from "lucide-react";
+import { Building2, Bike, DollarSign, Activity, X, Plus, Edit, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { apiUrl } from "../api";
 import { LiveCameraModal } from "./LiveCameraModal";
@@ -316,7 +316,7 @@ export function ManagementPage() {
                             <p className="text-2xl font-bold text-gray-900">{stats.vehiclesIn}</p>
                         </div>
                         <div className="p-3 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-lg">
-                            <Car className="h-6 w-6 text-white" />
+                            <Bike className="h-6 w-6 text-white" />
                         </div>
                     </div>
                 </div>
@@ -328,7 +328,7 @@ export function ManagementPage() {
                             <p className="text-2xl font-bold text-gray-900">{stats.vehiclesOut}</p>
                         </div>
                         <div className="p-3 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 shadow-lg">
-                            <Car className="h-6 w-6 text-white" />
+                            <Bike className="h-6 w-6 text-white" />
                         </div>
                     </div>
                 </div>
@@ -543,7 +543,7 @@ export function ManagementPage() {
                                                         <td className="px-6 py-6 whitespace-nowrap">
                                                             <div className="flex items-center">
                                                                 <div className={`p-2 rounded-lg ${activity.type === "Xe vào bãi" ? "bg-emerald-100" : "bg-blue-100"}`}>
-                                                                    <Car className={`h-4 w-4 ${activity.type === "Xe vào bãi" ? "text-emerald-600" : "text-blue-600"}`} />
+                                                                    <Bike className={`h-4 w-4 ${activity.type === "Xe vào bãi" ? "text-emerald-600" : "text-blue-600"}`} />
                                                                 </div>
                                                                 <div className="ml-3">
                                                                     <div className="text-sm font-medium text-gray-900">{activity.type}</div>

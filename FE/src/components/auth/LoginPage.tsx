@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, EyeOff, Mail, Lock, Car, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, Bike, ArrowLeft } from 'lucide-react';
 import { useAuth, LoginData } from '../../contexts/AuthContext';
 
 interface LoginPageProps {
@@ -77,7 +77,7 @@ export function LoginPage({ onSwitchToRegister, onBack }: LoginPageProps) {
                     {/* Header */}
                     <div className="text-center mb-8">
                         <div className="bg-cyan-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Car className="h-8 w-8 text-cyan-600" />
+                            <Bike className="h-8 w-8 text-cyan-600" />
                         </div>
                         <h1 className="text-3xl font-bold text-gray-900 mb-2">Đăng nhập</h1>
                         <p className="text-gray-600">Hệ thống eParking - Trường Đại học Đà Lạt</p>
@@ -217,7 +217,7 @@ export function LoginPage({ onSwitchToRegister, onBack }: LoginPageProps) {
                 />
                 <div className="absolute inset-0 bg-black bg-opacity-40"></div>
                 <div className="relative z-10 flex flex-col justify-center items-center text-white p-12 text-center">
-                    <Car className="h-24 w-24 mb-8 opacity-90" />
+                    <Bike className="h-24 w-24 mb-8 opacity-90" />
                     <h2 className="text-4xl font-bold mb-4">Chào mừng đến với eParking</h2>
                     <p className="text-xl mb-8 opacity-90">
                         Hệ thống quản lý bãi đỗ xe thông minh

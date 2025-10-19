@@ -1,4 +1,4 @@
-import { Shield, Camera, AlertCircle, CheckCircle, DollarSign, Car, Clock, Video, RefreshCw, Settings as SettingsIcon, FileText, Map, XCircle, ChevronDown } from "lucide-react";
+import { Shield, Camera, AlertCircle, CheckCircle, DollarSign, Bike, Clock, Video, RefreshCw, Settings as SettingsIcon, FileText, Map, XCircle, ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiUrl } from "../api";
 
@@ -263,13 +263,13 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
         {
             title: "Xe đang gửi",
             value: isLoading ? "..." : (stats?.currentParking ?? 0).toString(),
-            icon: Car,
+            icon: Bike,
             color: "bg-gradient-to-r from-cyan-500 to-cyan-600"
         },
         {
             title: "Phương tiện đã đăng ký",
             value: isLoading ? "..." : (stats?.totalVehicles ?? 0).toString(),
-            icon: Car,
+            icon: Bike,
             color: "bg-gradient-to-r from-emerald-500 to-emerald-600"
         },
         {
@@ -480,7 +480,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                         <div className="overflow-x-auto">
                             {!selectedParkingLot ? (
                                 <div className="p-12 text-center text-gray-500">
-                                    <Car className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                                    <Bike className="h-16 w-16 mx-auto mb-4 opacity-50" />
                                     <p className="text-lg font-medium">Chọn bãi xe để xem danh sách</p>
                                     <p className="text-sm mt-2">Vui lòng chọn bãi xe từ menu bên trên</p>
                                 </div>
@@ -504,7 +504,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center">
                                                         <div className="bg-cyan-100 p-2 rounded-lg mr-3">
-                                                            <Car className="h-4 w-4 text-cyan-600" />
+                                                            <Bike className="h-4 w-4 text-cyan-600" />
                                                         </div>
                                                         <span className="text-sm font-medium text-gray-900">{session.license_plate}</span>
                                                     </div>

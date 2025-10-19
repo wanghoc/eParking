@@ -1,4 +1,4 @@
-import { History, Car, Clock, DollarSign, CheckCircle, Calendar } from "lucide-react";
+import { History, Bike, Clock, DollarSign, CheckCircle, Calendar } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { apiUrl } from "../api";
@@ -83,7 +83,7 @@ export function HistoryPage() {
         {
             title: "Tổng lượt gửi",
             value: isLoading ? "..." : stats.totalSessions.toString(),
-            icon: Car,
+            icon: Bike,
             color: "bg-gradient-to-r from-cyan-500 to-cyan-600"
         },
         {
@@ -247,7 +247,7 @@ export function HistoryPage() {
                                         <td className="px-6 py-6 whitespace-nowrap">
                                             <div className="flex items-center">
                                                 <div className="bg-cyan-100 p-3 rounded-full mr-4">
-                                                    <Car className="h-5 w-5 text-cyan-600" />
+                                                    <Bike className="h-5 w-5 text-cyan-600" />
                                                 </div>
                                                 <div>
                                                     <div className="text-sm font-medium text-gray-900">{session.vehicle.license_plate}</div>

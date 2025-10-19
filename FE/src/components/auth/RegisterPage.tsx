@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, EyeOff, Mail, Lock, User, Phone, GraduationCap, Car, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Phone, GraduationCap, Bike, ArrowLeft } from 'lucide-react';
 import { useAuth, RegisterData } from '../../contexts/AuthContext';
 
 interface RegisterPageProps {
@@ -116,7 +116,7 @@ export function RegisterPage({ onSwitchToLogin, onBack }: RegisterPageProps) {
                     {/* Header */}
                     <div className="text-center mb-8">
                         <div className="bg-cyan-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Car className="h-8 w-8 text-cyan-600" />
+                            <Bike className="h-8 w-8 text-cyan-600" />
                         </div>
                         <h1 className="text-3xl font-bold text-gray-900 mb-2">Đăng ký tài khoản</h1>
                         <p className="text-gray-600">Hệ thống eParking - Trường Đại học Đà Lạt</p>

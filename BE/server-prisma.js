@@ -765,10 +765,13 @@ app.get('/api/admin/vehicles', async (_req, res) => {
   }
 });
 
-// ADMIN: Users list with vehicles count and wallet balance
+// ADMIN: Users list with vehicles count and wallet balance (only students)
 app.get('/api/admin/users', async (_req, res) => {
   try {
     const users = await prisma.user.findMany({
+      where: {
+        role: 'student'  // Only get students, not admins
+      },
       select: {
         id: true,
         username: true,
@@ -796,38 +799,91 @@ app.get('/api/admin/users', async (_req, res) => {
   }
 });
 
-// ADMIN: Vehicles list with owner info (mssv, username)
-app.get('/api/admin/vehicles', async (_req, res) => {
+// ADMIN DELETE USER
+app.delete('/api/admin/users/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const { adminPassword } = req.body;
+  
+  if (!adminPassword) {
+    return res.status(400).json({ message: 'Mật khẩu admin là bắt buộc' });
+  }
+  
   try {
-    const vehicles = await prisma.vehicle.findMany({
-      include: {
-        user: {
-          select: { id: true, username: true, mssv: true }
-        }
-      },
-      orderBy: { created_at: 'desc' }
-    });
-
-    const formatted = vehicles.map(v => ({
-      id: v.id,
-      license_plate: v.license_plate,
-      brand: v.brand,
-      model: v.model,
-      vehicle_type: v.vehicle_type,
-      created_at: v.created_at,
-      owner: {
-        id: v.user?.id || null,
-        name: v.user?.username || '',
-        mssv: v.user?.mssv || ''
+    // Verify admin password
+    if (adminPassword !== 'admin123') {
+      return res.status(401).json({ message: 'Mật khẩu admin không đúng' });
+    }
+    
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(userId) },
+      select: { 
+        id: true,
+        username: true,
+        mssv: true,
+        role: true,
+        wallet: { select: { balance: true } }
       }
-    }));
-
-    res.json(formatted);
+    });
+    
+    if (!user) {
+      return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+    }
+    
+    // Check if user is admin
+    if (user.role === 'admin') {
+      return res.status(403).json({ message: 'Không thể xóa tài khoản admin' });
+    }
+    
+    // Check if user has zero balance
+    const balance = user.wallet ? Number(user.wallet.balance) : 0;
+    if (balance !== 0) {
+      return res.status(400).json({ 
+        message: 'Chỉ có thể xóa tài khoản khi số dư bằng 0₫',
+        currentBalance: balance
+      });
+    }
+    
+    // Check for active parking sessions
+    const activeSessions = await prisma.parkingSession.count({
+      where: {
+        vehicle: { user_id: parseInt(userId) },
+        exit_time: null
+      }
+    });
+    
+    if (activeSessions > 0) {
+      return res.status(400).json({ 
+        message: 'Không thể xóa tài khoản đang có xe gửi trong bãi' 
+      });
+    }
+    
+    // Delete user (cascade will handle related records)
+    await prisma.user.delete({
+      where: { id: parseInt(userId) }
+    });
+    
+    // Log the action
+    await prisma.systemLog.create({
+      data: {
+        action: `Admin xóa tài khoản: ${user.username} (MSSV: ${user.mssv})`,
+        type: 'Admin'
+      }
+    });
+    
+    res.json({ 
+      message: 'Xóa tài khoản thành công',
+      deletedUser: {
+        username: user.username,
+        mssv: user.mssv
+      }
+    });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Error fetching admin vehicles' });
+    res.status(500).json({ message: 'Lỗi khi xóa tài khoản' });
   }
 });
+
+// This endpoint is already defined above at line 737, removing duplicate
 
 // PARKING SESSIONS & HISTORY
 app.get('/api/parking-history/:vehicle_id', async (req, res) => {
@@ -1225,7 +1281,7 @@ app.put('/api/admin/users/:userId/balance', async (req, res) => {
   const { userId } = req.params;
   const { newBalance, adminPassword } = req.body;
   
-  if (!newBalance || !adminPassword) {
+  if (newBalance === undefined || newBalance === null || !adminPassword) {
     return res.status(400).json({ message: 'Thiếu thông tin bắt buộc' });
   }
   
@@ -1408,15 +1464,73 @@ app.delete('/api/parking-lots/:lotId', async (req, res) => {
 // CAMERA UPDATE
 app.put('/api/cameras/:cameraId', async (req, res) => {
   const { cameraId } = req.params;
-  const { name, location, type, status } = req.body;
+  const {
+    name,
+    location,
+    type,
+    status,
+    ip_address,
+    camera_brand,
+    rtsp_url,
+    http_url,
+    username,
+    password,
+    port,
+    channel,
+    protocol,
+    main_stream_url,
+    sub_stream_url,
+    audio_enabled,
+    ptz_enabled,
+    device_id,
+    mac_address,
+    serial_number,
+    onvif_id,
+    resolution,
+    fps
+  } = req.body;
   
   try {
     const camera = await prisma.camera.update({
       where: { id: parseInt(cameraId) },
-      data: { name, location, type, status }
+      data: {
+        name,
+        location: location || null,
+        type,
+        status: status || 'Hoạt động',
+        ip_address: ip_address || null,
+        camera_brand: camera_brand || null,
+        rtsp_url: rtsp_url || null,
+        http_url: http_url || null,
+        username: username || null,
+        password: password || null,
+        port: port || (protocol === 'RTSP' ? 554 : 80),
+        channel: channel || 0,
+        protocol: protocol || 'RTSP',
+        main_stream_url: main_stream_url || null,
+        sub_stream_url: sub_stream_url || null,
+        audio_enabled: audio_enabled || false,
+        ptz_enabled: ptz_enabled || false,
+        device_id: device_id || null,
+        mac_address: mac_address || null,
+        serial_number: serial_number || null,
+        onvif_id: onvif_id || null,
+        resolution: resolution || '1080p',
+        fps: fps || 30
+      }
+    });
+
+    await prisma.systemLog.create({
+      data: {
+        action: `Cập nhật camera: ${name}`,
+        type: 'Admin'
+      }
     });
     
-    res.json(camera);
+    res.json({ 
+      message: 'Camera updated successfully',
+      camera: camera 
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error updating camera' });

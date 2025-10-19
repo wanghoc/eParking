@@ -1,4 +1,4 @@
-import { Car, Plus, Edit, Trash2, AlertCircle, CheckCircle } from "lucide-react";
+import { Bike, Plus, Edit, Trash2, AlertCircle, CheckCircle, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { apiUrl } from "../api";
@@ -16,17 +16,40 @@ export function VehiclesPage() {
     const { user } = useAuth();
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [parkingSessions, setParkingSessions] = useState<any[]>([]);
     const [newVehicle, setNewVehicle] = useState({ license_plate: "", brand: "", model: "" });
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string>("");
 
-    // Fetch vehicles khi component mount
+    // Fetch vehicles và parking sessions khi component mount
     useEffect(() => {
         if (user?.id) {
             fetchVehicles();
+            fetchParkingSessions();
         }
     }, [user?.id]);
+
+    const fetchParkingSessions = async () => {
+        if (!user?.id) return;
+        
+        try {
+            const response = await fetch(apiUrl(`/users/${user.id}/parking-sessions`));
+            if (response.ok) {
+                const data = await response.json();
+                setParkingSessions(data);
+            }
+        } catch (error) {
+            console.error('Error fetching parking sessions:', error);
+        }
+    };
+
+    const getVehicleStatus = (vehicleId: number) => {
+        const activeSession = parkingSessions.find(session => 
+            session.vehicle_id === vehicleId && !session.exit_time
+        );
+        return activeSession ? 'parking' : 'not_parking';
+    };
 
     const fetchVehicles = async () => {
         if (!user?.id) return;
@@ -133,7 +156,7 @@ export function VehiclesPage() {
                             <p className="text-cyan-100 text-base lg:text-lg">Quản lý xe máy đã đăng ký</p>
                         </div>
                         <div className="bg-white bg-opacity-20 p-3 lg:p-4 rounded-full self-start lg:self-auto">
-                            <Car className="h-6 w-6 lg:h-8 lg:w-8" />
+                            <Bike className="h-6 w-6 lg:h-8 lg:w-8" />
                         </div>
                     </div>
                 </div>
@@ -155,7 +178,7 @@ export function VehiclesPage() {
                         <p className="text-cyan-100 text-base lg:text-lg">Quản lý xe máy đã đăng ký</p>
                     </div>
                     <div className="bg-white bg-opacity-20 p-3 lg:p-4 rounded-full self-start lg:self-auto">
-                        <Car className="h-6 w-6 lg:h-8 lg:w-8" />
+                        <Bike className="h-6 w-6 lg:h-8 lg:w-8" />
                     </div>
                 </div>
             </div>
@@ -176,7 +199,7 @@ export function VehiclesPage() {
                             <p className="text-2xl font-bold text-gray-900">{vehicles.length}</p>
                         </div>
                         <div className="p-3 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 shadow-lg">
-                            <Car className="h-6 w-6 text-white" />
+                            <Bike className="h-6 w-6 text-white" />
                         </div>
                     </div>
                 </div>
@@ -252,6 +275,9 @@ export function VehiclesPage() {
                                     Hãng/Model
                                 </th>
                                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Trạng thái
+                                </th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Thao tác
                                 </th>
                             </tr>
@@ -259,8 +285,8 @@ export function VehiclesPage() {
                         <tbody className="bg-white divide-y divide-gray-200">
                             {vehicles.length === 0 ? (
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
-                                        <Car className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                                        <Bike className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                                         <p className="text-lg font-medium">Chưa có phương tiện nào</p>
                                         <p className="text-sm">Nhấn "Thêm phương tiện" để đăng ký xe máy của bạn</p>
                                     </td>
@@ -271,7 +297,7 @@ export function VehiclesPage() {
                                         <td className="px-6 py-6 whitespace-nowrap">
                                             <div className="flex items-center">
                                                 <div className="bg-cyan-100 p-3 rounded-full mr-4">
-                                                    <Car className="h-5 w-5 text-cyan-600" />
+                                                    <Bike className="h-5 w-5 text-cyan-600" />
                                                 </div>
                                                 <div>
                                                     <div className="text-sm font-medium text-gray-900">{vehicle.license_plate}</div>
@@ -284,6 +310,19 @@ export function VehiclesPage() {
                                         </td>
                                         <td className="px-6 py-6 whitespace-nowrap text-sm text-gray-900">
                                             {vehicle.brand} {vehicle.model}
+                                        </td>
+                                        <td className="px-6 py-6 whitespace-nowrap text-sm font-medium">
+                                            {getVehicleStatus(vehicle.id) === 'parking' ? (
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                                    Đang gửi
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                    <Clock className="h-3 w-3 mr-1" />
+                                                    Không gửi
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-6 whitespace-nowrap text-sm font-medium">
                                             <div className="flex space-x-3">
