@@ -1,6 +1,8 @@
 import { Shield, Camera, AlertCircle, CheckCircle, DollarSign, Bike, Clock, Video, RefreshCw, Settings as SettingsIcon, FileText, Map, XCircle, ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiUrl } from "../api";
+import { WebcamStream } from "./WebcamStream";
+import { IPCameraStream } from "./IPCameraStream";
 
 interface DashboardStats {
     currentParking: number;
@@ -26,6 +28,14 @@ interface CameraFeed {
     parking_lot_id: number;
     type: string;
     status: string;
+    device_id?: string;
+    ip_address?: string;
+    port?: number;
+    protocol?: string;
+    username?: string;
+    password?: string;
+    rtsp_url?: string;
+    http_url?: string;
     lastPlate?: string;
     lastStatus?: 'success' | 'insufficient' | 'error' | 'detected';
     detectionTime?: number;
@@ -104,6 +114,24 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                             const prevCam = prevCameras.find(c => c.id === cam.id);
                             const now = Date.now();
                             
+                            // Base camera object - keep all fields from backend
+                            const baseCamera = {
+                                id: cam.id,
+                                name: cam.name || 'Camera',
+                                location: cam.location || '-',
+                                parking_lot_id: cam.parking_lot_id || 0, // CRITICAL: Keep parking_lot_id!
+                                type: cam.type || 'Vào',
+                                status: cam.status || 'Hoạt động',
+                                device_id: cam.device_id || undefined, // Keep device_id for webcam detection
+                                ip_address: cam.ip_address,
+                                port: cam.port,
+                                protocol: cam.protocol,
+                                username: cam.username,
+                                password: cam.password,
+                                rtsp_url: cam.rtsp_url,
+                                http_url: cam.http_url
+                            };
+                            
                             // For entrance cameras: randomly show "detected" status
                             if (cam.type === 'Vào') {
                                 // Check if we should trigger a new detection (random 10% chance)
@@ -112,11 +140,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                                 // If previous detection is still active (within 2 seconds), keep it
                                 if (prevCam?.lastStatus === 'detected' && prevCam.detectionTime && (now - prevCam.detectionTime) < 2000) {
                                     return {
-                                        id: cam.id,
-                                        name: cam.name || 'Camera',
-                                        location: cam.location || '-',
-                                        type: cam.type || 'Vào',
-                                        status: cam.status || 'Hoạt động',
+                                        ...baseCamera,
                                         lastPlate: generateRandomPlate(),
                                         lastStatus: 'detected' as const,
                                         detectionTime: prevCam.detectionTime
@@ -126,11 +150,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                                 // Trigger new detection
                                 if (shouldDetect) {
                                     return {
-                                        id: cam.id,
-                                        name: cam.name || 'Camera',
-                                        location: cam.location || '-',
-                                        type: cam.type || 'Vào',
-                                        status: cam.status || 'Hoạt động',
+                                        ...baseCamera,
                                         lastPlate: generateRandomPlate(),
                                         lastStatus: 'detected' as const,
                                         detectionTime: now
@@ -139,11 +159,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                                 
                                 // No detection - normal state
                                 return {
-                                    id: cam.id,
-                                    name: cam.name || 'Camera',
-                                    location: cam.location || '-',
-                                    type: cam.type || 'Vào',
-                                    status: cam.status || 'Hoạt động',
+                                    ...baseCamera,
                                     lastPlate: generateRandomPlate(),
                                     lastStatus: undefined
                                 };
@@ -151,11 +167,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                             
                             // For exit cameras: show payment status
                             return {
-                                id: cam.id,
-                                name: cam.name || 'Camera',
-                                location: cam.location || '-',
-                                type: cam.type || 'Ra',
-                                status: cam.status || 'Hoạt động',
+                                ...baseCamera,
                                 lastPlate: generateRandomPlate(),
                                 lastStatus: Math.random() > 0.8 ? 'insufficient' as const : Math.random() > 0.9 ? 'error' as const : 'success' as const
                             };
@@ -417,53 +429,112 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                                         </div>
                                     ))}
                                 </div>
-                            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {cameras.filter(cam => {
+                            ) : (() => {
+                                const filteredCameras = cameras.filter(cam => {
                                     // Filter cameras by selected parking lot using parking_lot_id
                                     return cam.parking_lot_id === selectedParkingLot;
-                                }).slice(0, 2).map((camera) => (
-                                    <div key={camera.id} className="relative bg-gray-900 rounded-xl overflow-hidden aspect-video">
-                                        {/* Simulated camera feed */}
-                                        <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-                                            <div className="text-center text-white">
-                                                <Camera className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                                                <p className="text-sm opacity-75">{camera.name}</p>
-                                                <p className="text-xs opacity-50">{camera.location}</p>
-                                            </div>
-                                        </div>
-                                        
-                                        {/* Camera info overlay */}
-                                        <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/60 to-transparent p-3">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center space-x-2">
-                                                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                                                    <span className="text-white text-xs font-medium">LIVE</span>
-                                                </div>
-                                                <span className={`text-xs px-2 py-1 rounded ${camera.type === 'Vào' ? 'bg-emerald-500' : 'bg-blue-500'} text-white`}>
-                                                    {camera.type}
-                                                </span>
-                                            </div>
-                                        </div>
+                                });
 
-                                        {/* Last detected plate */}
-                                        {camera.lastPlate && (
-                                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <p className="text-white text-xs opacity-75">Biển số nhận dạng:</p>
-                                                        <p className="text-white font-bold">{camera.lastPlate}</p>
+                                // If no cameras found for this parking lot, show placeholder with error message
+                                if (filteredCameras.length === 0) {
+                                    return (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {[1, 2].map((idx) => (
+                                                <div key={idx} className="relative bg-gray-900 rounded-xl overflow-hidden aspect-video">
+                                                    <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                                                        <div className="text-center text-white">
+                                                            <AlertCircle className="h-12 w-12 mx-auto mb-2 text-red-500" />
+                                                            <p className="text-sm font-medium">Không tìm thấy camera</p>
+                                                            <p className="text-xs opacity-50 mt-2">Camera {idx === 1 ? 'Vào' : 'Ra'}</p>
+                                                            <p className="text-xs opacity-50 mt-1">Vui lòng thêm camera cho bãi xe này</p>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {/* Camera type badge */}
+                                                    <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/60 to-transparent p-3">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center space-x-2">
+                                                                <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                                                                <span className="text-white text-xs font-medium opacity-50">OFFLINE</span>
+                                                            </div>
+                                                            <span className={`text-xs px-2 py-1 rounded ${idx === 1 ? 'bg-emerald-500' : 'bg-blue-500'} text-white opacity-50`}>
+                                                                {idx === 1 ? 'Vào' : 'Ra'}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        )}
+                                            ))}
+                                        </div>
+                                    );
+                                }
 
-                                        {/* Payment status badge */}
-                                        {getCameraStatusBadge(camera)}
+                                // Show actual cameras (webcam for test lots with device_id='webcam', IP camera for others)
+                                return (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {filteredCameras.slice(0, 2).map((camera) => (
+                                            <div key={camera.id} className="relative bg-gray-900 rounded-xl overflow-hidden aspect-video">
+                                                {/* Use Webcam for test parking lots (device_id === 'webcam'), IP camera for others */}
+                                                {camera.device_id === 'webcam' ? (
+                                                    <WebcamStream
+                                                        cameraId={camera.id}
+                                                        name={camera.name}
+                                                    />
+                                                ) : camera.ip_address || camera.device_id ? (
+                                                    <IPCameraStream
+                                                        cameraId={camera.id}
+                                                        name={camera.name}
+                                                        ipAddress={camera.ip_address}
+                                                        port={camera.port}
+                                                        protocol={camera.protocol}
+                                                        deviceId={camera.device_id}
+                                                        username={camera.username}
+                                                        password={camera.password}
+                                                        rtspUrl={camera.rtsp_url}
+                                                        httpUrl={camera.http_url}
+                                                    />
+                                                ) : (
+                                                    <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                                                        <div className="text-center text-white">
+                                                            <Camera className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                                                            <p className="text-sm opacity-75">{camera.name}</p>
+                                                            <p className="text-xs opacity-50">{camera.location}</p>
+                                                            <p className="text-xs opacity-50 mt-2">Chưa cấu hình camera</p>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                
+                                                {/* Camera info overlay */}
+                                                <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/60 to-transparent p-3 z-10">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center space-x-2">
+                                                            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                                                            <span className="text-white text-xs font-medium">LIVE</span>
+                                                        </div>
+                                                        <span className={`text-xs px-2 py-1 rounded ${camera.type === 'Vào' ? 'bg-emerald-500' : 'bg-blue-500'} text-white`}>
+                                                            {camera.type}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Last detected plate */}
+                                                {camera.lastPlate && (
+                                                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 z-10">
+                                                        <div className="flex items-center justify-between">
+                                                            <div>
+                                                                <p className="text-white text-xs opacity-75">Biển số nhận dạng:</p>
+                                                                <p className="text-white font-bold">{camera.lastPlate}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Payment status badge */}
+                                                {getCameraStatusBadge(camera)}
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                                </div>
-                            )}
+                                );
+                            })()}
                         </div>
                     </div>
 

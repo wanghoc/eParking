@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { LiveCameraModal } from "./LiveCameraModal";
 import { AddCameraModal } from "./AddCameraModal";
 import { IPCameraStream } from "./IPCameraStream";
+import { WebcamStream } from "./WebcamStream";
 import { apiUrl } from "../api";
 
 interface CameraData {
@@ -287,30 +288,11 @@ export function CameraPage() {
                                                             className="relative bg-gray-900 rounded-xl overflow-hidden aspect-video transition-all duration-300 cursor-pointer hover:ring-2 hover:ring-cyan-500"
                                                             onClick={() => setSelectedCameraForFull(camera.id)}
                                                         >
-                                                            {/* IP Camera Stream */}
-                                                            {camera.ip_address || camera.device_id ? (
-                                                                <IPCameraStream
-                                                                    cameraId={camera.id}
-                                                                    name={camera.name}
-                                                                    ipAddress={camera.ip_address}
-                                                                    port={camera.port}
-                                                                    protocol={camera.protocol}
-                                                                    deviceId={camera.device_id}
-                                                                    username={camera.username}
-                                                                    password={camera.password}
-                                                                    rtspUrl={camera.rtsp_url}
-                                                                    httpUrl={camera.http_url}
-                                                                />
-                                                            ) : (
-                                                                <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-                                                                    <div className="text-center text-white">
-                                                                        <Camera className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                                                                        <p className="text-sm opacity-75">{camera.name}</p>
-                                                                        <p className="text-xs opacity-50">{camera.location}</p>
-                                                                        <p className="text-xs opacity-50 mt-2">Chưa cấu hình IP/Device ID</p>
-                                                                    </div>
-                                                                </div>
-                                                            )}
+                                                            {/* Use Webcam for all cameras */}
+                                                            <WebcamStream
+                                                                cameraId={camera.id}
+                                                                name={camera.name}
+                                                            />
                                                             
                                                             {/* Camera info overlay */}
                                                             <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/60 to-transparent p-3">
@@ -682,29 +664,11 @@ export function CameraPage() {
 
                             return (
                                 <>
-                                    {camera.ip_address || camera.device_id ? (
-                                        <IPCameraStream
-                                            cameraId={camera.id}
-                                            name={camera.name}
-                                            ipAddress={camera.ip_address}
-                                            port={camera.port}
-                                            protocol={camera.protocol}
-                                            deviceId={camera.device_id}
-                                            username={camera.username}
-                                            password={camera.password}
-                                            rtspUrl={camera.rtsp_url}
-                                            httpUrl={camera.http_url}
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-                                            <div className="text-center text-white">
-                                                <Camera className="h-24 w-24 mx-auto mb-4 opacity-50" />
-                                                <p className="text-xl opacity-75">{camera.name}</p>
-                                                <p className="text-sm opacity-50 mt-2">{camera.location}</p>
-                                                <p className="text-xs opacity-50 mt-2">Chưa cấu hình IP/Device ID</p>
-                                            </div>
-                                        </div>
-                                    )}
+                                    {/* Use Webcam for full view */}
+                                    <WebcamStream
+                                        cameraId={camera.id}
+                                        name={camera.name}
+                                    />
 
                                     {/* Camera info bottom */}
                                     <div className="absolute bottom-4 left-4 right-4 bg-black bg-opacity-60 px-6 py-4 rounded-lg text-white">

@@ -10,6 +10,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Import ML service
+const mlService = require('./api/ml_service');
+app.use('/api/ml', mlService);
+
 const DEFAULT_FEE_PER_TURN = 2000; // VND
 
 // Helper function to ensure wallet exists
@@ -30,15 +34,18 @@ async function ensureWallet(userId) {
   return wallet;
 }
 
-// Helper function to get fee per turn
-async function getFeePerTurn(lotId) {
-  if (!lotId) return DEFAULT_FEE_PER_TURN;
-  
-  const lot = await prisma.parkingLot.findUnique({
-    where: { id: lotId }
-  });
-  
-  return lot?.fee_per_turn ? Number(lot.fee_per_turn) : DEFAULT_FEE_PER_TURN;
+// Helper function to get fee per turn from system settings
+async function getFeePerTurn() {
+  try {
+    const feeSettings = await prisma.systemSetting.findUnique({
+      where: { setting_key: 'fee_per_turn' }
+    });
+    
+    return feeSettings ? parseFloat(feeSettings.setting_value) : DEFAULT_FEE_PER_TURN;
+  } catch (error) {
+    console.error('Error getting fee per turn:', error);
+    return DEFAULT_FEE_PER_TURN;
+  }
 }
 
 // Helper function to sanitize user data
@@ -58,7 +65,7 @@ app.post('/api/register', async (req, res) => {
   const { username, mssv, email, password, phone } = req.body;
   
   if (!username || !mssv || !email || !password) {
-    return res.status(400).json({ message: 'All fields are required' });
+    return res.status(400).json({ message: 'Vui lòng điền đầy đủ thông tin' });
   }
   
   try {
@@ -97,7 +104,7 @@ app.post('/api/register', async (req, res) => {
     res.status(201).json({ message: 'User registered', userId: user.id });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Error registering user' });
+    res.status(500).json({ message: 'Lỗi đăng ký người dùng' });
   }
 });
 
@@ -105,7 +112,7 @@ app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
   
   if (!email || !password) {
-    return res.status(400).json({ message: 'Email and password required' });
+    return res.status(400).json({ message: 'Vui lòng nhập email và mật khẩu' });
   }
   
   try {
@@ -114,21 +121,21 @@ app.post('/api/login', async (req, res) => {
     });
     
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Email hoặc mật khẩu không đúng' });
     }
     
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Email hoặc mật khẩu không đúng' });
     }
     
     res.json({ 
-      message: 'Login successful', 
+      message: 'Đăng nhập thành công', 
       user: sanitizeUserRow(user) 
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Error logging in' });
+    res.status(500).json({ message: 'Lỗi đăng nhập' });
   }
 });
 
@@ -150,13 +157,13 @@ app.get('/api/users/:userId', async (req, res) => {
     });
     
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: 'Không tìm thấy người dùng' });
     }
     
     res.json(user);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Error fetching user' });
+    res.status(500).json({ message: 'Lỗi lấy thông tin người dùng' });
   }
 });
 
@@ -173,7 +180,7 @@ app.get('/api/users/:userId/vehicles', async (req, res) => {
     res.json(vehicles);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Error fetching vehicles' });
+    res.status(500).json({ message: 'Lỗi lấy danh sách xe' });
   }
 });
 
@@ -181,7 +188,7 @@ app.post('/api/vehicles', async (req, res) => {
   const { user_id, license_plate, brand, model, vehicle_type } = req.body;
   
   if (!user_id || !license_plate) {
-    return res.status(400).json({ message: 'user_id and license_plate required' });
+    return res.status(400).json({ message: 'Vui lòng điền thông tin người dùng và biển số xe' });
   }
   
   try {
@@ -258,7 +265,7 @@ app.post('/api/wallet/topup', async (req, res) => {
   const { user_id, amount, method } = req.body;
   
   if (!user_id || !amount) {
-    return res.status(400).json({ message: 'user_id and amount required' });
+    return res.status(400).json({ message: 'Vui lòng điền thông tin người dùng và số tiền' });
   }
   
   try {
@@ -392,7 +399,7 @@ app.post('/api/cameras', async (req, res) => {
   } = req.body;
 
   if (!name || !type) {
-    return res.status(400).json({ message: 'Name and type are required' });
+    return res.status(400).json({ message: 'Vui lòng điền tên và loại camera' });
   }
 
   try {
@@ -811,8 +818,17 @@ app.delete('/api/admin/users/:userId', async (req, res) => {
   }
   
   try {
-    // Verify admin password
-    if (adminPassword !== 'admin123') {
+    // Verify admin password by checking against admin user in database
+    const adminUser = await prisma.user.findFirst({
+      where: { role: 'admin' }
+    });
+    
+    if (!adminUser) {
+      return res.status(500).json({ message: 'Không tìm thấy tài khoản admin' });
+    }
+    
+    const isValidPassword = await bcrypt.compare(adminPassword, adminUser.password);
+    if (!isValidPassword) {
       return res.status(401).json({ message: 'Mật khẩu admin không đúng' });
     }
     
@@ -996,8 +1012,7 @@ app.post('/api/parking-sessions/check-out', async (req, res) => {
       return res.status(400).json({ message: 'No open session' });
     }
     
-    const feePerTurn = await getFeePerTurn(session.lot_id);
-    const fee = feePerTurn;
+    const fee = await getFeePerTurn();
     
     const wallet = await ensureWallet(vehicle.user_id);
     if (Number(wallet.balance) < fee) {
@@ -1058,6 +1073,9 @@ app.get('/api/parking-lots/overview', async (_req, res) => {
       orderBy: { id: 'asc' }
     });
     
+    // Get system-wide fee
+    const systemFee = await getFeePerTurn();
+    
     const lotsWithOccupancy = await Promise.all(
       lots.map(async (lot) => {
         const occupied = await prisma.parkingSession.count({
@@ -1071,7 +1089,7 @@ app.get('/api/parking-lots/overview', async (_req, res) => {
           id: lot.id,
           name: lot.name,
           capacity: lot.capacity,
-          fee_per_turn: Number(lot.fee_per_turn),
+          fee_per_turn: systemFee, // Use system-wide fee instead of individual lot fee
           status: lot.status,
           occupied
         };
@@ -1292,8 +1310,17 @@ app.put('/api/admin/users/:userId/balance', async (req, res) => {
   }
   
   try {
-    // Verify admin password (simplified)
-    if (adminPassword !== 'admin123') {
+    // Verify admin password by checking against admin user in database
+    const adminUser = await prisma.user.findFirst({
+      where: { role: 'admin' }
+    });
+    
+    if (!adminUser) {
+      return res.status(500).json({ message: 'Không tìm thấy tài khoản admin' });
+    }
+    
+    const isValidPassword = await bcrypt.compare(adminPassword, adminUser.password);
+    if (!isValidPassword) {
       return res.status(401).json({ message: 'Mật khẩu admin không đúng' });
     }
     
@@ -1377,19 +1404,20 @@ app.post('/api/parking-lots', async (req, res) => {
   }
   
   try {
-    // Get fee from system settings
-    const feeSettings = await prisma.systemSetting.findUnique({
-      where: { setting_key: 'fee_per_turn' }
-    });
-    
-    const feePerTurn = feeSettings ? parseFloat(feeSettings.setting_value) : 2000;
-    
+    // Note: fee_per_turn is no longer used, all parking lots use system-wide fee
     const lot = await prisma.parkingLot.create({
       data: {
         name,
         capacity: parseInt(capacity),
-        fee_per_turn: feePerTurn,
+        fee_per_turn: 0, // Deprecated field, kept for backward compatibility
         status: status || 'Hoạt động'
+      }
+    });
+    
+    await prisma.systemLog.create({
+      data: {
+        action: `Tạo bãi xe mới: ${name}`,
+        type: 'Admin'
       }
     });
     
@@ -1409,20 +1437,21 @@ app.put('/api/parking-lots/:lotId', async (req, res) => {
   const { name, capacity, status } = req.body;
   
   try {
-    // Get fee from system settings
-    const feeSettings = await prisma.systemSetting.findUnique({
-      where: { setting_key: 'fee_per_turn' }
-    });
-    
-    const feePerTurn = feeSettings ? parseFloat(feeSettings.setting_value) : 2000;
-    
+    // Note: fee_per_turn is no longer used, all parking lots use system-wide fee
     const lot = await prisma.parkingLot.update({
       where: { id: parseInt(lotId) },
       data: { 
         name, 
         capacity: parseInt(capacity), 
-        fee_per_turn: feePerTurn,
+        fee_per_turn: 0, // Deprecated field, kept for backward compatibility
         status 
+      }
+    });
+    
+    await prisma.systemLog.create({
+      data: {
+        action: `Cập nhật bãi xe: ${name}`,
+        type: 'Admin'
       }
     });
     

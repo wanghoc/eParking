@@ -1,0 +1,35 @@
+# Python ML Dependencies for eParking License Plate Recognition
+
+# Deep Learning Frameworks
+torch==2.0.1
+torchvision==0.15.2
+onnx==1.14.0
+onnxruntime==1.15.1
+
+# Computer Vision
+opencv-python==4.8.0.74
+opencv-contrib-python==4.8.0.74
+Pillow==10.0.0
+
+# Image Processing
+numpy==1.24.3
+scikit-image==0.21.0
+
+# Object Detection (if using YOLO)
+ultralytics==8.0.150
+
+# OCR (if needed as backup)
+pytesseract==0.3.10
+easyocr==1.7.0
+
+# Data Handling
+pandas==2.0.3
+
+# API & Web
+flask==2.3.3
+flask-cors==4.0.0
+
+# Utils
+python-dotenv==1.0.0
+tqdm==4.66.1
+

@@ -1,0 +1,19 @@
+{
+  "model_type": "cnn_lstm",
+  "model_path": "model.pt",
+  "input_size": [128, 32],
+  "characters": "0123456789ABCDEFGHKLMNPRSTUVXYZ-",
+  "max_length": 10,
+  "device": "cuda",
+  "preprocessing": {
+    "grayscale": true,
+    "normalize": true,
+    "mean": [0.5],
+    "std": [0.5]
+  },
+  "postprocessing": {
+    "remove_duplicates": true,
+    "format_plate": true
+  }
+}
+

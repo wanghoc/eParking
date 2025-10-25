@@ -66,71 +66,197 @@ async function main() {
     },
   });
 
-  // Create sample cameras
-  await prisma.camera.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
-      id: 1,
-      name: 'Camera A1',
-      location: 'Bãi xe A - Cổng vào',
-      type: 'Vào',
-      status: 'Hoạt động',
-      ip_address: '192.168.1.101',
-      port: 8080,
-      protocol: 'HTTP',
-      username: 'admin',
-      password: 'admin123',
-      camera_brand: 'Hikvision',
-      resolution: '1080p',
-      fps: 30,
-    },
-  });
-
-  await prisma.camera.upsert({
-    where: { id: 2 },
-    update: {},
-    create: {
-      id: 2,
-      name: 'Camera A2',
-      location: 'Bãi xe A - Cổng ra',
-      type: 'Ra',
-      status: 'Hoạt động',
-      ip_address: '192.168.1.102',
-      port: 8080,
-      protocol: 'HTTP',
-      username: 'admin',
-      password: 'admin123',
-      camera_brand: 'Hikvision',
-      resolution: '1080p',
-      fps: 30,
-    },
-  });
-
-  // Create sample parking lots
-  await prisma.parkingLot.upsert({
+  // Create sample parking lots FIRST
+  const parkingLotA = await prisma.parkingLot.upsert({
     where: { id: 1 },
     update: {},
     create: {
       id: 1,
       name: 'Bãi xe A',
       capacity: 50,
-      occupied: 25,
-      fee_per_turn: 2000,
+      fee_per_turn: 0, // Deprecated, use system setting
       status: 'Hoạt động',
     },
   });
 
-  await prisma.parkingLot.upsert({
+  const parkingLotB = await prisma.parkingLot.upsert({
     where: { id: 2 },
     update: {},
     create: {
       id: 2,
       name: 'Bãi xe B',
       capacity: 30,
-      occupied: 15,
-      fee_per_turn: 2000,
+      fee_per_turn: 0, // Deprecated, use system setting
       status: 'Hoạt động',
+    },
+  });
+
+  const parkingLotC = await prisma.parkingLot.upsert({
+    where: { id: 3 },
+    update: {},
+    create: {
+      id: 3,
+      name: 'Bãi xe C',
+      capacity: 40,
+      fee_per_turn: 0, // Deprecated, use system setting
+      status: 'Hoạt động',
+    },
+  });
+
+  // Create sample cameras with parking_lot_id and device_id
+  // Bãi xe A - 2 cameras (use webcam)
+  await prisma.camera.upsert({
+    where: { id: 1 },
+    update: {},
+    create: {
+      id: 1,
+      name: 'Camera A - Vào',
+      location: 'Bãi xe A - Cổng vào',
+      parking_lot_id: parkingLotA.id,
+      type: 'Vao',
+      status: 'Hoạt động',
+      device_id: 'webcam', // Special marker for webcam
+      protocol: 'HTTP',
+      camera_brand: 'Webcam',
+      resolution: '1080p',
+      fps: 30,
+    },
+  });
+
+  await prisma.camera.upsert({
+    where: { id: 2 },
+    update: {},
+    create: {
+      id: 2,
+      name: 'Camera A - Ra',
+      location: 'Bãi xe A - Cổng ra',
+      parking_lot_id: parkingLotA.id,
+      type: 'Ra',
+      status: 'Hoạt động',
+      device_id: 'webcam', // Special marker for webcam
+      protocol: 'HTTP',
+      camera_brand: 'Webcam',
+      resolution: '1080p',
+      fps: 30,
+    },
+  });
+
+  // Bãi xe B - 2 cameras (use webcam)
+  await prisma.camera.upsert({
+    where: { id: 3 },
+    update: {},
+    create: {
+      id: 3,
+      name: 'Camera B - Vào',
+      location: 'Bãi xe B - Cổng vào',
+      parking_lot_id: parkingLotB.id,
+      type: 'Vao',
+      status: 'Hoạt động',
+      device_id: 'webcam', // Special marker for webcam
+      protocol: 'HTTP',
+      camera_brand: 'Webcam',
+      resolution: '1080p',
+      fps: 30,
+    },
+  });
+
+  await prisma.camera.upsert({
+    where: { id: 4 },
+    update: {},
+    create: {
+      id: 4,
+      name: 'Camera B - Ra',
+      location: 'Bãi xe B - Cổng ra',
+      parking_lot_id: parkingLotB.id,
+      type: 'Ra',
+      status: 'Hoạt động',
+      device_id: 'webcam', // Special marker for webcam
+      protocol: 'HTTP',
+      camera_brand: 'Webcam',
+      resolution: '1080p',
+      fps: 30,
+    },
+  });
+
+  // Bãi xe C - 2 cameras (use webcam)
+  await prisma.camera.upsert({
+    where: { id: 5 },
+    update: {},
+    create: {
+      id: 5,
+      name: 'Camera C - Vào',
+      location: 'Bãi xe C - Cổng vào',
+      parking_lot_id: parkingLotC.id,
+      type: 'Vao',
+      status: 'Hoạt động',
+      device_id: 'webcam', // Special marker for webcam
+      protocol: 'HTTP',
+      camera_brand: 'Webcam',
+      resolution: '1080p',
+      fps: 30,
+    },
+  });
+
+  await prisma.camera.upsert({
+    where: { id: 6 },
+    update: {},
+    create: {
+      id: 6,
+      name: 'Camera C - Ra',
+      location: 'Bãi xe C - Cổng ra',
+      parking_lot_id: parkingLotC.id,
+      type: 'Ra',
+      status: 'Hoạt động',
+      device_id: 'webcam', // Special marker for webcam
+      protocol: 'HTTP',
+      camera_brand: 'Webcam',
+      resolution: '1080p',
+      fps: 30,
+    },
+  });
+
+  // Create system settings
+  await prisma.systemSetting.upsert({
+    where: { setting_key: 'fee_per_turn' },
+    update: {},
+    create: {
+      setting_key: 'fee_per_turn',
+      setting_value: '2000',
+      setting_type: 'number',
+      description: 'Phí gửi xe mỗi lượt (áp dụng cho tất cả bãi xe)',
+    },
+  });
+
+  await prisma.systemSetting.upsert({
+    where: { setting_key: 'min_topup' },
+    update: {},
+    create: {
+      setting_key: 'min_topup',
+      setting_value: '10000',
+      setting_type: 'number',
+      description: 'Mức nạp tối thiểu',
+    },
+  });
+
+  await prisma.systemSetting.upsert({
+    where: { setting_key: 'max_topup' },
+    update: {},
+    create: {
+      setting_key: 'max_topup',
+      setting_value: '1000000',
+      setting_type: 'number',
+      description: 'Mức nạp tối đa',
+    },
+  });
+
+  await prisma.systemSetting.upsert({
+    where: { setting_key: 'low_balance_threshold' },
+    update: {},
+    create: {
+      setting_key: 'low_balance_threshold',
+      setting_value: '5000',
+      setting_type: 'number',
+      description: 'Ngưỡng cảnh báo số dư thấp',
     },
   });
 

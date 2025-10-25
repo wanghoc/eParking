@@ -35,17 +35,32 @@ export function AdminPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [vehicles, setVehicles] = useState<VehicleRow[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    
+    // Payment settings state
+    const [feePerTurn, setFeePerTurn] = useState("2000");
+    const [minTopup, setMinTopup] = useState("10000");
+    const [maxTopup, setMaxTopup] = useState("1000000");
+    const [lowBalanceThreshold, setLowBalanceThreshold] = useState("5000");
+    const [isSavingSettings, setIsSavingSettings] = useState(false);
 
     useEffect(() => {
         const load = async () => {
             try {
                 setIsLoading(true);
-                const [uRes, vRes] = await Promise.all([
+                const [uRes, vRes, settingsRes] = await Promise.all([
                     fetch(apiUrl('/admin/users')),
-                    fetch(apiUrl('/admin/vehicles'))
+                    fetch(apiUrl('/admin/vehicles')),
+                    fetch(apiUrl('/system-settings'))
                 ]);
                 if (uRes.ok) setUsers(await uRes.json());
                 if (vRes.ok) setVehicles(await vRes.json());
+                if (settingsRes.ok) {
+                    const settings = await settingsRes.json();
+                    if (settings.fee_per_turn) setFeePerTurn(settings.fee_per_turn.toString());
+                    if (settings.min_topup) setMinTopup(settings.min_topup.toString());
+                    if (settings.max_topup) setMaxTopup(settings.max_topup.toString());
+                    if (settings.low_balance_threshold) setLowBalanceThreshold(settings.low_balance_threshold.toString());
+                }
             } catch (e) {
                 console.error('Failed to fetch admin data', e);
             } finally {
@@ -193,6 +208,36 @@ export function AdminPage() {
         } catch (error) {
             console.error('Delete user error:', error);
             alert('Lỗi kết nối server!');
+        }
+    };
+
+    const handleSaveSettings = async () => {
+        try {
+            setIsSavingSettings(true);
+            const response = await fetch(apiUrl('/system-settings'), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    settings: {
+                        fee_per_turn: parseFloat(feePerTurn),
+                        min_topup: parseFloat(minTopup),
+                        max_topup: parseFloat(maxTopup),
+                        low_balance_threshold: parseFloat(lowBalanceThreshold)
+                    }
+                })
+            });
+            
+            if (response.ok) {
+                alert('Lưu cấu hình thành công!');
+            } else {
+                const data = await response.json();
+                alert(data.message || 'Lỗi khi lưu cấu hình!');
+            }
+        } catch (error) {
+            console.error('Save settings error:', error);
+            alert('Lỗi kết nối server!');
+        } finally {
+            setIsSavingSettings(false);
         }
     };
 
@@ -424,32 +469,72 @@ export function AdminPage() {
                                     <div className="space-y-6">
                                         <div className="space-y-4">
                                             <h3 className="text-lg font-semibold text-gray-900">Cài đặt phí gửi xe</h3>
+                                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                                                <div className="flex items-start">
+                                                    <div className="flex-shrink-0">
+                                                        <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                                                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                                        </svg>
+                                                    </div>
+                                                    <div className="ml-3">
+                                                        <h3 className="text-sm font-medium text-blue-800">
+                                                            Phí gửi xe toàn hệ thống
+                                                        </h3>
+                                                        <div className="mt-2 text-sm text-blue-700">
+                                                            <p>Phí gửi xe này sẽ áp dụng cho TẤT CẢ các bãi xe trong hệ thống. Khi bạn thay đổi mức phí ở đây, tất cả các bãi xe (hiện tại và tương lai) sẽ tự động sử dụng mức phí mới.</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                             <div className="space-y-4">
                                                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                                                    <span className="text-sm text-gray-700">Phí gửi xe mỗi lượt</span>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-medium text-gray-900">Phí gửi xe mỗi lượt</span>
+                                                        <span className="text-xs text-gray-500 mt-1">Áp dụng cho tất cả bãi xe</span>
+                                                    </div>
                                                     <div className="flex items-center space-x-2">
-                                                        <input type="text" value="2,000" className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" />
+                                                        <input 
+                                                            type="number" 
+                                                            value={feePerTurn} 
+                                                            onChange={(e) => setFeePerTurn(e.target.value)}
+                                                            className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" 
+                                                        />
                                                         <span className="text-sm text-gray-600">₫/lượt</span>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                                                     <span className="text-sm text-gray-700">Ngưỡng cảnh báo số dư thấp</span>
                                                     <div className="flex items-center space-x-2">
-                                                        <input type="text" value="5,000" className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" />
+                                                        <input 
+                                                            type="number" 
+                                                            value={lowBalanceThreshold} 
+                                                            onChange={(e) => setLowBalanceThreshold(e.target.value)}
+                                                            className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" 
+                                                        />
                                                         <span className="text-sm text-gray-600">₫</span>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                                                     <span className="text-sm text-gray-700">Số tiền nạp tối thiểu</span>
                                                     <div className="flex items-center space-x-2">
-                                                        <input type="text" value="10,000" className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" />
+                                                        <input 
+                                                            type="number" 
+                                                            value={minTopup} 
+                                                            onChange={(e) => setMinTopup(e.target.value)}
+                                                            className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" 
+                                                        />
                                                         <span className="text-sm text-gray-600">₫</span>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                                                     <span className="text-sm text-gray-700">Số tiền nạp tối đa</span>
                                                     <div className="flex items-center space-x-2">
-                                                        <input type="text" value="1,000,000" className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" />
+                                                        <input 
+                                                            type="number" 
+                                                            value={maxTopup} 
+                                                            onChange={(e) => setMaxTopup(e.target.value)}
+                                                            className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" 
+                                                        />
                                                         <span className="text-sm text-gray-600">₫</span>
                                                     </div>
                                                 </div>
@@ -481,8 +566,12 @@ export function AdminPage() {
                                         </div>
 
                                         <div className="flex justify-end">
-                                            <button className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white px-6 py-3 rounded-lg hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-                                                Lưu cấu hình
+                                            <button 
+                                                onClick={handleSaveSettings}
+                                                disabled={isSavingSettings}
+                                                className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white px-6 py-3 rounded-lg hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                {isSavingSettings ? 'Đang lưu...' : 'Lưu cấu hình'}
                                             </button>
                                         </div>
                                     </div>

@@ -1,0 +1,15 @@
+{
+  "model_type": "yolov8",
+  "model_path": "model.pt",
+  "input_size": [640, 640],
+  "confidence_threshold": 0.5,
+  "nms_threshold": 0.4,
+  "classes": ["license_plate"],
+  "device": "cuda",
+  "preprocessing": {
+    "normalize": true,
+    "mean": [0.485, 0.456, 0.406],
+    "std": [0.229, 0.224, 0.225]
+  }
+}
+
