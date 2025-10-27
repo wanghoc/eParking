@@ -1,5 +1,5 @@
 # Multi-stage build for React app
-FROM node:18-alpine as build
+FROM node:22-alpine as build
 
 # Set working directory
 WORKDIR /app
@@ -25,7 +25,7 @@ COPY . .
 RUN npm run build
 
 # Production stage with Nginx
-FROM nginx:alpine
+FROM nginx:1.27-alpine
 
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/nginx.conf

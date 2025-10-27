@@ -17,6 +17,10 @@ npx prisma generate
 echo "Running database migrations..."
 npx prisma db push
 
+# Seed database with demo data
+echo "Seeding database with demo data..."
+npx prisma db seed
+
 # Start the application
 echo "Starting application..."
 exec "$@"
