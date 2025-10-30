@@ -245,13 +245,24 @@ router.post('/detect-plate', async (req, res) => {
       });
     }
     
+    console.log(`[ML] Processing detection request for camera ${camera_id}`);
+    
     // Run inference
     const result = await runInference(image_base64);
+    
+    console.log(`[ML] Detection result:`, {
+      success: result.success,
+      plate_number: result.plate_number,
+      confidence: result.confidence,
+      saved_image: result.saved_image
+    });
     
     // Save to database if plate detected
     if (result.success && result.plate_number) {
       const saveResult = await saveDetection(parseInt(camera_id), result);
       result.database = saveResult;
+      
+      console.log(`[ML] Database save result:`, saveResult);
     }
     
     res.json(result);

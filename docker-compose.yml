@@ -41,12 +41,17 @@ services:
       DB_PORT: 5432
       DATABASE_URL: "postgresql://${DB_USER:-eparking_user}:${DB_PASSWORD:-eparking_password_2024}@postgres:5432/${DB_DATABASE_NAME:-eParking_db}?schema=public"
       USE_PRISMA: ${USE_PRISMA:-true}
-      USE_ML: ${USE_ML:-false}
+      USE_ML: ${USE_ML:-true}
+      # Python path for ML inference
+      PYTHONUNBUFFERED: 1
     ports:
       - "5000:5000"
     volumes:
       - ./BE:/app
       - /app/node_modules
+      # Persist ML models and detected images
+      - ml_models:/app/ml_models
+      - detected_plates:/app/detected_plates
     networks:
       - eparking_network
     healthcheck:
@@ -135,3 +140,9 @@ volumes:
   pg_data:
     driver: local
     name: eparking_pg_data
+  ml_models:
+    driver: local
+    name: eparking_ml_models
+  detected_plates:
+    driver: local
+    name: eparking_detected_plates

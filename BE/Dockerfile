@@ -1,45 +1,79 @@
-# Use latest LTS Node.js
-FROM node:22-alpine
+# Alternative Dockerfile for Backend with ML Support
+# Uses Python slim image instead of Alpine for better ML library support
 
-# Set working directory
+# Stage 1: Node.js dependencies
+FROM node:22-alpine AS node-deps
+
 WORKDIR /app
-
-# Copy package files
 COPY package*.json ./
-
-# Install dependencies
 RUN npm ci --only=production
 
-# Copy source code
+# Stage 2: Python ML environment
+FROM python:3.11-slim AS python-ml
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    netcat-openbsd \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy and install Python ML dependencies
+COPY requirements_ml.txt ./
+RUN pip3 install --no-cache-dir -r requirements_ml.txt
+
+# Stage 3: Final image with Node.js + Python
+FROM python:3.11-slim
+
+# Install Node.js
+RUN apt-get update && apt-get install -y \
+    curl \
+    ffmpeg \
+    netcat-openbsd \
+    libgl1 \
+    libglib2.0-0 \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy Node.js dependencies from stage 1
+COPY --from=node-deps /app/node_modules ./node_modules
+
+# Copy Python ML packages from stage 2
+COPY --from=python-ml /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=python-ml /usr/local/bin /usr/local/bin
+
+# Copy application code
+COPY package*.json ./
 COPY . .
 
-# Install netcat for database health check and FFmpeg for RTSP streaming
-RUN apk add --no-cache netcat-openbsd ffmpeg
+# Create necessary directories
+RUN mkdir -p detected_plates ml_models/plate_detector
 
-# Copy and make entrypoint script executable
+# Copy and setup entrypoint
 COPY docker-entrypoint.sh /docker-entrypoint.sh
-# Normalize line endings and make executable (fix Windows CRLF issue)
 RUN sed -i 's/\r$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
 
 # Generate Prisma client
 RUN npx prisma generate
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S backend -u 1001
+# Create non-root user
+RUN groupadd -g 1001 nodejs && \
+    useradd -r -u 1001 -g nodejs backend && \
+    chown -R backend:nodejs /app && \
+    chown backend:nodejs /docker-entrypoint.sh
 
-# Change ownership of app directory
-RUN chown -R backend:nodejs /app
-RUN chown backend:nodejs /docker-entrypoint.sh
 USER backend
 
-# Expose port
 EXPOSE 5000
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD node -e "require('http').get('http://localhost:5000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
-# Use custom entrypoint
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["npm", "start"]

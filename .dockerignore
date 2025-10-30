@@ -6,6 +6,9 @@
 README.md
 README-Docker.md
 *.md
+!BE/ml_models/README.md
+!BE/ML_SETUP.md
+!BE/INTEGRATION_COMPLETE.md
 
 # Node modules (will be installed in container)
 **/node_modules
@@ -75,3 +78,8 @@ docker-compose*.yml
 .parcel-cache
 .next
 .nuxt
+
+# ML specific
+BE/test_model/
+BE/detected_plates/*.jpg
+.EasyOCR/
