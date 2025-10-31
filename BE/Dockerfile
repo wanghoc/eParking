@@ -62,9 +62,10 @@ RUN sed -i 's/\r$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
 # Generate Prisma client
 RUN npx prisma generate
 
-# Create non-root user
+# Create non-root user and ensure home exists
 RUN groupadd -g 1001 nodejs && \
-    useradd -r -u 1001 -g nodejs backend && \
+    useradd -r -u 1001 -g nodejs -m backend && \
+    mkdir -p /home/backend && chown -R backend:nodejs /home/backend && \
     chown -R backend:nodejs /app && \
     chown backend:nodejs /docker-entrypoint.sh
 

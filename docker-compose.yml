@@ -55,7 +55,7 @@ services:
     networks:
       - eparking_network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/api/health" ]
+      test: [ "CMD", "sh", "-c", "curl -fsS http://localhost:5000/api/health || exit 1" ]
       timeout: 10s
       retries: 5
       interval: 30s
@@ -82,7 +82,7 @@ services:
     networks:
       - eparking_network
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/" ]
+      test: [ "CMD", "sh", "-c", "curl -fsS http://localhost:3000/ || exit 1" ]
       timeout: 10s
       retries: 3
       interval: 30s
