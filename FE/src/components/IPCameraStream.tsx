@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlertCircle, Wifi, WifiOff } from 'lucide-react';
+import { AlertCircle, Wifi, WifiOff, ScanLine, CheckCircle } from 'lucide-react';
+import { apiUrl } from '../api';
 
 interface IPCameraStreamProps {
     cameraId: number;
@@ -13,6 +14,13 @@ interface IPCameraStreamProps {
     rtspUrl?: string;
     httpUrl?: string;
     onError?: (error: string) => void;
+}
+
+interface DetectionResult {
+    success: boolean;
+    plate_number?: string;
+    confidence?: number;
+    message?: string;
 }
 
 export function IPCameraStream({
@@ -29,10 +37,14 @@ export function IPCameraStream({
     onError
 }: IPCameraStreamProps) {
     const imgRef = useRef<HTMLImageElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
     const [streamUrl, setStreamUrl] = useState<string>('');
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
+    const [isDetecting, setIsDetecting] = useState(false);
+    const [lastDetection, setLastDetection] = useState<DetectionResult | null>(null);
+    const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         let url = '';
@@ -110,6 +122,13 @@ export function IPCameraStream({
             setIsLoading(false);
             setConnectionStatus('connected');
             setError(null);
+            
+            // Start plate detection after first successful load
+            if (!detectionIntervalRef.current) {
+                setTimeout(() => {
+                    startPlateDetection();
+                }, 2000);
+            }
         };
 
         const handleError = () => {
@@ -135,8 +154,88 @@ export function IPCameraStream({
             img.removeEventListener('load', handleLoad);
             img.removeEventListener('error', handleError);
             if (refreshInterval) clearInterval(refreshInterval);
+            if (detectionIntervalRef.current) {
+                clearInterval(detectionIntervalRef.current);
+                detectionIntervalRef.current = null;
+            }
         };
     }, [streamUrl, name, protocol, onError]);
+
+    // Capture frame from image and convert to base64
+    const captureFrame = (): string | null => {
+        if (!imgRef.current || !canvasRef.current) return null;
+
+        const img = imgRef.current;
+        const canvas = canvasRef.current;
+        
+        // Set canvas size to image size
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        
+        // Draw current image to canvas
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+        
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        // Convert to base64
+        return canvas.toDataURL('image/jpeg', 0.8);
+    };
+
+    // Send frame to backend for plate detection
+    const detectPlate = async () => {
+        if (isDetecting || connectionStatus !== 'connected') return;
+
+        const frameBase64 = captureFrame();
+        if (!frameBase64) return;
+
+        setIsDetecting(true);
+
+        try {
+            const response = await fetch(apiUrl('/ml/detect-plate'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    image_base64: frameBase64,
+                    camera_id: cameraId
+                })
+            });
+
+            if (response.ok) {
+                const result: DetectionResult = await response.json();
+                
+                if (result.success && result.plate_number) {
+                    console.log(`[IPCamera ${cameraId}] Detected plate:`, result.plate_number, `(${(result.confidence! * 100).toFixed(1)}%)`);
+                    setLastDetection(result);
+                    
+                    // Clear detection after 5 seconds
+                    setTimeout(() => {
+                        setLastDetection(null);
+                    }, 5000);
+                }
+            }
+        } catch (error) {
+            console.error('[IPCamera] Detection error:', error);
+        } finally {
+            setIsDetecting(false);
+        }
+    };
+
+    // Start continuous plate detection
+    const startPlateDetection = () => {
+        if (detectionIntervalRef.current) {
+            clearInterval(detectionIntervalRef.current);
+        }
+
+        // Detect every 2 seconds
+        detectionIntervalRef.current = setInterval(() => {
+            detectPlate();
+        }, 2000);
+
+        console.log(`[IPCamera ${cameraId}] Started plate detection`);
+    };
 
     if (error) {
         return (
@@ -159,6 +258,9 @@ export function IPCameraStream({
 
     return (
         <div className="relative w-full h-full bg-gray-900">
+            {/* Hidden canvas for frame capture */}
+            <canvas ref={canvasRef} style={{ display: 'none' }} />
+            
             {isLoading && (
                 <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
@@ -173,6 +275,7 @@ export function IPCameraStream({
                 alt={name}
                 className="w-full h-full object-contain"
                 style={{ display: isLoading ? 'none' : 'block' }}
+                crossOrigin="anonymous"
             />
 
             {/* Connection status indicator */}
@@ -195,11 +298,36 @@ export function IPCameraStream({
                 </span>
             </div>
 
+            {/* Detection status indicator */}
+            {connectionStatus === 'connected' && (
+                <div className="absolute top-2 left-2 flex items-center space-x-2 bg-black bg-opacity-60 px-2 py-1 rounded">
+                    <ScanLine className={`w-4 h-4 ${isDetecting ? 'text-cyan-400 animate-pulse' : 'text-gray-400'}`} />
+                    <span className="text-xs text-white">
+                        {isDetecting ? 'Đang quét...' : 'Sẵn sàng'}
+                    </span>
+                </div>
+            )}
+
+            {/* Detection result overlay */}
+            {lastDetection && lastDetection.plate_number && (
+                <div className="absolute top-14 left-2 right-2 bg-green-600 bg-opacity-90 px-3 py-2 rounded shadow-lg animate-fade-in">
+                    <div className="flex items-center space-x-2">
+                        <CheckCircle className="w-5 h-5 text-white" />
+                        <div className="flex-1">
+                            <div className="text-white font-bold text-lg">{lastDetection.plate_number}</div>
+                            <div className="text-white text-xs opacity-90">
+                                Độ chính xác: {((lastDetection.confidence || 0) * 100).toFixed(1)}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Camera info overlay */}
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-3">
                 <div className="text-white text-sm font-medium">{name}</div>
                 <div className="text-gray-300 text-xs">
-                    {protocol} • {ipAddress}:{port}
+                    {protocol} • {ipAddress}:{port} • AI Detection
                 </div>
             </div>
         </div>

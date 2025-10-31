@@ -23,7 +23,8 @@ RUN apt-get update && apt-get install -y \
 
 # Copy and install Python ML dependencies
 COPY requirements_ml.txt ./
-RUN pip3 install --no-cache-dir -r requirements_ml.txt
+ENV PIP_DEFAULT_TIMEOUT=180
+RUN pip3 install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu -r requirements_ml.txt
 
 # Stage 3: Final image with Node.js + Python
 FROM python:3.11-slim
