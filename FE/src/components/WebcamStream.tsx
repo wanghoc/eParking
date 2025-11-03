@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Camera, CheckCircle, ScanLine } from 'lucide-react';
 import { apiUrl } from '../api';
+import { io, Socket } from 'socket.io-client';
 
 interface WebcamStreamProps {
     cameraId: number;
@@ -13,6 +14,7 @@ interface DetectionResult {
     plate_number?: string;
     confidence?: number;
     message?: string;
+    annotated_image_base64?: string;
 }
 
 export function WebcamStream({
@@ -22,15 +24,92 @@ export function WebcamStream({
 }: WebcamStreamProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isConnected, setIsConnected] = useState(false);
+    const isConnectedRef = useRef<boolean>(false); // CRITICAL: Use ref for immediate access
     const [isDetecting, setIsDetecting] = useState(false);
     const [lastDetection, setLastDetection] = useState<DetectionResult | null>(null);
     const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         let stream: MediaStream | null = null;
+
+        // Initialize SocketIO connection
+        const initializeWebSocket = () => {
+            console.log(`[Webcam ${cameraId}] 🔌 Connecting to SocketIO detector...`);
+            
+            // SocketIO URL - port 5001 for detector
+            const socket = io('http://localhost:5001', {
+                transports: ['websocket', 'polling'],
+                reconnection: true,
+                reconnectionDelay: 3000
+            });
+            
+            socket.on('connect', () => {
+                console.log(`[Webcam ${cameraId}] ✅ SocketIO connected!`);
+                
+                // Register camera
+                socket.emit('register_camera', {
+                    cameraId: cameraId
+                });
+            });
+            
+            socket.on('camera_registered', (data: any) => {
+                console.log(`[Webcam ${cameraId}] 📹 Camera registered:`, data);
+            });
+            
+            socket.on('detection_result', (data: any) => {
+                try {
+                    console.log(`[Webcam ${cameraId}] 📦 Detection result:`, data);
+                    
+                    // Got detection result!
+                    setIsDetecting(false);
+                    
+                    // REALTIME: Draw overlay on canvas
+                    if (data.detection && data.detection.is_valid) {
+                        console.log(`[Webcam ${cameraId}] 🎯 DETECTED:`, data.detection.text);
+                        
+                        // Update detection state for badge
+                        setLastDetection({
+                            success: true,
+                            plate_number: data.detection.text,
+                            confidence: data.detection.confidence
+                        });
+                        
+                        // Draw bounding box on overlay canvas
+                        drawDetectionOverlay(data.detection);
+                        
+                        // Clear after 3s
+                        setTimeout(() => {
+                            setLastDetection(null);
+                            clearOverlay();
+                        }, 3000);
+                    } else if (data.detection === null) {
+                        // No plate detected - clear overlay
+                        clearOverlay();
+                    }
+                } catch (error) {
+                    console.error(`[Webcam ${cameraId}] ❌ Detection result parse error:`, error);
+                }
+            });
+            
+            socket.on('detection_error', (data: any) => {
+                console.error(`[Webcam ${cameraId}] ❌ Detection error:`, data);
+                setIsDetecting(false);
+            });
+            
+            socket.on('disconnect', () => {
+                console.log(`[Webcam ${cameraId}] 🔌 SocketIO disconnected`);
+            });
+            
+            socket.on('connect_error', (error) => {
+                console.error(`[Webcam ${cameraId}] ❌ SocketIO connection error:`, error);
+            });
+            
+            socketRef.current = socket;
+        };
 
         const initializeWebcam = async () => {
             try {
@@ -49,16 +128,50 @@ export function WebcamStream({
 
                 if (videoRef.current) {
                     videoRef.current.srcObject = stream;
-                    videoRef.current.onloadedmetadata = () => {
-                        videoRef.current?.play();
-                        setIsLoading(false);
-                        setIsConnected(true);
-                        
-                        // Start plate detection after 2 seconds
-                        setTimeout(() => {
-                            startPlateDetection();
-                        }, 2000);
+                    
+                    // Set connected immediately after stream assigned
+                    console.log(`[Webcam ${cameraId}] ✅ Stream assigned to video element`);
+                    
+                    videoRef.current.onloadedmetadata = async () => {
+                        console.log(`[Webcam ${cameraId}] 📹 Video metadata loaded`);
+                        try {
+                            await videoRef.current?.play();
+                            console.log(`[Webcam ${cameraId}] ▶️ Video playing`);
+                            setIsLoading(false);
+                            
+                            // CRITICAL FIX: Set both state AND ref
+                            setIsConnected(true);
+                            isConnectedRef.current = true;
+                            
+                            console.log(`[Webcam ${cameraId}] 🟢 Connection state & ref set to TRUE`);
+                            
+                            // Initialize WebSocket FIRST
+                            initializeWebSocket();
+                            
+                            // Start detection after WebSocket ready
+                            setTimeout(() => {
+                                console.log(`[Webcam ${cameraId}] 🚀 Starting detection (ref=${isConnectedRef.current})`);
+                                startPlateDetection();
+                            }, 1000); // Wait 1s for WebSocket connection
+                        } catch (playError) {
+                            console.error(`[Webcam ${cameraId}] ❌ Failed to play video:`, playError);
+                            setError('Không thể phát video từ webcam');
+                            setIsLoading(false);
+                        }
                     };
+                    
+                    // Fallback: Set timeout to check if metadata loaded
+                    setTimeout(() => {
+                        const readyState = videoRef.current?.readyState || 0;
+                        if (!isConnectedRef.current && readyState >= 2) {
+                            console.log(`[Webcam ${cameraId}] ⚡ Forcing connection (readyState: ${readyState})`);
+                            setIsLoading(false);
+                            setIsConnected(true);
+                            isConnectedRef.current = true;
+                            initializeWebSocket();
+                            startPlateDetection();
+                        }
+                    }, 3000);
                 }
             } catch (err: any) {
                 console.error('Webcam error:', err);
@@ -94,8 +207,74 @@ export function WebcamStream({
             if (detectionIntervalRef.current) {
                 clearInterval(detectionIntervalRef.current);
             }
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+            }
         };
     }, [cameraId, onError]);
+
+    // Draw detection overlay on canvas
+    const drawDetectionOverlay = (detection: any) => {
+        if (!overlayCanvasRef.current || !videoRef.current) return;
+        
+        const canvas = overlayCanvasRef.current;
+        const video = videoRef.current;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        
+        // Match canvas size to video display size
+        const rect = video.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+        
+        // Calculate scale factor
+        const scaleX = rect.width / video.videoWidth;
+        const scaleY = rect.height / video.videoHeight;
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw bounding box
+        const bbox = detection.bbox;
+        if (bbox && bbox.length === 4) {
+            const [x1, y1, x2, y2] = bbox;
+            const x = x1 * scaleX;
+            const y = y1 * scaleY;
+            const w = (x2 - x1) * scaleX;
+            const h = (y2 - y1) * scaleY;
+            
+            // Draw green box
+            ctx.strokeStyle = '#00FF00';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x, y, w, h);
+            
+            // Draw label background
+            ctx.fillStyle = '#00FF00';
+            const text = detection.text || 'License Plate';
+            const confText = `${(detection.confidence * 100).toFixed(1)}%`;
+            const fontSize = 16;
+            ctx.font = `bold ${fontSize}px sans-serif`;
+            
+            const textWidth = Math.max(ctx.measureText(text).width, ctx.measureText(confText).width);
+            const padding = 10;
+            const boxHeight = fontSize * 2 + padding * 2;
+            
+            ctx.fillRect(x, y - boxHeight, textWidth + padding * 2, boxHeight);
+            
+            // Draw text
+            ctx.fillStyle = '#000000';
+            ctx.fillText(text, x + padding, y - fontSize - padding);
+            ctx.fillText(confText, x + padding, y - padding);
+        }
+    };
+    
+    // Clear overlay canvas
+    const clearOverlay = () => {
+        if (!overlayCanvasRef.current) return;
+        const ctx = overlayCanvasRef.current.getContext('2d');
+        if (!ctx) return;
+        ctx.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height);
+    };
 
     // Capture frame from video and convert to base64
     const captureFrame = (): string | null => {
@@ -104,73 +283,93 @@ export function WebcamStream({
         const video = videoRef.current;
         const canvas = canvasRef.current;
         
-        // Set canvas size to video size
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        // OPTIMIZE: Resize to max 800x600 to reduce payload size
+        const maxWidth = 800;
+        const maxHeight = 600;
+        let width = video.videoWidth;
+        let height = video.videoHeight;
         
-        // Draw current video frame to canvas
+        // Calculate scaling to fit within max dimensions
+        const scale = Math.min(maxWidth / width, maxHeight / height, 1);
+        width = Math.floor(width * scale);
+        height = Math.floor(height * scale);
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Draw current video frame to canvas with scaling
         const ctx = canvas.getContext('2d');
         if (!ctx) return null;
         
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, 0, 0, width, height);
         
-        // Convert to base64
-        return canvas.toDataURL('image/jpeg', 0.8);
+        // Convert to base64 with quality 0.7 (lower = smaller file)
+        return canvas.toDataURL('image/jpeg', 0.7);
     };
 
-    // Send frame to backend for plate detection
+    // SocketIO connection (REALTIME - NO BLOCKING!)
+    const socketRef = useRef<Socket | null>(null);
+
+    // Send frame via SocketIO for REALTIME detection
     const detectPlate = async () => {
-        if (isDetecting || !isConnected) return;
+        if (isDetecting) {
+            console.log(`[Webcam ${cameraId}] ⏳ Already detecting, skipping...`);
+            return;
+        }
+        
+        // CRITICAL: Check ref instead of state for immediate value
+        if (!isConnectedRef.current) {
+            console.log(`[Webcam ${cameraId}] ⚠️ Not connected (ref=${isConnectedRef.current}), skipping detection`);
+            return;
+        }
+
+        // Check SocketIO connection
+        if (!socketRef.current || !socketRef.current.connected) {
+            console.log(`[Webcam ${cameraId}] ⚠️ SocketIO not connected, skipping detection`);
+            return;
+        }
 
         const frameBase64 = captureFrame();
-        if (!frameBase64) return;
+        if (!frameBase64) {
+            console.log(`[Webcam ${cameraId}] ❌ Failed to capture frame`);
+            return;
+        }
 
+        console.log(`[Webcam ${cameraId}] 📸 Captured frame, sending via SocketIO...`);
         setIsDetecting(true);
 
         try {
-            const response = await fetch(apiUrl('/ml/detect-plate'), {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    image_base64: frameBase64,
-                    camera_id: cameraId
-                })
+            // Send frame via SocketIO event (NON-BLOCKING!)
+            socketRef.current.emit('video_frame', {
+                cameraId: cameraId,
+                frame: frameBase64,
+                timestamp: Date.now()
             });
-
-            if (response.ok) {
-                const result: DetectionResult = await response.json();
-                
-                if (result.success && result.plate_number) {
-                    console.log(`[Webcam ${cameraId}] Detected plate:`, result.plate_number, `(${(result.confidence! * 100).toFixed(1)}%)`);
-                    setLastDetection(result);
-                    
-                    // Clear detection after 5 seconds
-                    setTimeout(() => {
-                        setLastDetection(null);
-                    }, 5000);
-                }
-            }
+            console.log(`[Webcam ${cameraId}] ✅ Frame sent via SocketIO`);
         } catch (error) {
-            console.error('[Webcam] Detection error:', error);
-        } finally {
+            console.error(`[Webcam ${cameraId}] ❌ SocketIO send error:`, error);
             setIsDetecting(false);
         }
     };
 
-    // Start continuous plate detection
+    // Start continuous plate detection via WebSocket
     const startPlateDetection = () => {
         if (detectionIntervalRef.current) {
             clearInterval(detectionIntervalRef.current);
         }
 
-        // Detect every 2 seconds
-        detectionIntervalRef.current = setInterval(() => {
-            detectPlate();
-        }, 2000);
+        console.log(`[Webcam ${cameraId}] ⚡ Starting REALTIME WebSocket detection...`);
 
-        console.log(`[Webcam ${cameraId}] Started plate detection`);
+        // Run first detection immediately
+        detectPlate();
+
+        // Detect every 500ms for TRUE REALTIME (WebSocket is non-blocking!)
+        detectionIntervalRef.current = setInterval(() => {
+            console.log(`[Webcam ${cameraId}] 🔄 Sending frame via WebSocket...`);
+            detectPlate();
+        }, 500); // 500ms = 2 FPS detection rate
+
+        console.log(`[Webcam ${cameraId}] ✅ REALTIME detection started (500ms interval via WebSocket)`);
     };
 
     if (error) {
@@ -201,12 +400,20 @@ export function WebcamStream({
                 </div>
             )}
             
+            {/* ALWAYS show video (REALTIME STREAM) */}
             <video
                 ref={videoRef}
                 autoPlay
                 playsInline
                 muted
                 className="w-full h-full object-contain"
+                style={{ display: isLoading ? 'none' : 'block' }}
+            />
+            
+            {/* Overlay canvas for drawing detection boxes (REALTIME OVERLAY) */}
+            <canvas
+                ref={overlayCanvasRef}
+                className="absolute top-0 left-0 w-full h-full object-contain pointer-events-none"
                 style={{ display: isLoading ? 'none' : 'block' }}
             />
 
@@ -235,15 +442,15 @@ export function WebcamStream({
                 </div>
             )}
 
-            {/* Detection result overlay */}
+            {/* Detection result badge - minimal để không che khuất annotated image */}
             {lastDetection && lastDetection.plate_number && (
-                <div className="absolute top-14 left-2 right-2 bg-green-600 bg-opacity-90 px-3 py-2 rounded shadow-lg animate-fade-in">
+                <div className="absolute top-12 right-2 bg-green-600 bg-opacity-95 px-3 py-2 rounded-lg shadow-xl animate-fade-in border-2 border-green-400">
                     <div className="flex items-center space-x-2">
                         <CheckCircle className="w-5 h-5 text-white" />
-                        <div className="flex-1">
-                            <div className="text-white font-bold text-lg">{lastDetection.plate_number}</div>
+                        <div>
+                            <div className="text-white font-bold text-base">{lastDetection.plate_number}</div>
                             <div className="text-white text-xs opacity-90">
-                                Độ chính xác: {((lastDetection.confidence || 0) * 100).toFixed(1)}%
+                                {((lastDetection.confidence || 0) * 100).toFixed(1)}%
                             </div>
                         </div>
                     </div>

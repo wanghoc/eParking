@@ -180,7 +180,7 @@ async function main() {
   });
 
   // Create sample cameras with parking_lot_id and device_id
-  // Bãi xe A - 2 cameras (use webcam)
+  // CHỈ TẠO 2 CAMERAS BÃI A (theo yêu cầu người dùng)
   await prisma.camera.upsert({
     where: { id: 1 },
     update: {},
@@ -217,79 +217,8 @@ async function main() {
     },
   });
 
-  // Bãi xe B - 2 cameras (use webcam)
-  await prisma.camera.upsert({
-    where: { id: 3 },
-    update: {},
-    create: {
-      id: 3,
-      name: 'Camera B - Vào',
-      location: 'Bãi xe B - Cổng vào',
-      parking_lot_id: parkingLotB.id,
-      type: 'Vao',
-      status: 'Hoạt động',
-      device_id: 'webcam', // Special marker for webcam
-      protocol: 'HTTP',
-      camera_brand: 'Webcam',
-      resolution: '1080p',
-      fps: 30,
-    },
-  });
-
-  await prisma.camera.upsert({
-    where: { id: 4 },
-    update: {},
-    create: {
-      id: 4,
-      name: 'Camera B - Ra',
-      location: 'Bãi xe B - Cổng ra',
-      parking_lot_id: parkingLotB.id,
-      type: 'Ra',
-      status: 'Hoạt động',
-      device_id: 'webcam', // Special marker for webcam
-      protocol: 'HTTP',
-      camera_brand: 'Webcam',
-      resolution: '1080p',
-      fps: 30,
-    },
-  });
-
-  // Bãi xe C - 2 cameras (use webcam)
-  await prisma.camera.upsert({
-    where: { id: 5 },
-    update: {},
-    create: {
-      id: 5,
-      name: 'Camera C - Vào',
-      location: 'Bãi xe C - Cổng vào',
-      parking_lot_id: parkingLotC.id,
-      type: 'Vao',
-      status: 'Hoạt động',
-      device_id: 'webcam', // Special marker for webcam
-      protocol: 'HTTP',
-      camera_brand: 'Webcam',
-      resolution: '1080p',
-      fps: 30,
-    },
-  });
-
-  await prisma.camera.upsert({
-    where: { id: 6 },
-    update: {},
-    create: {
-      id: 6,
-      name: 'Camera C - Ra',
-      location: 'Bãi xe C - Cổng ra',
-      parking_lot_id: parkingLotC.id,
-      type: 'Ra',
-      status: 'Hoạt động',
-      device_id: 'webcam', // Special marker for webcam
-      protocol: 'HTTP',
-      camera_brand: 'Webcam',
-      resolution: '1080p',
-      fps: 30,
-    },
-  });
+  // NOTE: Cameras cho bãi B và C đã bị XÓA
+  // Admin có thể tự tạo cameras mới qua UI nếu cần
 
   // Create system settings
   await prisma.systemSetting.upsert({

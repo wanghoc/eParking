@@ -30,12 +30,21 @@ interface CameraData {
     battery?: string;
 }
 
+interface ParkingLot {
+    id: number;
+    name: string;
+    capacity: number;
+    fee_per_turn: number;
+    status: string;
+}
+
 export function CameraPage() {
     const [showLiveModal, setShowLiveModal] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingCamera, setEditingCamera] = useState<CameraData | null>(null);
     const [cameras, setCameras] = useState<CameraData[]>([]);
+    const [parkingLots, setParkingLots] = useState<ParkingLot[]>([]);
     const [showCameraSelector, setShowCameraSelector] = useState(false);
     const [selectedCameraForFull, setSelectedCameraForFull] = useState<number | null>(null);
     const [selectedTab, setSelectedTab] = useState("live");
@@ -43,6 +52,7 @@ export function CameraPage() {
 
     useEffect(() => {
         loadCameras();
+        loadParkingLots();
     }, []);
 
     // No longer need webcam initialization - using IP camera streams instead
@@ -56,6 +66,18 @@ export function CameraPage() {
             }
         } catch (error) {
             console.error('Failed to load cameras:', error);
+        }
+    };
+
+    const loadParkingLots = async () => {
+        try {
+            const response = await fetch(apiUrl('/parking-lots'));
+            if (response.ok) {
+                const lots = await response.json();
+                setParkingLots(lots);
+            }
+        } catch (error) {
+            console.error('Error loading parking lots:', error);
         }
     };
 
@@ -103,6 +125,7 @@ export function CameraPage() {
                 body: JSON.stringify({
                     name: editingCamera.name,
                     location: editingCamera.location,
+                    parking_lot_id: editingCamera.parking_lot_id, // ✅ FIX: Thêm parking_lot_id
                     type: editingCamera.type,
                     status: editingCamera.status,
                     ip_address: editingCamera.ip_address,
@@ -121,9 +144,9 @@ export function CameraPage() {
 
             if (response.ok) {
                 alert('Cập nhật camera thành công!');
+                await loadCameras(); // Reload cameras
                 setShowEditModal(false);
                 setEditingCamera(null);
-                loadCameras(); // Reload cameras
             } else {
                 const data = await response.json();
                 alert(data.message || 'Lỗi khi cập nhật camera!');
@@ -494,13 +517,35 @@ export function CameraPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Vị trí</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Bãi xe</label>
+                                <select
+                                    value={editingCamera.parking_lot_id || ''}
+                                    onChange={(e) => {
+                                        const lotId = e.target.value ? parseInt(e.target.value) : null;
+                                        const selectedLot = parkingLots.find(l => l.id === lotId);
+                                        setEditingCamera({
+                                            ...editingCamera, 
+                                            parking_lot_id: lotId,
+                                            location: selectedLot ? selectedLot.name : editingCamera.location
+                                        });
+                                    }}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                                >
+                                    <option value="">Chọn bãi xe</option>
+                                    {parkingLots.map(lot => (
+                                        <option key={lot.id} value={lot.id}>{lot.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Vị trí chi tiết (tùy chọn)</label>
                                 <input
                                     type="text"
                                     value={editingCamera.location || ''}
                                     onChange={(e) => setEditingCamera({...editingCamera, location: e.target.value})}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                                    placeholder="Nhập vị trí camera"
+                                    placeholder="Mô tả chi tiết vị trí camera (tự động điền theo bãi xe)"
                                 />
                             </div>
 
@@ -614,6 +659,33 @@ export function CameraPage() {
                                     onChange={(e) => setEditingCamera({...editingCamera, camera_brand: e.target.value})}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
                                     placeholder="Hikvision, Dahua, etc."
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Resolution</label>
+                                <select
+                                    value={editingCamera.resolution || '1080p'}
+                                    onChange={(e) => setEditingCamera({...editingCamera, resolution: e.target.value})}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                                >
+                                    <option value="720p">720p</option>
+                                    <option value="1080p">1080p</option>
+                                    <option value="2K">2K</option>
+                                    <option value="4K">4K</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">FPS</label>
+                                <input
+                                    type="number"
+                                    value={editingCamera.fps || 30}
+                                    onChange={(e) => setEditingCamera({...editingCamera, fps: parseInt(e.target.value) || 30})}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                                    placeholder="30"
+                                    min="1"
+                                    max="60"
                                 />
                             </div>
                         </div>

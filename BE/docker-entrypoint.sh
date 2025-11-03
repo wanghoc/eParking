@@ -21,6 +21,44 @@ npx prisma db push
 echo "Seeding database with demo data..."
 npx prisma db seed
 
-# Start the application
-echo "Starting application..."
+# Function to cleanup on exit
+cleanup() {
+    echo ""
+    echo "🛑 Shutting down services..."
+    kill $(jobs -p) 2>/dev/null || true
+    exit 0
+}
+
+trap cleanup SIGINT SIGTERM
+
+# Check if ML is enabled
+if [ "$USE_ML" = "true" ]; then
+    echo ""
+    echo "========================================="
+    echo "🚀 Starting WebSocket Detector Service"
+    echo "========================================="
+    echo "Port: 5001"
+    echo "Protocol: WebSocket + HTTP"
+    echo "Model: YOLO OBB + EasyOCR (PERSISTENT)"
+    echo ""
+    
+    # Start WebSocket detector in background
+    python3 ml_models/utils/websocket_detector.py &
+    WS_PID=$!
+    echo "✅ WebSocket Detector started (PID: $WS_PID)"
+    
+    # Wait a bit for WebSocket server to be ready
+    sleep 3
+else
+    echo "⚠️ ML detection disabled (USE_ML=false)"
+fi
+
+# Start the application (Express server) in foreground
+echo ""
+echo "========================================="
+echo "🚀 Starting Express API Server"
+echo "========================================="
+echo "Port: 5000"
+echo ""
+
 exec "$@"

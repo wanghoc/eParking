@@ -20,6 +20,13 @@ ultralytics
 # OCR (EasyOCR for Vietnamese plate recognition)
 easyocr
 
+# WebSocket Server for Realtime Detection
+flask
+flask-socketio
+flask-cors
+python-socketio[client]
+eventlet
+
 # Utils
 python-dotenv
 tqdm

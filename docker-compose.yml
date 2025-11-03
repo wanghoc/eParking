@@ -46,6 +46,7 @@ services:
       PYTHONUNBUFFERED: 1
     ports:
       - "5000:5000"
+      - "5001:5001"  # WebSocket Detector port
     volumes:
       - ./BE:/app
       - /app/node_modules

@@ -187,6 +187,13 @@ class LicensePlateDetector:
             is_valid, plate_text = self.validate_plate_format(plate_text_raw)
             plate_text_formatted = self.format_plate_text(plate_text) if is_valid else plate_text_raw
             
+            # Vẽ kết quả lên ảnh
+            annotated_image = self._draw_result(image, best_detection, plate_text_formatted)
+            
+            # Encode annotated image to base64 for transmission
+            _, buffer = cv2.imencode('.jpg', annotated_image, [cv2.IMWRITE_JPEG_QUALITY, 90])
+            annotated_base64 = base64.b64encode(buffer).decode('utf-8')
+            
             return {
                 'success': True,
                 'plate_number': plate_text_formatted if is_valid else None,
@@ -199,7 +206,8 @@ class LicensePlateDetector:
                 },
                 'raw_text': plate_text_raw,
                 'is_valid': is_valid,
-                'annotated_image': self._draw_result(image, best_detection, plate_text_formatted)
+                'annotated_image': annotated_image,
+                'annotated_image_base64': f"data:image/jpeg;base64,{annotated_base64}"
             }
             
         except Exception as e:
@@ -211,30 +219,48 @@ class LicensePlateDetector:
             }
     
     def _draw_result(self, image, detection, plate_text):
-        """Vẽ kết quả lên ảnh"""
+        """Vẽ kết quả lên ảnh - style giống dự án test với khung xanh lá"""
         try:
             annotated = image.copy()
             points = detection['points']
             x1, y1, x2, y2 = detection['bbox']
             conf = detection['confidence']
             
-            # Vẽ OBB polygon
-            cv2.polylines(annotated, [points], True, (0, 255, 0), 2)
+            # Vẽ OBB polygon với màu xanh lá đậm (BGR format)
+            cv2.polylines(annotated, [points], True, (0, 255, 0), 3)
             
-            # Vẽ text
-            label = f"{plate_text} ({conf*100:.1f}%)" if plate_text else f"Conf: {conf*100:.1f}%"
-            (text_w, text_h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+            # Vẽ thêm rectangle bounding box
+            cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 255, 0), 2)
             
-            # Background cho text
-            cv2.rectangle(annotated, (x1, y1 - text_h - 10), 
-                         (x1 + text_w + 10, y1), (0, 255, 0), -1)
+            # Tạo label
+            if plate_text:
+                label = f"{plate_text}"
+                conf_label = f"Conf: {conf*100:.1f}%"
+            else:
+                label = "License Plate"
+                conf_label = f"Conf: {conf*100:.1f}%"
             
-            # Text
-            cv2.putText(annotated, label, (x1 + 5, y1 - 5),
+            # Đo kích thước text
+            (label_w, label_h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.9, 2)
+            (conf_w, conf_h), _ = cv2.getTextSize(conf_label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+            
+            # Vẽ background cho biển số (xanh lá)
+            box_height = label_h + conf_h + 20
+            box_width = max(label_w, conf_w) + 20
+            cv2.rectangle(annotated, (x1, y1 - box_height - 5), 
+                         (x1 + box_width, y1), (0, 255, 0), -1)
+            
+            # Vẽ text biển số (màu đen, đậm)
+            cv2.putText(annotated, label, (x1 + 10, y1 - conf_h - 15),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 0), 2)
+            
+            # Vẽ confidence (màu đen)
+            cv2.putText(annotated, conf_label, (x1 + 10, y1 - 5),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
             
             return annotated
-        except:
+        except Exception as e:
+            print(f"[ERROR] Drawing error: {e}", file=sys.stderr)
             return image
 
 
@@ -270,9 +296,14 @@ def decode_base64_image(base64_str):
         # Convert to numpy array
         img_array = np.array(img)
         
-        # Convert RGB to BGR for OpenCV
-        if len(img_array.shape) == 3 and img_array.shape[2] == 3:
-            img_array = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+        # Handle different color formats
+        if len(img_array.shape) == 3:
+            if img_array.shape[2] == 4:
+                # Remove alpha channel: RGBA -> BGR
+                img_array = cv2.cvtColor(img_array, cv2.COLOR_RGBA2BGR)
+            elif img_array.shape[2] == 3:
+                # Convert RGB to BGR for OpenCV
+                img_array = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
         
         return img_array
     except Exception as e:
@@ -324,6 +355,8 @@ def detect_and_recognize(image):
     start_time = time.time()
     
     try:
+        print("[INFO] Starting detect_and_recognize", file=sys.stderr, flush=True)
+        
         if not ML_AVAILABLE:
             # Fallback for testing
             return {
@@ -335,10 +368,13 @@ def detect_and_recognize(image):
             }
         
         # Get detector
+        print("[INFO] Getting detector instance", file=sys.stderr, flush=True)
         detector = get_detector()
         
         # Run detection and OCR
+        print("[INFO] Running detection and recognition", file=sys.stderr, flush=True)
         result = detector.detect_and_recognize(image, conf_threshold=0.25)
+        print("[INFO] Detection completed", file=sys.stderr, flush=True)
         
         # Add processing time
         result['processing_time_ms'] = int((time.time() - start_time) * 1000)
@@ -368,35 +404,55 @@ def detect_and_recognize(image):
 
 def main():
     """Main entry point"""
-    if len(sys.argv) < 3:
-        print(json.dumps({
-            'success': False,
-            'error': 'Missing image argument. Usage: python inference.py --image <base64_string>'
-        }))
-        return
+    print("[DEBUG] Script started", file=sys.stderr, flush=True)
     
-    # Read image from command line argument
-    image_base64 = sys.argv[2]
+    # Check if we should read from stdin
+    use_stdin = '--stdin' in sys.argv
+    
+    if use_stdin:
+        print("[DEBUG] Reading image from STDIN", file=sys.stderr, flush=True)
+        # Read base64 from stdin
+        image_base64 = sys.stdin.read().strip()
+    else:
+        # Legacy: Read from command line argument
+        if len(sys.argv) < 3:
+            print(json.dumps({
+                'success': False,
+                'error': 'Missing image argument. Usage: python inference.py --image <base64_string> or --stdin'
+            }), flush=True)
+            return
+        
+        print("[DEBUG] Reading image from command line argument", file=sys.stderr, flush=True)
+        image_base64 = sys.argv[2]
+    
+    print(f"[DEBUG] Image base64 length: {len(image_base64)}", file=sys.stderr, flush=True)
     
     # Decode image
+    print("[DEBUG] Decoding image...", file=sys.stderr, flush=True)
     image = decode_base64_image(image_base64)
     
     if image is None:
         print(json.dumps({
             'success': False,
             'error': 'Failed to decode base64 image'
-        }))
+        }), flush=True)
         return
     
+    print(f"[DEBUG] Image decoded: {image.shape}", file=sys.stderr, flush=True)
+    
     # Run inference
+    print("[DEBUG] Running inference...", file=sys.stderr, flush=True)
     result = detect_and_recognize(image)
+    
+    print("[DEBUG] Inference completed", file=sys.stderr, flush=True)
     
     # Remove annotated_image from output (too large for JSON)
     if 'annotated_image' in result:
         del result['annotated_image']
     
     # Print result as JSON
-    print(json.dumps(result))
+    print(json.dumps(result), flush=True)
+    print("[DEBUG] Result sent", file=sys.stderr, flush=True)
 
 
 if __name__ == '__main__':

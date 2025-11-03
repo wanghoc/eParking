@@ -1,7 +1,7 @@
-import { Shield, Camera, AlertCircle, CheckCircle, DollarSign, Bike, Clock, Video, RefreshCw, Settings as SettingsIcon, FileText, Map, XCircle, ChevronDown } from "lucide-react";
+import { Shield, Camera, AlertCircle, CheckCircle, DollarSign, Bike, Clock, Video, RefreshCw, Settings as SettingsIcon, FileText, Map, XCircle, ChevronDown, Maximize2, Minimize2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiUrl } from "../api";
-import { WebcamStream } from "./WebcamStream";
+import { WebcamStreamWS } from "./WebcamStreamWS";
 import { IPCameraStream } from "./IPCameraStream";
 
 interface DashboardStats {
@@ -74,6 +74,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
     const [parkingLots, setParkingLots] = useState<ParkingLot[]>([]);
     const [selectedParkingLot, setSelectedParkingLot] = useState<number | null>(null);
     const [showParkingLotSelector, setShowParkingLotSelector] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     // Fetch initial data
     useEffect(() => {
@@ -373,54 +374,64 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
             </div>
 
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+            <div className={`${isFullscreen ? 'fixed inset-0 z-50 bg-black' : 'grid grid-cols-1 xl:grid-cols-4 gap-6'}`}>
                 {/* Camera Feeds - Left Side (3/4 width) */}
-                <div className="xl:col-span-3 space-y-6">
+                <div className={isFullscreen ? 'w-full h-full' : 'xl:col-span-3 space-y-6'}>
                     {/* Camera Grid */}
-                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                    <div className={`${isFullscreen ? 'h-full' : ''} bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden`}>
                         <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-2">
                                     <Video className="h-5 w-5 text-cyan-600" />
                                     <h2 className="text-xl font-semibold text-gray-900">Luồng Camera Trực Tiếp</h2>
                                 </div>
-                                <div className="relative">
+                                <div className="flex items-center space-x-2">
                                     <button
-                                        onClick={() => setShowParkingLotSelector(!showParkingLotSelector)}
-                                        className="bg-cyan-500 text-white px-4 py-2 rounded-lg hover:bg-cyan-600 transition-colors flex items-center space-x-2"
+                                        onClick={() => setIsFullscreen(!isFullscreen)}
+                                        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-2"
+                                        title={isFullscreen ? "Thu nhỏ" : "Toàn màn hình"}
                                     >
-                                        <Map className="h-5 w-5" />
-                                        <span>{selectedParkingLot ? parkingLots.find(l => l.id === selectedParkingLot)?.name : 'Chọn bãi xe'}</span>
-                                        <ChevronDown className="h-4 w-4" />
+                                        {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+                                        <span className="hidden sm:inline">{isFullscreen ? "Thu nhỏ" : "Toàn màn hình"}</span>
                                     </button>
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => setShowParkingLotSelector(!showParkingLotSelector)}
+                                            className="bg-cyan-500 text-white px-4 py-2 rounded-lg hover:bg-cyan-600 transition-colors flex items-center space-x-2"
+                                        >
+                                            <Map className="h-5 w-5" />
+                                            <span>{selectedParkingLot ? parkingLots.find(l => l.id === selectedParkingLot)?.name : 'Chọn bãi xe'}</span>
+                                            <ChevronDown className="h-4 w-4" />
+                                        </button>
                                     
-                                    {showParkingLotSelector && (
-                                        <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-10">
-                                            <div className="p-2 max-h-64 overflow-y-auto">
-                                                {parkingLots.map((lot) => (
-                                                    <button
-                                                        key={lot.id}
-                                                        onClick={() => {
-                                                            setSelectedParkingLot(lot.id);
-                                                            setShowParkingLotSelector(false);
-                                                        }}
-                                                        className="w-full text-left px-4 py-2 hover:bg-cyan-50 rounded-lg transition-colors"
-                                                    >
-                                                        <p className="font-medium text-gray-900">{lot.name}</p>
-                                                        <p className="text-xs text-gray-500">Đã sử dụng: {lot.occupied}/{lot.capacity}</p>
-                                                    </button>
-                                                ))}
+                                        {showParkingLotSelector && (
+                                            <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-10">
+                                                <div className="p-2 max-h-64 overflow-y-auto">
+                                                    {parkingLots.map((lot) => (
+                                                        <button
+                                                            key={lot.id}
+                                                            onClick={() => {
+                                                                setSelectedParkingLot(lot.id);
+                                                                setShowParkingLotSelector(false);
+                                                            }}
+                                                            className="w-full text-left px-4 py-2 hover:bg-cyan-50 rounded-lg transition-colors"
+                                                        >
+                                                            <p className="font-medium text-gray-900">{lot.name}</p>
+                                                            <p className="text-xs text-gray-500">Đã sử dụng: {lot.occupied}/{lot.capacity}</p>
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div className="p-6">
+                        <div className={isFullscreen ? 'p-4 h-[calc(100vh-80px)]' : 'p-6'}>
                             {!selectedParkingLot ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isFullscreen ? 'h-full' : ''}`}>
                                     {[1, 2].map((idx) => (
-                                        <div key={idx} className="relative bg-gray-200 rounded-xl overflow-hidden aspect-video flex items-center justify-center">
+                                        <div key={idx} className={`relative bg-gray-200 rounded-xl overflow-hidden ${isFullscreen ? 'h-full' : 'aspect-video'} flex items-center justify-center`}>
                                             <div className="text-center text-gray-500">
                                                 <Camera className="h-12 w-12 mx-auto mb-2 opacity-50" />
                                                 <p className="text-sm font-medium">Vui lòng chọn bãi xe</p>
@@ -470,12 +481,12 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
 
                                 // Show actual cameras (webcam for test lots with device_id='webcam', IP camera for others)
                                 return (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isFullscreen ? 'h-full' : ''}`}>
                                         {filteredCameras.slice(0, 2).map((camera) => (
-                                            <div key={camera.id} className="relative bg-gray-900 rounded-xl overflow-hidden aspect-video">
-                                                {/* Use Webcam for test parking lots (device_id === 'webcam'), IP camera for others */}
+                                            <div key={camera.id} className={`relative bg-gray-900 rounded-xl overflow-hidden ${isFullscreen ? 'h-full' : 'aspect-video'}`}>
+                                                {/* Use WebcamStreamWS for realtime detection (device_id === 'webcam'), IP camera for others */}
                                                 {camera.device_id === 'webcam' ? (
-                                                    <WebcamStream
+                                                    <WebcamStreamWS
                                                         cameraId={camera.id}
                                                         name={camera.name}
                                                     />
@@ -539,6 +550,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                     </div>
 
                     {/* Vehicle List Table */}
+                    {!isFullscreen && (
                     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                         <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
                             <h2 className="text-xl font-semibold text-gray-900">
@@ -635,9 +647,11 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                             )}
                         </div>
                     </div>
+                    )}
                 </div>
 
                 {/* Right Sidebar - Quick Actions */}
+                {!isFullscreen && (
                 <div className="space-y-4">
                     {/* Quick Actions */}
                     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
@@ -710,6 +724,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                         </div>
                     </div>
                 </div>
+                )}
             </div>
         </div>
     );

@@ -20,9 +20,10 @@ function runInference(imageBase64) {
     });
   }
   return new Promise((resolve, reject) => {
+    // CRITICAL FIX: Use stdin instead of command line argument to avoid E2BIG error
     const python = spawn('python', [
       'ml_models/utils/inference.py',
-      '--image', imageBase64
+      '--stdin'  // Tell Python to read from stdin
     ]);
 
     let result = '';
@@ -33,10 +34,17 @@ function runInference(imageBase64) {
     });
 
     python.stderr.on('data', (data) => {
-      error += data.toString();
+      const stderr = data.toString();
+      error += stderr;
+      // Log Python stderr for debugging
+      console.error('[Python stderr]', stderr);
     });
 
     python.on('close', (code) => {
+      console.log(`[Python] Process exited with code ${code}`);
+      console.log(`[Python stdout] ${result.substring(0, 500)}`);
+      console.log(`[Python stderr] ${error.substring(0, 500)}`);
+      
       if (code === 0) {
         try {
           resolve(JSON.parse(result));
@@ -48,11 +56,15 @@ function runInference(imageBase64) {
       }
     });
 
-    // Set timeout
+    // Send base64 image via stdin (avoids command line length limit)
+    python.stdin.write(imageBase64);
+    python.stdin.end();
+
+    // Set timeout (increased for first-time model loading - EasyOCR downloads models)
     setTimeout(() => {
       python.kill();
-      reject(new Error('Inference timeout'));
-    }, 10000); // 10 seconds timeout
+      reject(new Error('Inference timeout - Model loading may take 3-5 minutes on first run'));
+    }, 180000); // 180 seconds (3 minutes) timeout for first-time model load
   });
 }
 
@@ -254,7 +266,8 @@ router.post('/detect-plate', async (req, res) => {
       success: result.success,
       plate_number: result.plate_number,
       confidence: result.confidence,
-      saved_image: result.saved_image
+      saved_image: result.saved_image,
+      has_annotated_image: !!result.annotated_image_base64
     });
     
     // Save to database if plate detected
@@ -265,6 +278,7 @@ router.post('/detect-plate', async (req, res) => {
       console.log(`[ML] Database save result:`, saveResult);
     }
     
+    // Keep annotated_image_base64 for frontend display
     res.json(result);
   } catch (error) {
     console.error('ML detection error:', error);

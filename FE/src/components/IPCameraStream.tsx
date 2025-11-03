@@ -21,6 +21,7 @@ interface DetectionResult {
     plate_number?: string;
     confidence?: number;
     message?: string;
+    annotated_image_base64?: string;
 }
 
 export function IPCameraStream({
@@ -44,6 +45,7 @@ export function IPCameraStream({
     const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
     const [isDetecting, setIsDetecting] = useState(false);
     const [lastDetection, setLastDetection] = useState<DetectionResult | null>(null);
+    const [annotatedImageUrl, setAnnotatedImageUrl] = useState<string | null>(null);
     const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
@@ -206,14 +208,25 @@ export function IPCameraStream({
             if (response.ok) {
                 const result: DetectionResult = await response.json();
                 
+                // Update annotated image if available
+                if (result.annotated_image_base64) {
+                    setAnnotatedImageUrl(result.annotated_image_base64);
+                }
+                
                 if (result.success && result.plate_number) {
                     console.log(`[IPCamera ${cameraId}] Detected plate:`, result.plate_number, `(${(result.confidence! * 100).toFixed(1)}%)`);
                     setLastDetection(result);
                     
-                    // Clear detection after 5 seconds
+                    // Clear detection after 3 seconds
                     setTimeout(() => {
                         setLastDetection(null);
-                    }, 5000);
+                        setAnnotatedImageUrl(null);
+                    }, 3000);
+                } else {
+                    // Clear annotated image if no detection
+                    setTimeout(() => {
+                        setAnnotatedImageUrl(null);
+                    }, 1000);
                 }
             }
         } catch (error) {
@@ -229,12 +242,12 @@ export function IPCameraStream({
             clearInterval(detectionIntervalRef.current);
         }
 
-        // Detect every 2 seconds
+        // Detect every 1 second for more realtime feel
         detectionIntervalRef.current = setInterval(() => {
             detectPlate();
-        }, 2000);
+        }, 1000);
 
-        console.log(`[IPCamera ${cameraId}] Started plate detection`);
+        console.log(`[IPCamera ${cameraId}] Started realtime plate detection (1s interval)`);
     };
 
     if (error) {
@@ -270,13 +283,23 @@ export function IPCameraStream({
                 </div>
             )}
             
-            <img
-                ref={imgRef}
-                alt={name}
-                className="w-full h-full object-contain"
-                style={{ display: isLoading ? 'none' : 'block' }}
-                crossOrigin="anonymous"
-            />
+            {/* Show annotated image when detection occurs, otherwise show normal stream */}
+            {annotatedImageUrl ? (
+                <img
+                    src={annotatedImageUrl}
+                    alt="Detected plate"
+                    className="w-full h-full object-contain"
+                    style={{ display: isLoading ? 'none' : 'block' }}
+                />
+            ) : (
+                <img
+                    ref={imgRef}
+                    alt={name}
+                    className="w-full h-full object-contain"
+                    style={{ display: isLoading ? 'none' : 'block' }}
+                    crossOrigin="anonymous"
+                />
+            )}
 
             {/* Connection status indicator */}
             <div className="absolute top-2 right-2 flex items-center space-x-2 bg-black bg-opacity-60 px-2 py-1 rounded">
@@ -308,15 +331,15 @@ export function IPCameraStream({
                 </div>
             )}
 
-            {/* Detection result overlay */}
+            {/* Detection result badge - minimal để không che khuất annotated image */}
             {lastDetection && lastDetection.plate_number && (
-                <div className="absolute top-14 left-2 right-2 bg-green-600 bg-opacity-90 px-3 py-2 rounded shadow-lg animate-fade-in">
+                <div className="absolute top-12 right-2 bg-green-600 bg-opacity-95 px-3 py-2 rounded-lg shadow-xl animate-fade-in border-2 border-green-400">
                     <div className="flex items-center space-x-2">
                         <CheckCircle className="w-5 h-5 text-white" />
-                        <div className="flex-1">
-                            <div className="text-white font-bold text-lg">{lastDetection.plate_number}</div>
+                        <div>
+                            <div className="text-white font-bold text-base">{lastDetection.plate_number}</div>
                             <div className="text-white text-xs opacity-90">
-                                Độ chính xác: {((lastDetection.confidence || 0) * 100).toFixed(1)}%
+                                {((lastDetection.confidence || 0) * 100).toFixed(1)}%
                             </div>
                         </div>
                     </div>
