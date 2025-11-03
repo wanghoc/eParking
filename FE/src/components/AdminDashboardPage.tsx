@@ -1,7 +1,7 @@
 import { Shield, Camera, AlertCircle, CheckCircle, DollarSign, Bike, Clock, Video, RefreshCw, Settings as SettingsIcon, FileText, Map, XCircle, ChevronDown, Maximize2, Minimize2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiUrl } from "../api";
-import { WebcamStreamWS } from "./WebcamStreamWS";
+import { WebcamStream } from "./WebcamStream"; // CHANGED: Use WebcamStream instead of WebcamStreamWS
 import { IPCameraStream } from "./IPCameraStream";
 
 interface DashboardStats {
@@ -484,11 +484,21 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                                     <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isFullscreen ? 'h-full' : ''}`}>
                                         {filteredCameras.slice(0, 2).map((camera) => (
                                             <div key={camera.id} className={`relative bg-gray-900 rounded-xl overflow-hidden ${isFullscreen ? 'h-full' : 'aspect-video'}`}>
-                                                {/* Use WebcamStreamWS for realtime detection (device_id === 'webcam'), IP camera for others */}
+                                                {/* Use WebcamStream for realtime detection (device_id === 'webcam'), IP camera for others */}
                                                 {camera.device_id === 'webcam' ? (
-                                                    <WebcamStreamWS
+                                                    <WebcamStream
                                                         cameraId={camera.id}
                                                         name={camera.name}
+                                                        onDetection={(plateNumber, confidence) => {
+                                                            // Update camera's lastPlate in state
+                                                            setCameras(prevCameras =>
+                                                                prevCameras.map(cam =>
+                                                                    cam.id === camera.id
+                                                                        ? { ...cam, lastPlate: plateNumber }
+                                                                        : cam
+                                                                )
+                                                            );
+                                                        }}
                                                     />
                                                 ) : camera.ip_address || camera.device_id ? (
                                                     <IPCameraStream

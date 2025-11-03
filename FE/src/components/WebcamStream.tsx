@@ -7,6 +7,7 @@ interface WebcamStreamProps {
     cameraId: number;
     name: string;
     onError?: (error: string) => void;
+    onDetection?: (plateNumber: string, confidence: number) => void; // NEW: Callback for detected plates
 }
 
 interface DetectionResult {
@@ -20,7 +21,8 @@ interface DetectionResult {
 export function WebcamStream({
     cameraId,
     name,
-    onError
+    onError,
+    onDetection
 }: WebcamStreamProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -77,6 +79,11 @@ export function WebcamStream({
                             plate_number: data.detection.text,
                             confidence: data.detection.confidence
                         });
+                        
+                        // Callback to parent component (for AdminDashboard)
+                        if (onDetection) {
+                            onDetection(data.detection.text, data.detection.confidence);
+                        }
                         
                         // Draw bounding box on overlay canvas
                         drawDetectionOverlay(data.detection);
@@ -215,33 +222,49 @@ export function WebcamStream({
 
     // Draw detection overlay on canvas
     const drawDetectionOverlay = (detection: any) => {
-        if (!overlayCanvasRef.current || !videoRef.current) return;
+        if (!overlayCanvasRef.current || !videoRef.current || !canvasRef.current) return;
         
-        const canvas = overlayCanvasRef.current;
+        const overlayCanvas = overlayCanvasRef.current;
         const video = videoRef.current;
-        const ctx = canvas.getContext('2d');
+        const captureCanvas = canvasRef.current;
+        const ctx = overlayCanvas.getContext('2d');
         if (!ctx) return;
         
-        // Match canvas size to video display size
+        // Match overlay canvas size to video display size
         const rect = video.getBoundingClientRect();
-        canvas.width = rect.width;
-        canvas.height = rect.height;
+        overlayCanvas.width = rect.width;
+        overlayCanvas.height = rect.height;
         
-        // Calculate scale factor
-        const scaleX = rect.width / video.videoWidth;
-        const scaleY = rect.height / video.videoHeight;
+        // CRITICAL FIX: Bbox coordinates are from RESIZED FRAME (captureCanvas size)
+        // Need to scale from captureCanvas -> original video -> display size
+        const captureWidth = captureCanvas.width;
+        const captureHeight = captureCanvas.height;
+        const videoWidth = video.videoWidth;
+        const videoHeight = video.videoHeight;
+        
+        // Calculate scale: captureCanvas -> originalVideo
+        const captureToVideoScaleX = videoWidth / captureWidth;
+        const captureToVideoScaleY = videoHeight / captureHeight;
+        
+        // Calculate scale: originalVideo -> displaySize
+        const videoToDisplayScaleX = rect.width / videoWidth;
+        const videoToDisplayScaleY = rect.height / videoHeight;
+        
+        // Combined scale: captureCanvas -> displaySize
+        const totalScaleX = captureToVideoScaleX * videoToDisplayScaleX;
+        const totalScaleY = captureToVideoScaleY * videoToDisplayScaleY;
         
         // Clear canvas
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
         
         // Draw bounding box
         const bbox = detection.bbox;
         if (bbox && bbox.length === 4) {
             const [x1, y1, x2, y2] = bbox;
-            const x = x1 * scaleX;
-            const y = y1 * scaleY;
-            const w = (x2 - x1) * scaleX;
-            const h = (y2 - y1) * scaleY;
+            const x = x1 * totalScaleX;
+            const y = y1 * totalScaleY;
+            const w = (x2 - x1) * totalScaleX;
+            const h = (y2 - y1) * totalScaleY;
             
             // Draw green box
             ctx.strokeStyle = '#00FF00';
