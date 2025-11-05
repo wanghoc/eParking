@@ -42,8 +42,17 @@ export function WebcamStream({
         const initializeWebSocket = () => {
             console.log(`[Webcam ${cameraId}] 🔌 Connecting to SocketIO detector...`);
             
-            // SocketIO URL - port 5001 for detector
-            const socket = io('http://localhost:5001', {
+            // Determine the Socket.IO URL from an environment variable so the deployed frontend
+            // can connect to the server running in Railway. In development this falls back to
+            // the local detector on port 5001.
+            const WS_URL =
+                process.env.REACT_APP_WS_URL && process.env.REACT_APP_WS_URL.length > 0
+                    ? process.env.REACT_APP_WS_URL
+                    : 'http://localhost:5001';
+            
+            console.log(`[Webcam ${cameraId}] 🌐 WebSocket URL: ${WS_URL}`);
+            
+            const socket = io(WS_URL, {
                 transports: ['websocket', 'polling'],
                 reconnection: true,
                 reconnectionDelay: 3000
