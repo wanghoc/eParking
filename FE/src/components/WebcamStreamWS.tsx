@@ -67,6 +67,10 @@ export function WebcamStreamWS({
 
     // WebSocket URL - auto-detect from current window location
     const getWebSocketURL = () => {
+            const envUrl = process.env.REACT_APP_WS_URL;
+    if (envUrl && envUrl.length > 0) {
+      return envUrl;
+    }
         // If accessing via localhost/127.0.0.1, use localhost:5001
         // Otherwise use current hostname with port 5001
         const hostname = window.location.hostname;
