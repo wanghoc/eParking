@@ -7,6 +7,7 @@ WORKDIR /app
 # Build-time args for CRA envs
 ARG REACT_APP_API_URL
 ARG REACT_APP_ENVIRONMENT
+ARG REACT_APP_WS_URL
 
 # Copy package files
 COPY package*.json ./
@@ -17,6 +18,7 @@ RUN npm ci
 # Set env vars so CRA picks them up at build time
 ENV REACT_APP_API_URL=${REACT_APP_API_URL}
 ENV REACT_APP_ENVIRONMENT=${REACT_APP_ENVIRONMENT}
+ENV REACT_APP_WS_URL=${REACT_APP_WS_URL}
 
 # Copy source code
 COPY . .

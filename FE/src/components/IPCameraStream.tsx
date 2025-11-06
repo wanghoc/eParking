@@ -14,6 +14,7 @@ interface IPCameraStreamProps {
     rtspUrl?: string;
     httpUrl?: string;
     onError?: (error: string) => void;
+    hideIndicators?: boolean; // NEW: Hide status indicators (for AdminDashboard)
 }
 
 interface DetectionResult {
@@ -35,7 +36,8 @@ export function IPCameraStream({
     password,
     rtspUrl,
     httpUrl,
-    onError
+    onError,
+    hideIndicators = false
 }: IPCameraStreamProps) {
     const imgRef = useRef<HTMLImageElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -301,33 +303,18 @@ export function IPCameraStream({
                 />
             )}
 
-            {/* Connection status indicator */}
-            <div className="absolute top-2 right-2 flex items-center space-x-2 bg-black bg-opacity-60 px-2 py-1 rounded">
-                {connectionStatus === 'connected' ? (
-                    <Wifi className="w-4 h-4 text-green-500" />
-                ) : connectionStatus === 'error' ? (
-                    <WifiOff className="w-4 h-4 text-red-500" />
-                ) : (
-                    <div className="w-4 h-4 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
-                )}
-                <span className={`text-xs ${
-                    connectionStatus === 'connected' ? 'text-green-500' : 
-                    connectionStatus === 'error' ? 'text-red-500' : 
-                    'text-yellow-500'
-                }`}>
-                    {connectionStatus === 'connected' ? 'Online' : 
-                     connectionStatus === 'error' ? 'Offline' : 
-                     'Connecting...'}
-                </span>
-            </div>
-
-            {/* Detection status indicator */}
-            {connectionStatus === 'connected' && (
-                <div className="absolute top-2 left-2 flex items-center space-x-2 bg-black bg-opacity-60 px-2 py-1 rounded">
-                    <ScanLine className={`w-4 h-4 ${isDetecting ? 'text-cyan-400 animate-pulse' : 'text-gray-400'}`} />
-                    <span className="text-xs text-white">
-                        {isDetecting ? 'Đang quét...' : 'Sẵn sàng'}
-                    </span>
+            {/* Status indicators - Left column (stacked vertically) */}
+            {!hideIndicators && (
+                <div className="absolute top-2 left-2 flex flex-col space-y-2">
+                    {/* Detection status only */}
+                    {connectionStatus === 'connected' && (
+                        <div className="flex items-center space-x-2 bg-black bg-opacity-70 px-3 py-2 rounded-lg">
+                            <ScanLine className={`w-5 h-5 ${isDetecting ? 'text-cyan-400 animate-pulse' : 'text-gray-400'}`} />
+                            <span className="text-sm font-medium text-white">
+                                {isDetecting ? 'Đang quét...' : 'Sẵn sàng'}
+                            </span>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -347,10 +334,25 @@ export function IPCameraStream({
             )}
 
             {/* Camera info overlay */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-3">
-                <div className="text-white text-sm font-medium">{name}</div>
-                <div className="text-gray-300 text-xs">
-                    {protocol} • {ipAddress}:{port} • AI Detection
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4">
+                <div className="space-y-2">
+                    {/* Camera name */}
+                    <div className="text-white text-base font-medium">{name}</div>
+                    <div className="text-gray-300 text-sm">
+                        {protocol} • {ipAddress}:{port} • AI Detection
+                    </div>
+                    
+                    {/* Detected plate number */}
+                    <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium text-gray-300">Biển số nhận dạng:</span>
+                        {lastDetection && lastDetection.plate_number ? (
+                            <span className="text-lg font-bold text-green-400">
+                                {lastDetection.plate_number}
+                            </span>
+                        ) : (
+                            <span className="text-sm text-gray-500 italic">Chưa phát hiện</span>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

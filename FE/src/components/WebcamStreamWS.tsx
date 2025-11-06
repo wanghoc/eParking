@@ -350,52 +350,40 @@ export function WebcamStreamWS({
                 />
             )}
 
-            {/* Top-right: Status indicators */}
-            <div className="absolute top-2 right-2 space-y-2">
-                {/* Webcam status */}
-                <div className="flex items-center space-x-2 bg-black bg-opacity-60 px-2 py-1 rounded">
-                    {isConnected ? (
-                        <>
-                            <CheckCircle className="w-4 h-4 text-green-500" />
-                            <span className="text-xs text-green-500">Webcam</span>
-                        </>
-                    ) : (
-                        <>
-                            <div className="w-4 h-4 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
-                            <span className="text-xs text-yellow-500">Connecting</span>
-                        </>
-                    )}
+            {/* Status indicators - Left column (stacked vertically) */}
+            <div className="absolute top-2 left-2 flex flex-col space-y-2">
+                {/* Detection status only */}
+                <div className="flex items-center space-x-2 bg-black bg-opacity-70 px-3 py-2 rounded-lg">
+                    <ScanLine className={`w-5 h-5 ${annotatedFrame ? 'text-cyan-400 animate-pulse' : 'text-gray-400'}`} />
+                    <span className="text-sm font-medium text-white">
+                        {annotatedFrame ? 'Đang quét...' : 'Sẵn sàng'}
+                    </span>
                 </div>
+            </div>
 
+            {/* Status indicators - Right column (stacked vertically) */}
+            <div className="absolute top-2 right-2 flex flex-col space-y-2">
                 {/* WebSocket status */}
-                <div className="flex items-center space-x-2 bg-black bg-opacity-60 px-2 py-1 rounded">
+                <div className="flex items-center space-x-2 bg-black bg-opacity-70 px-3 py-2 rounded-lg">
                     {wsConnected ? (
                         <>
-                            <Wifi className="w-4 h-4 text-green-500" />
-                            <span className="text-xs text-green-500">WS</span>
+                            <Wifi className="w-5 h-5 text-green-500" />
+                            <span className="text-sm font-medium text-green-500">WebSocket</span>
                         </>
                     ) : (
                         <>
-                            <WifiOff className="w-4 h-4 text-red-500" />
-                            <span className="text-xs text-red-500">WS</span>
+                            <WifiOff className="w-5 h-5 text-red-500" />
+                            <span className="text-sm font-medium text-red-500">Offline</span>
                         </>
                     )}
                 </div>
 
                 {/* FPS counter */}
                 {fps > 0 && (
-                    <div className="bg-black bg-opacity-60 px-2 py-1 rounded">
-                        <span className="text-xs text-cyan-400">FPS: {fps.toFixed(1)}</span>
+                    <div className="bg-black bg-opacity-70 px-3 py-2 rounded-lg">
+                        <span className="text-sm font-medium text-cyan-400">FPS: {fps.toFixed(1)}</span>
                     </div>
                 )}
-            </div>
-
-            {/* Top-left: Detection status */}
-            <div className="absolute top-2 left-2 flex items-center space-x-2 bg-black bg-opacity-60 px-2 py-1 rounded">
-                <ScanLine className={`w-4 h-4 ${annotatedFrame ? 'text-cyan-400 animate-pulse' : 'text-gray-400'}`} />
-                <span className="text-xs text-white">
-                    {annotatedFrame ? 'Đang quét...' : 'Sẵn sàng'}
-                </span>
             </div>
 
             {/* Detection result badge */}
@@ -413,21 +401,36 @@ export function WebcamStreamWS({
                 </div>
             )}
 
-            {/* Bottom: Camera info + Stats */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-3">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2 text-white">
-                        <Camera className="w-4 h-4" />
-                        <div className="text-sm font-medium">{name}</div>
-                        <span className="text-xs opacity-75">AI Detection (WS)</span>
+            {/* Bottom: Camera info + Stats + Detected Plate */}
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4">
+                <div className="space-y-2">
+                    {/* Camera name and stats row */}
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2 text-white">
+                            <Camera className="w-5 h-5" />
+                            <div className="text-base font-medium">{name}</div>
+                            <span className="text-sm opacity-75">AI Detection (WS)</span>
+                        </div>
+                        
+                        {/* Stats */}
+                        {stats && (
+                            <div className="text-sm text-white opacity-75">
+                                Frames: {stats.total_frames} | Detections: {stats.total_detections}
+                            </div>
+                        )}
                     </div>
                     
-                    {/* Stats */}
-                    {stats && (
-                        <div className="text-xs text-white opacity-75">
-                            Frames: {stats.total_frames} | Detections: {stats.total_detections}
-                        </div>
-                    )}
+                    {/* Detected plate number */}
+                    <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium text-gray-300">Biển số nhận dạng:</span>
+                        {lastDetection && lastDetection.is_valid ? (
+                            <span className="text-lg font-bold text-green-400">
+                                {lastDetection.text}
+                            </span>
+                        ) : (
+                            <span className="text-sm text-gray-500 italic">Chưa phát hiện</span>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

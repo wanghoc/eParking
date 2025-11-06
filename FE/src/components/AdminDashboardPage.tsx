@@ -1,4 +1,4 @@
-import { Shield, Camera, AlertCircle, CheckCircle, DollarSign, Bike, Clock, Video, RefreshCw, Settings as SettingsIcon, FileText, Map, XCircle, ChevronDown, Maximize2, Minimize2 } from "lucide-react";
+import { Shield, Camera, AlertCircle, CheckCircle, DollarSign, Bike, Clock, Video, RefreshCw, Settings as SettingsIcon, FileText, Map, XCircle, ChevronDown, Maximize2, Minimize2, ScanLine } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiUrl } from "../api";
 import { WebcamStream } from "./WebcamStream"; // CHANGED: Use WebcamStream instead of WebcamStreamWS
@@ -305,19 +305,95 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
         const status = camera.lastStatus;
         
         // For entrance cameras: show "Đã nhận diện xe" when vehicle is detected
+        // Position: next to detection status (horizontal layout)
         if (camera.type === 'Vào') {
             if (status === 'detected') {
-                return <div className="absolute top-2 right-2 px-2 py-1 bg-emerald-500 text-white text-xs rounded-full flex items-center space-x-1 animate-pulse"><CheckCircle className="h-3 w-3" /><span>Đã nhận diện xe</span></div>;
+                return (
+                    <div className="absolute top-2 left-2 z-20 flex items-center space-x-2">
+                        {/* Detection status */}
+                        <div className="flex items-center space-x-2 bg-black bg-opacity-70 px-3 py-2 rounded-lg">
+                            <ScanLine className="w-5 h-5 text-cyan-400 animate-pulse" />
+                            <span className="text-sm font-medium text-white">Đang quét...</span>
+                        </div>
+                        {/* Recognition badge */}
+                        <div className="flex items-center space-x-2 bg-emerald-500 bg-opacity-95 px-3 py-2 rounded-lg">
+                            <CheckCircle className="w-5 h-5 text-white" />
+                            <span className="text-sm font-medium text-white">Đã nhận diện xe</span>
+                        </div>
+                    </div>
+                );
             }
-            // Normal state for entrance cameras - no badge
-            return null;
+            // Normal state - show only detection status
+            return (
+                <div className="absolute top-2 left-2 z-20">
+                    <div className="flex items-center space-x-2 bg-black bg-opacity-70 px-3 py-2 rounded-lg">
+                        <ScanLine className="w-5 h-5 text-gray-400" />
+                        <span className="text-sm font-medium text-white">Sẵn sàng</span>
+                    </div>
+                </div>
+            );
         }
         
-        // For exit cameras: show payment status
+        // For exit cameras: show payment status next to detection status
+        // Position: horizontal layout
         if (camera.type === 'Ra') {
-            if (status === 'success') return <div className="absolute top-2 right-2 px-2 py-1 bg-emerald-500 text-white text-xs rounded-full flex items-center space-x-1"><CheckCircle className="h-3 w-3" /><span>Đã trừ tiền</span></div>;
-            if (status === 'insufficient') return <div className="absolute top-2 right-2 px-2 py-1 bg-red-500 text-white text-xs rounded-full flex items-center space-x-1"><XCircle className="h-3 w-3" /><span>Lỗi thanh toán</span></div>;
-            if (status === 'error') return <div className="absolute top-2 right-2 px-2 py-1 bg-amber-500 text-white text-xs rounded-full flex items-center space-x-1"><AlertCircle className="h-3 w-3" /><span>Lỗi thanh toán</span></div>;
+            if (status === 'success') {
+                return (
+                    <div className="absolute top-2 left-2 z-20 flex items-center space-x-2">
+                        {/* Detection status */}
+                        <div className="flex items-center space-x-2 bg-black bg-opacity-70 px-3 py-2 rounded-lg">
+                            <ScanLine className="w-5 h-5 text-cyan-400 animate-pulse" />
+                            <span className="text-sm font-medium text-white">Đang quét...</span>
+                        </div>
+                        {/* Payment status */}
+                        <div className="flex items-center space-x-2 bg-emerald-500 bg-opacity-95 px-3 py-2 rounded-lg">
+                            <CheckCircle className="w-5 h-5 text-white" />
+                            <span className="text-sm font-medium text-white">Đã trừ tiền</span>
+                        </div>
+                    </div>
+                );
+            }
+            if (status === 'insufficient') {
+                return (
+                    <div className="absolute top-2 left-2 z-20 flex items-center space-x-2">
+                        {/* Detection status */}
+                        <div className="flex items-center space-x-2 bg-black bg-opacity-70 px-3 py-2 rounded-lg">
+                            <ScanLine className="w-5 h-5 text-cyan-400 animate-pulse" />
+                            <span className="text-sm font-medium text-white">Đang quét...</span>
+                        </div>
+                        {/* Payment status */}
+                        <div className="flex items-center space-x-2 bg-red-500 bg-opacity-95 px-3 py-2 rounded-lg">
+                            <XCircle className="w-5 h-5 text-white" />
+                            <span className="text-sm font-medium text-white">Lỗi thanh toán</span>
+                        </div>
+                    </div>
+                );
+            }
+            if (status === 'error') {
+                return (
+                    <div className="absolute top-2 left-2 z-20 flex items-center space-x-2">
+                        {/* Detection status */}
+                        <div className="flex items-center space-x-2 bg-black bg-opacity-70 px-3 py-2 rounded-lg">
+                            <ScanLine className="w-5 h-5 text-cyan-400 animate-pulse" />
+                            <span className="text-sm font-medium text-white">Đang quét...</span>
+                        </div>
+                        {/* Payment status */}
+                        <div className="flex items-center space-x-2 bg-amber-500 bg-opacity-95 px-3 py-2 rounded-lg">
+                            <AlertCircle className="w-5 h-5 text-white" />
+                            <span className="text-sm font-medium text-white">Lỗi thanh toán</span>
+                        </div>
+                    </div>
+                );
+            }
+            // Normal state for exit - show only detection status
+            return (
+                <div className="absolute top-2 left-2 z-20">
+                    <div className="flex items-center space-x-2 bg-black bg-opacity-70 px-3 py-2 rounded-lg">
+                        <ScanLine className="w-5 h-5 text-gray-400" />
+                        <span className="text-sm font-medium text-white">Sẵn sàng</span>
+                    </div>
+                </div>
+            );
         }
         
         return null;
@@ -489,6 +565,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                                                     <WebcamStream
                                                         cameraId={camera.id}
                                                         name={camera.name}
+                                                        hideIndicators={true}
                                                         onDetection={(plateNumber, confidence) => {
                                                             // Update camera's lastPlate in state
                                                             setCameras(prevCameras =>
@@ -504,6 +581,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                                                     <IPCameraStream
                                                         cameraId={camera.id}
                                                         name={camera.name}
+                                                        hideIndicators={true}
                                                         ipAddress={camera.ip_address}
                                                         port={camera.port}
                                                         protocol={camera.protocol}
@@ -524,32 +602,14 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                                                     </div>
                                                 )}
                                                 
-                                                {/* Camera info overlay */}
-                                                <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/60 to-transparent p-3 z-10">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center space-x-2">
-                                                            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                                                            <span className="text-white text-xs font-medium">LIVE</span>
-                                                        </div>
-                                                        <span className={`text-xs px-2 py-1 rounded ${camera.type === 'Vào' ? 'bg-emerald-500' : 'bg-blue-500'} text-white`}>
-                                                            {camera.type}
-                                                        </span>
-                                                    </div>
+                                                {/* Camera type badge - top right */}
+                                                <div className="absolute top-2 right-2 z-10">
+                                                    <span className={`text-sm px-3 py-1.5 rounded-lg ${camera.type === 'Vào' ? 'bg-emerald-500' : 'bg-blue-500'} text-white font-medium`}>
+                                                        {camera.type}
+                                                    </span>
                                                 </div>
 
-                                                {/* Last detected plate */}
-                                                {camera.lastPlate && (
-                                                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 z-10">
-                                                        <div className="flex items-center justify-between">
-                                                            <div>
-                                                                <p className="text-white text-xs opacity-75">Biển số nhận dạng:</p>
-                                                                <p className="text-white font-bold">{camera.lastPlate}</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* Payment status badge */}
+                                                {/* Payment status badge - below detection status on left */}
                                                 {getCameraStatusBadge(camera)}
                                             </div>
                                         ))}

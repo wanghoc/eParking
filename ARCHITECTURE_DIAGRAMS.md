@@ -4,22 +4,22 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         FRONTEND (React)                         │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌────────────────┐│
-│  │   WebcamStream   │  │   WebcamStream   │  │  WebcamStream  ││
-│  │    Camera 1      │  │    Camera 2      │  │   Camera 6     ││
-│  └────────┬─────────┘  └────────┬─────────┘  └────────┬───────┘│
+│                         FRONTEND (React)                        │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌────────────────┐ │
+│  │   WebcamStream   │  │   WebcamStream   │  │  WebcamStream  │ │ 
+│  │    Camera 1      │  │    Camera 2      │  │   Camera 6     │ │
+│  └────────┬─────────┘  └────────┬─────────┘  └────────┬───────┘ │
 │           │ POST /detect        │ POST /detect        │         │
 │           │ every 1s            │ every 1s            │         │
 └───────────┼─────────────────────┼─────────────────────┼─────────┘
             │                     │                     │
             ▼                     ▼                     ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      BACKEND (Express API)                       │
-│                                                                  │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐     │
-│  │ml_service.js │    │ml_service.js │    │ml_service.js │ ... │
-│  └──────┬───────┘    └──────┬───────┘    └──────┬───────┘     │
+│                      BACKEND (Express API)                      │
+│                                                                 │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐       │
+│  │ml_service.js │    │ml_service.js │    │ml_service.js │ ...   │
+│  └──────┬───────┘    └──────┬───────┘    └──────┬───────┘       │
 │         │ spawn              │ spawn              │ spawn       │
 └─────────┼────────────────────┼────────────────────┼─────────────┘
           │                    │                    │
@@ -59,12 +59,12 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         FRONTEND (React)                         │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌────────────────┐│
-│  │ WebcamStreamWS   │  │ WebcamStreamWS   │  │ WebcamStreamWS ││
-│  │   Camera 1       │  │   Camera 2       │  │   Camera 6     ││
-│  │ Socket.IO Client │  │ Socket.IO Client │  │Socket.IO Client││
-│  └────────┬─────────┘  └────────┬─────────┘  └────────┬───────┘│
+│                         FRONTEND (React)                        │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌────────────────┐ │
+│  │  WebcamStream    │  │  WebcamStream    │  │  WebcamStream  │ │
+│  │   Camera 1       │  │   Camera 2       │  │   Camera 6     │ │
+│  │ Socket.IO Client │  │ Socket.IO Client │  │Socket.IO Client│ │
+│  └────────┬─────────┘  └────────┬─────────┘  └────────┬───────┘ │
 │           │ WebSocket           │ WebSocket           │         │
 │           │ 10fps stream        │ 10fps stream        │         │
 └───────────┼─────────────────────┼─────────────────────┼─────────┘
@@ -74,24 +74,24 @@
                       │                       │
                       ▼                       ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│              WEBSOCKET SERVER (Flask-SocketIO)                   │
-│                        Port: 5001                                │
-│                                                                  │
+│              WEBSOCKET SERVER (Flask-SocketIO)                  │
+│                        Port: 5001                               │
+│                                                                 │
 │  ┌────────────────────────────────────────────────────────────┐ │
-│  │              PersistentDetector (Singleton)                 │ │
-│  │                                                             │ │
+│  │              PersistentDetector (Singleton)                │ │
+│  │                                                            │ │
 │  │  ┌──────────────────────────────────────────────────────┐  │ │
 │  │  │  YOLO Model (loaded ONCE at startup)                 │  │ │
 │  │  │  - Size: 200MB                                       │  │ │
 │  │  │  - Status: IN MEMORY (persistent)                    │  │ │
 │  │  └──────────────────────────────────────────────────────┘  │ │
-│  │                                                             │ │
+│  │                                                            │ │
 │  │  ┌──────────────────────────────────────────────────────┐  │ │
-│  │  │  EasyOCR Reader (loaded ONCE at startup)            │  │ │
+│  │  │  EasyOCR Reader (loaded ONCE at startup)             │  │ │
 │  │  │  - Size: 1.5GB                                       │  │ │
 │  │  │  - Status: IN MEMORY (persistent)                    │  │ │
 │  │  └──────────────────────────────────────────────────────┘  │ │
-│  │                                                             │ │
+│  │                                                            │ │
 │  │  ┌──────────────────────────────────────────────────────┐  │ │
 │  │  │  detect_and_annotate() Method                        │  │ │
 │  │  │  - Process frame: <100ms                             │  │ │
@@ -100,28 +100,30 @@
 │  │  │  - OCR Vietnamese plates                             │  │ │
 │  │  └──────────────────────────────────────────────────────┘  │ │
 │  └────────────────────────────────────────────────────────────┘ │
-│                                                                  │
+│                                                                 │
 │  @socketio.on('video_frame')                                    │
 │  def handle_frame():                                            │
 │      frame = decode_base64(data)                                │
 │      annotated, info = detector.detect_and_annotate(frame)      │
+│      # Frontend renders a canvas overlay on top of live video.  │
+│      # annotated_frame is optional for debugging.               │
 │      emit('detection_result', {                                 │
-│          'annotated_frame': encode(annotated),                  │
-│          'detection': info                                      │
-│      })                                                          │
+│          'detection': info,                                     │
+│          'annotated_frame': encode(annotated)                   │
+│      })                                                         │
 └─────────────────────────────────────────────────────────────────┘
             │                     │                     │
             │ emit result         │ emit result         │
             ▼                     ▼                     ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    FRONTEND DISPLAY (React)                      │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌────────────────┐│
-│  │  Annotated Frame │  │  Annotated Frame │  │ Annotated Frame││
-│  │  + Green Box     │  │  + Green Box     │  │  + Green Box   ││
-│  │  + Plate Text    │  │  + Plate Text    │  │  + Plate Text  ││
-│  │  + Confidence    │  │  + Confidence    │  │  + Confidence  ││
-│  │  + FPS Counter   │  │  + FPS Counter   │  │  + FPS Counter ││
-│  └──────────────────┘  └──────────────────┘  └────────────────┘│
+│                    FRONTEND DISPLAY (React)                     │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌────────────────┐ │
+│  │ Live Video +     │  │ Live Video +     │  │ Live Video +   │ │
+│  │ Canvas Overlay   │  │ Canvas Overlay   │  │ Canvas Overlay │ │
+│  │  - Green Box     │  │  - Plate Text    │  │  - Confidence  │ │
+│  │  - Plate Text    │  │  - Confidence    │  │  - FPS Counter │ │
+│  │  - Confidence    │  │  - FPS Counter   │  │                │ │
+│  └──────────────────┘  └──────────────────┘  └────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
 
 ⏱️  Timeline (6 cameras × 10fps):
@@ -211,7 +213,7 @@ REALTIME PROCESSING (continuous):
 │  └───────────────────────────────┘  │
 └──────────────┬──────────────────────┘
                │
-               │ annotated frames
+               │ detection results
                ▼
 ┌────────────────────────────────────┐
 │    WebSocket (emit result)         │

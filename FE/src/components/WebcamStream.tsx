@@ -8,6 +8,7 @@ interface WebcamStreamProps {
     name: string;
     onError?: (error: string) => void;
     onDetection?: (plateNumber: string, confidence: number) => void; // NEW: Callback for detected plates
+    hideIndicators?: boolean; // NEW: Hide status indicators (for AdminDashboard)
 }
 
 interface DetectionResult {
@@ -22,7 +23,8 @@ export function WebcamStream({
     cameraId,
     name,
     onError,
-    onDetection
+    onDetection,
+    hideIndicators = false
 }: WebcamStreamProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -266,7 +268,7 @@ export function WebcamStream({
         // Clear canvas
         ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
         
-        // Draw bounding box
+        // Draw bounding box ONLY (no text label)
         const bbox = detection.bbox;
         if (bbox && bbox.length === 4) {
             const [x1, y1, x2, y2] = bbox;
@@ -275,28 +277,10 @@ export function WebcamStream({
             const w = (x2 - x1) * totalScaleX;
             const h = (y2 - y1) * totalScaleY;
             
-            // Draw green box
+            // Draw green box only - no text overlay
             ctx.strokeStyle = '#00FF00';
             ctx.lineWidth = 3;
             ctx.strokeRect(x, y, w, h);
-            
-            // Draw label background
-            ctx.fillStyle = '#00FF00';
-            const text = detection.text || 'License Plate';
-            const confText = `${(detection.confidence * 100).toFixed(1)}%`;
-            const fontSize = 16;
-            ctx.font = `bold ${fontSize}px sans-serif`;
-            
-            const textWidth = Math.max(ctx.measureText(text).width, ctx.measureText(confText).width);
-            const padding = 10;
-            const boxHeight = fontSize * 2 + padding * 2;
-            
-            ctx.fillRect(x, y - boxHeight, textWidth + padding * 2, boxHeight);
-            
-            // Draw text
-            ctx.fillStyle = '#000000';
-            ctx.fillText(text, x + padding, y - fontSize - padding);
-            ctx.fillText(confText, x + padding, y - padding);
         }
     };
     
@@ -449,28 +433,18 @@ export function WebcamStream({
                 style={{ display: isLoading ? 'none' : 'block' }}
             />
 
-            {/* Connection status indicator */}
-            <div className="absolute top-2 right-2 flex items-center space-x-2 bg-black bg-opacity-60 px-2 py-1 rounded">
-                {isConnected ? (
-                    <>
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                        <span className="text-xs text-green-500">Webcam Online</span>
-                    </>
-                ) : (
-                    <>
-                        <div className="w-4 h-4 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
-                        <span className="text-xs text-yellow-500">Connecting...</span>
-                    </>
-                )}
-            </div>
-
-            {/* Detection status indicator */}
-            {isConnected && (
-                <div className="absolute top-2 left-2 flex items-center space-x-2 bg-black bg-opacity-60 px-2 py-1 rounded">
-                    <ScanLine className={`w-4 h-4 ${isDetecting ? 'text-cyan-400 animate-pulse' : 'text-gray-400'}`} />
-                    <span className="text-xs text-white">
-                        {isDetecting ? 'Đang quét...' : 'Sẵn sàng'}
-                    </span>
+            {/* Status indicators - Left column (stacked vertically) */}
+            {!hideIndicators && (
+                <div className="absolute top-2 left-2 flex flex-col space-y-2">
+                    {/* Detection status only */}
+                    {isConnected && (
+                        <div className="flex items-center space-x-2 bg-black bg-opacity-70 px-3 py-2 rounded-lg">
+                            <ScanLine className={`w-5 h-5 ${isDetecting ? 'text-cyan-400 animate-pulse' : 'text-gray-400'}`} />
+                            <span className="text-sm font-medium text-white">
+                                {isDetecting ? 'Đang quét...' : 'Sẵn sàng'}
+                            </span>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -490,11 +464,26 @@ export function WebcamStream({
             )}
 
             {/* Camera info overlay */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-3">
-                <div className="flex items-center space-x-2 text-white">
-                    <Camera className="w-4 h-4" />
-                    <div className="text-sm font-medium">{name}</div>
-                    <span className="text-xs opacity-75">Webcam • AI Detection</span>
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4">
+                <div className="space-y-2">
+                    {/* Camera name - moved to top */}
+                    <div className="flex items-center space-x-2 text-white">
+                        <Camera className="w-5 h-5" />
+                        <div className="text-base font-medium">{name}</div>
+                        <span className="text-sm opacity-75">Webcam • AI Detection</span>
+                    </div>
+                    
+                    {/* Detected plate number - below camera name */}
+                    <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium text-gray-300">Biển số nhận dạng:</span>
+                        {lastDetection && lastDetection.plate_number ? (
+                            <span className="text-lg font-bold text-green-400">
+                                {lastDetection.plate_number}
+                            </span>
+                        ) : (
+                            <span className="text-sm text-gray-500 italic">Chưa phát hiện</span>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
