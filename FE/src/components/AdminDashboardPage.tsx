@@ -37,7 +37,7 @@ interface CameraFeed {
     rtsp_url?: string;
     http_url?: string;
     lastPlate?: string;
-    lastStatus?: 'success' | 'insufficient' | 'error' | 'detected';
+    lastStatus?: 'paid' | 'insufficient' | 'unregistered' | 'checkin_success' | 'checkin_failed';
     detectionTime?: number;
 }
 
@@ -75,6 +75,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
     const [selectedParkingLot, setSelectedParkingLot] = useState<number | null>(null);
     const [showParkingLotSelector, setShowParkingLotSelector] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [processingPlates, setProcessingPlates] = useState<Set<string>>(new Set()); // Track plates being processed
 
     // Fetch initial data
     useEffect(() => {
@@ -113,7 +114,6 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                     setCameras(prevCameras => {
                         const newCameras = (camerasData || []).map((cam: any) => {
                             const prevCam = prevCameras.find(c => c.id === cam.id);
-                            const now = Date.now();
                             
                             // Base camera object - keep all fields from backend
                             const baseCamera = {
@@ -130,48 +130,14 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                                 username: cam.username,
                                 password: cam.password,
                                 rtsp_url: cam.rtsp_url,
-                                http_url: cam.http_url
+                                http_url: cam.http_url,
+                                // Preserve existing status from previous state
+                                lastPlate: prevCam?.lastPlate,
+                                lastStatus: prevCam?.lastStatus,
+                                detectionTime: prevCam?.detectionTime
                             };
                             
-                            // For entrance cameras: randomly show "detected" status
-                            if (cam.type === 'Vào') {
-                                // Check if we should trigger a new detection (random 10% chance)
-                                const shouldDetect = Math.random() > 0.9;
-                                
-                                // If previous detection is still active (within 2 seconds), keep it
-                                if (prevCam?.lastStatus === 'detected' && prevCam.detectionTime && (now - prevCam.detectionTime) < 2000) {
-                                    return {
-                                        ...baseCamera,
-                                        lastPlate: generateRandomPlate(),
-                                        lastStatus: 'detected' as const,
-                                        detectionTime: prevCam.detectionTime
-                                    };
-                                }
-                                
-                                // Trigger new detection
-                                if (shouldDetect) {
-                                    return {
-                                        ...baseCamera,
-                                        lastPlate: generateRandomPlate(),
-                                        lastStatus: 'detected' as const,
-                                        detectionTime: now
-                                    };
-                                }
-                                
-                                // No detection - normal state
-                                return {
-                                    ...baseCamera,
-                                    lastPlate: generateRandomPlate(),
-                                    lastStatus: undefined
-                                };
-                            }
-                            
-                            // For exit cameras: show payment status
-                            return {
-                                ...baseCamera,
-                                lastPlate: generateRandomPlate(),
-                                lastStatus: Math.random() > 0.8 ? 'insufficient' as const : Math.random() > 0.9 ? 'error' as const : 'success' as const
-                            };
+                            return baseCamera;
                         });
                         
                         return newCameras;
@@ -234,12 +200,6 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
         }
     };
 
-    const generateRandomPlate = () => {
-        const prefix = ['49P1', '49P2', '49H1', '49L1'];
-        const num = Math.floor(Math.random() * 99999).toString().padStart(5, '0');
-        return `${prefix[Math.floor(Math.random() * prefix.length)]}-${num}`;
-    };
-
     const handleConfirmCashPayment = async (sessionId: number) => {
         setProcessingPayment(sessionId);
         
@@ -273,6 +233,129 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
         }
     };
 
+    // Handle plate detection from camera
+    const handlePlateDetection = async (cameraId: number, plateNumber: string, cameraType: string) => {
+        console.log(`[Camera ${cameraId}] Plate detected: ${plateNumber}, Type: ${cameraType}`);
+        
+        // Prevent duplicate processing for same plate within short time
+        const plateKey = `${cameraId}-${plateNumber}`;
+        if (processingPlates.has(plateKey)) {
+            console.log(`[Camera ${cameraId}] ⚠️ Already processing plate: ${plateNumber}`);
+            return;
+        }
+        
+        // Mark as processing
+        setProcessingPlates(prev => new Set(prev).add(plateKey));
+        
+        try {
+            if (cameraType === 'Vào') {
+                // Entrance camera - Check-in logic
+                const response = await fetch(apiUrl('/parking-sessions/check-in'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        license_plate: plateNumber,
+                        lot_id: selectedParkingLot,
+                        recognition_method: 'Tự động'
+                    })
+                });
+
+                if (response.ok) {
+                    // Check-in successful
+                    console.log(`[Camera ${cameraId}] ✅ Check-in successful: ${plateNumber}`);
+                    updateCameraStatus(cameraId, 'checkin_success', plateNumber);
+                    
+                    // Refresh dashboard data
+                    fetchDashboardData();
+                } else if (response.status === 404) {
+                    // Vehicle not registered
+                    console.log(`[Camera ${cameraId}] ⚠️ Vehicle not registered: ${plateNumber}`);
+                    updateCameraStatus(cameraId, 'unregistered', plateNumber);
+                } else {
+                    // Other errors (e.g., already checked in)
+                    const error = await response.json();
+                    console.log(`[Camera ${cameraId}] ❌ Check-in error: ${error.message}`);
+                    updateCameraStatus(cameraId, 'checkin_failed', plateNumber);
+                }
+            } else if (cameraType === 'Ra') {
+                // Exit camera - Check-out logic
+                const response = await fetch(apiUrl('/parking-sessions/check-out'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        license_plate: plateNumber
+                    })
+                });
+
+                if (response.ok) {
+                    // Check-out successful - payment done
+                    console.log(`[Camera ${cameraId}] ✅ Check-out & payment successful: ${plateNumber}`);
+                    updateCameraStatus(cameraId, 'paid', plateNumber);
+                    
+                    // Refresh dashboard data
+                    fetchDashboardData();
+                } else if (response.status === 400) {
+                    const error = await response.json();
+                    if (error.message === 'Insufficient balance') {
+                        // Insufficient balance
+                        console.log(`[Camera ${cameraId}] ⚠️ Insufficient balance: ${plateNumber}`);
+                        updateCameraStatus(cameraId, 'insufficient', plateNumber);
+                    } else {
+                        // Other errors
+                        console.log(`[Camera ${cameraId}] ❌ Check-out error: ${error.message}`);
+                        updateCameraStatus(cameraId, 'unregistered', plateNumber);
+                    }
+                } else if (response.status === 404) {
+                    // Vehicle not registered
+                    console.log(`[Camera ${cameraId}] ⚠️ Vehicle not registered: ${plateNumber}`);
+                    updateCameraStatus(cameraId, 'unregistered', plateNumber);
+                }
+            }
+        } catch (error) {
+            console.error(`[Camera ${cameraId}] ❌ Error processing detection:`, error);
+        } finally {
+            // Remove from processing set after 3 seconds (allow time for status to show)
+            setTimeout(() => {
+                setProcessingPlates(prev => {
+                    const newSet = new Set(prev);
+                    newSet.delete(plateKey);
+                    return newSet;
+                });
+            }, 3000);
+        }
+    };
+
+    // Update camera status in state
+    const updateCameraStatus = (cameraId: number, status: CameraFeed['lastStatus'], plateNumber: string) => {
+        setCameras(prevCameras => 
+            prevCameras.map(cam => 
+                cam.id === cameraId 
+                    ? { 
+                        ...cam, 
+                        lastPlate: plateNumber, 
+                        lastStatus: status,
+                        detectionTime: Date.now()
+                    }
+                    : cam
+            )
+        );
+
+        // Clear status after 5 seconds
+        setTimeout(() => {
+            setCameras(prevCameras => 
+                prevCameras.map(cam => 
+                    cam.id === cameraId 
+                        ? { ...cam, lastStatus: undefined }
+                        : cam
+                )
+            );
+        }, 5000);
+    };
+
     const quickStats = [
         {
             title: "Xe đang gửi",
@@ -304,10 +387,11 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
     const getCameraStatusBadge = (camera: CameraFeed) => {
         const status = camera.lastStatus;
         
-        // For entrance cameras: show "Đã nhận diện xe" when vehicle is detected
+        // For entrance cameras: show check-in status
         // Position: next to detection status (horizontal layout)
         if (camera.type === 'Vào') {
-            if (status === 'detected') {
+            if (status === 'checkin_success') {
+                // Check-in successful - vehicle registered
                 return (
                     <div className="absolute top-2 left-2 z-20 flex items-center space-x-2">
                         {/* Detection status */}
@@ -315,10 +399,27 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                             <ScanLine className="w-5 h-5 text-cyan-400 animate-pulse" />
                             <span className="text-sm font-medium text-white">Đang quét...</span>
                         </div>
-                        {/* Recognition badge */}
+                        {/* Check-in status */}
                         <div className="flex items-center space-x-2 bg-emerald-500 bg-opacity-95 px-3 py-2 rounded-lg">
                             <CheckCircle className="w-5 h-5 text-white" />
-                            <span className="text-sm font-medium text-white">Đã nhận diện xe</span>
+                            <span className="text-sm font-medium text-white">Check-in thành công</span>
+                        </div>
+                    </div>
+                );
+            }
+            if (status === 'unregistered' || status === 'checkin_failed') {
+                // Vehicle not registered or check-in failed
+                return (
+                    <div className="absolute top-2 left-2 z-20 flex items-center space-x-2">
+                        {/* Detection status */}
+                        <div className="flex items-center space-x-2 bg-black bg-opacity-70 px-3 py-2 rounded-lg">
+                            <ScanLine className="w-5 h-5 text-cyan-400 animate-pulse" />
+                            <span className="text-sm font-medium text-white">Đang quét...</span>
+                        </div>
+                        {/* Unregistered status */}
+                        <div className="flex items-center space-x-2 bg-amber-500 bg-opacity-95 px-3 py-2 rounded-lg">
+                            <AlertCircle className="w-5 h-5 text-white" />
+                            <span className="text-sm font-medium text-white">Chưa đăng ký xe</span>
                         </div>
                     </div>
                 );
@@ -337,7 +438,8 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
         // For exit cameras: show payment status next to detection status
         // Position: horizontal layout
         if (camera.type === 'Ra') {
-            if (status === 'success') {
+            if (status === 'paid') {
+                // Payment successful
                 return (
                     <div className="absolute top-2 left-2 z-20 flex items-center space-x-2">
                         {/* Detection status */}
@@ -348,12 +450,13 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                         {/* Payment status */}
                         <div className="flex items-center space-x-2 bg-emerald-500 bg-opacity-95 px-3 py-2 rounded-lg">
                             <CheckCircle className="w-5 h-5 text-white" />
-                            <span className="text-sm font-medium text-white">Đã trừ tiền</span>
+                            <span className="text-sm font-medium text-white">Đã thanh toán</span>
                         </div>
                     </div>
                 );
             }
             if (status === 'insufficient') {
+                // Insufficient balance
                 return (
                     <div className="absolute top-2 left-2 z-20 flex items-center space-x-2">
                         {/* Detection status */}
@@ -361,15 +464,16 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                             <ScanLine className="w-5 h-5 text-cyan-400 animate-pulse" />
                             <span className="text-sm font-medium text-white">Đang quét...</span>
                         </div>
-                        {/* Payment status */}
+                        {/* Insufficient balance status */}
                         <div className="flex items-center space-x-2 bg-red-500 bg-opacity-95 px-3 py-2 rounded-lg">
                             <XCircle className="w-5 h-5 text-white" />
-                            <span className="text-sm font-medium text-white">Lỗi thanh toán</span>
+                            <span className="text-sm font-medium text-white">Số dư không đủ</span>
                         </div>
                     </div>
                 );
             }
-            if (status === 'error') {
+            if (status === 'unregistered') {
+                // Vehicle not registered
                 return (
                     <div className="absolute top-2 left-2 z-20 flex items-center space-x-2">
                         {/* Detection status */}
@@ -377,10 +481,10 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                             <ScanLine className="w-5 h-5 text-cyan-400 animate-pulse" />
                             <span className="text-sm font-medium text-white">Đang quét...</span>
                         </div>
-                        {/* Payment status */}
+                        {/* Unregistered status */}
                         <div className="flex items-center space-x-2 bg-amber-500 bg-opacity-95 px-3 py-2 rounded-lg">
                             <AlertCircle className="w-5 h-5 text-white" />
-                            <span className="text-sm font-medium text-white">Lỗi thanh toán</span>
+                            <span className="text-sm font-medium text-white">Chưa đăng ký xe</span>
                         </div>
                     </div>
                 );
@@ -567,14 +671,9 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                                                         name={camera.name}
                                                         hideIndicators={true}
                                                         onDetection={(plateNumber, confidence) => {
-                                                            // Update camera's lastPlate in state
-                                                            setCameras(prevCameras =>
-                                                                prevCameras.map(cam =>
-                                                                    cam.id === camera.id
-                                                                        ? { ...cam, lastPlate: plateNumber }
-                                                                        : cam
-                                                                )
-                                                            );
+                                                            console.log(`[AdminDashboard] Detection from camera ${camera.id}: ${plateNumber}`);
+                                                            // Process check-in or check-out based on camera type
+                                                            handlePlateDetection(camera.id, plateNumber, camera.type);
                                                         }}
                                                     />
                                                 ) : camera.ip_address || camera.device_id ? (
