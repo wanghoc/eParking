@@ -50,7 +50,7 @@ function AuthenticatedApp() {
                     <ProtectedRoute requiredRole="admin">
                         <AdminDashboardPage onNavigate={setActiveItem} />
                     </ProtectedRoute>
-                ) : <HomePage />;
+                ) : <HomePage onNavigate={setActiveItem} />;
             case "vehicles":
                 return user?.role === 'admin' ? (
                     <ProtectedRoute requiredRole="admin">
@@ -92,7 +92,7 @@ function AuthenticatedApp() {
             case "faq":
                 return <FAQPage />;
             default:
-                return <HomePage />;
+                return <HomePage onNavigate={setActiveItem} />;
         }
     };
 

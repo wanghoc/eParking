@@ -27,6 +27,13 @@ export function VehiclesPage() {
         if (user?.id) {
             fetchVehicles();
             fetchParkingSessions();
+            
+            // Auto-refresh parking sessions every 5 seconds to update vehicle status
+            const intervalId = setInterval(() => {
+                fetchParkingSessions();
+            }, 5000);
+            
+            return () => clearInterval(intervalId);
         }
     }, [user?.id]);
 

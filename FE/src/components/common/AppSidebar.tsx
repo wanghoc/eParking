@@ -15,7 +15,6 @@ export function AppSidebar({ activeItem, onItemClick, onClose, onProfileClick }:
     const menuItems = user?.role === 'admin'
         ? [
             { id: "dashboard", label: "Giám sát trực tiếp", icon: Monitor },
-            { id: "history", label: "Lịch sử gửi xe", icon: History },
             { id: "management", label: "Quản lý bãi gửi xe", icon: MapPin },
             { id: "camera", label: "Quản lý Camera", icon: Camera },
             { id: "admin", label: "Quản trị hệ thống", icon: Settings },

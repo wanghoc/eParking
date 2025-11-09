@@ -146,11 +146,11 @@ export function WebcamStream({
                         // Draw bounding box on overlay canvas
                         drawDetectionOverlay(data.detection);
                         
-                        // Clear after 5s (increased from 3s to allow reading status)
+                        // Clear after 7s to allow reading status messages (Checkin thành công, Đã thanh toán)
                         setTimeout(() => {
                             setLastDetection(null);
                             clearOverlay();
-                        }, 5000);
+                        }, 7000);
                     } else if (data.detection === null) {
                         // No plate detected - clear overlay
                         clearOverlay();

@@ -186,6 +186,114 @@ app.get('/api/users/:userId/vehicles', async (req, res) => {
   }
 });
 
+// GET parking sessions for a specific user (across all their vehicles)
+app.get('/api/users/:userId/parking-sessions', async (req, res) => {
+  const { userId } = req.params;
+  
+  try {
+    const sessions = await prisma.parkingSession.findMany({
+      where: {
+        vehicle: {
+          user_id: parseInt(userId)
+        }
+      },
+      include: {
+        vehicle: {
+          select: {
+            license_plate: true,
+            brand: true,
+            model: true,
+            vehicle_type: true
+          }
+        }
+      },
+      orderBy: { entry_time: 'desc' }
+    });
+    
+    // Format response with fee as number
+    const formattedSessions = sessions.map(session => ({
+      ...session,
+      fee: Number(session.fee) // Convert Decimal to Number
+    }));
+    
+    res.json(formattedSessions);
+  } catch (err) {
+    console.error('Error fetching user parking sessions:', err);
+    res.status(500).json({ message: 'Lỗi lấy lịch sử gửi xe' });
+  }
+});
+
+// Get system logs (recent activities) for user notifications
+app.get('/api/users/:userId/system-logs', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const limit = parseInt(req.query.limit) || 5;
+    
+    // Get user's vehicles
+    const vehicles = await prisma.vehicle.findMany({
+      where: { user_id: parseInt(userId) },
+      select: { id: true }
+    });
+    
+    const vehicleIds = vehicles.map(v => v.id);
+    
+    // Get recent parking sessions for user's vehicles
+    const sessions = await prisma.parking_session.findMany({
+      where: {
+        vehicle_id: { in: vehicleIds }
+      },
+      orderBy: { entry_time: 'desc' },
+      take: limit,
+      include: {
+        vehicle: {
+          select: {
+            license_plate: true
+          }
+        }
+      }
+    });
+    
+    // Convert sessions to log entries
+    const logs = sessions.flatMap(session => {
+      const logs = [];
+      
+      // Entry log
+      logs.push({
+        id: `entry-${session.id}`,
+        type: 'info',
+        title: 'Xe vào bãi thành công',
+        message: `Biển số ${session.vehicle.license_plate} đã được nhận diện`,
+        time: session.entry_time,
+        icon: 'check-circle'
+      });
+      
+      // Exit/Payment log if exists
+      if (session.exit_time) {
+        if (session.payment_status === 'Da_thanh_toan') {
+          logs.push({
+            id: `payment-${session.id}`,
+            type: 'success',
+            title: 'Thanh toán thành công',
+            message: `Đã thanh toán ${Number(session.fee).toLocaleString('vi-VN')}₫ cho xe ${session.vehicle.license_plate}`,
+            time: session.exit_time,
+            icon: 'credit-card'
+          });
+        }
+      }
+      
+      return logs;
+    });
+    
+    // Sort by time descending and limit
+    logs.sort((a, b) => new Date(b.time) - new Date(a.time));
+    
+    res.json(logs.slice(0, limit));
+  } catch (err) {
+    console.error('Error fetching system logs:', err);
+    res.status(500).json({ message: 'Lỗi lấy thông báo hệ thống' });
+  }
+});
+
 app.post('/api/vehicles', async (req, res) => {
   const { user_id, license_plate, brand, model, vehicle_type } = req.body;
   
@@ -1701,6 +1809,47 @@ app.get('/api/admin/parking-sessions/active', async (_req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error fetching active parking sessions' });
+  }
+});
+
+// GET all parking sessions history for admin (all completed sessions - checkin + checkout)
+app.get('/api/admin/parking-sessions/history', async (_req, res) => {
+  try {
+    const sessions = await prisma.parkingSession.findMany({
+      where: {
+        exit_time: { not: null }, // Only completed sessions (checked out)
+        // Removed payment_status filter - show all checkout sessions regardless of payment
+      },
+      include: {
+        vehicle: {
+          select: {
+            license_plate: true,
+            brand: true,
+            model: true,
+            user_id: true,
+            user: {
+              select: {
+                username: true,
+                email: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { exit_time: 'desc' },
+      take: 100 // Limit to last 100 sessions
+    });
+    
+    // Format sessions with fee as number
+    const formattedSessions = sessions.map(session => ({
+      ...session,
+      fee: Number(session.fee)
+    }));
+    
+    res.json(formattedSessions);
+  } catch (err) {
+    console.error('Error fetching parking history:', err);
+    res.status(500).json({ message: 'Error fetching parking history' });
   }
 });
 

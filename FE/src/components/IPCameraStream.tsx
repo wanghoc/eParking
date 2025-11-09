@@ -228,11 +228,11 @@ export function IPCameraStream({
                     console.log(`[IPCamera ${cameraId}] Database result:`, result.database);
                     setLastDetection(result);
                     
-                    // Clear detection after 5 seconds (tăng thời gian để người dùng đọc được)
+                    // Clear detection after 7 seconds to allow reading status messages (Checkin thành công, Đã thanh toán)
                     setTimeout(() => {
                         setLastDetection(null);
                         setAnnotatedImageUrl(null);
-                    }, 5000);
+                    }, 7000);
                 } else {
                     // Clear annotated image if no detection
                     setTimeout(() => {

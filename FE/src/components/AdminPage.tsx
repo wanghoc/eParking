@@ -1,4 +1,4 @@
-import { Shield, Users, Edit, Search, Trash2 } from "lucide-react";
+import { Shield, Users, Edit, Search, Trash2, History, CheckCircle, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiUrl } from "../api";
 
@@ -22,6 +22,23 @@ interface VehicleRow {
     status: string;
 }
 
+interface ParkingHistory {
+    id: number;
+    entry_time: string;
+    exit_time: string;
+    fee: number;
+    payment_status: string;
+    vehicle: {
+        license_plate: string;
+        brand?: string;
+        model?: string;
+        user: {
+            username: string;
+            email: string;
+        };
+    };
+}
+
 export function AdminPage() {
     const [selectedTab, setSelectedTab] = useState("users");
     const [searchTerm, setSearchTerm] = useState("");
@@ -34,6 +51,7 @@ export function AdminPage() {
 
     const [users, setUsers] = useState<User[]>([]);
     const [vehicles, setVehicles] = useState<VehicleRow[]>([]);
+    const [parkingHistory, setParkingHistory] = useState<ParkingHistory[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     
     // Payment settings state
@@ -47,13 +65,15 @@ export function AdminPage() {
         const load = async () => {
             try {
                 setIsLoading(true);
-                const [uRes, vRes, settingsRes] = await Promise.all([
+                const [uRes, vRes, settingsRes, historyRes] = await Promise.all([
                     fetch(apiUrl('/admin/users')),
                     fetch(apiUrl('/admin/vehicles')),
-                    fetch(apiUrl('/system-settings'))
+                    fetch(apiUrl('/system-settings')),
+                    fetch(apiUrl('/admin/parking-sessions/history'))
                 ]);
                 if (uRes.ok) setUsers(await uRes.json());
                 if (vRes.ok) setVehicles(await vRes.json());
+                if (historyRes.ok) setParkingHistory(await historyRes.json());
                 if (settingsRes.ok) {
                     const settings = await settingsRes.json();
                     if (settings.fee_per_turn) setFeePerTurn(settings.fee_per_turn.toString());
@@ -299,11 +319,19 @@ export function AdminPage() {
                         >
                             Cấu hình thanh toán
                         </button>
+                        <button
+                            onClick={() => setSelectedTab("history")}
+                            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${selectedTab === "history"
+                                ? "border-cyan-500 text-cyan-600"
+                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                }`}
+                        >
+                            Lịch sử gửi xe
+                        </button>
                     </nav>
                 </div>
 
-                <div className="p-6">
-                    {selectedTab === "users" && (
+                <div className="p-6">{selectedTab === "users" && (
                         <div className="space-y-6">
                             {/* Users Management */}
                             <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
@@ -738,6 +766,131 @@ export function AdminPage() {
                                 Xóa tài khoản
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+            
+            {/* History Tab - Show completed parking sessions */}
+            {selectedTab === "history" && (
+                <div className="space-y-6">
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
+                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xl font-semibold text-gray-900">Lịch sử gửi xe hệ thống</h2>
+                                <div className="flex items-center space-x-2">
+                                    <History className="h-5 w-5 text-cyan-600" />
+                                    <span className="text-sm text-gray-600">
+                                        {parkingHistory.length} lượt đã hoàn thành
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {isLoading ? (
+                            <div className="flex justify-center items-center py-12">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Biển số
+                                            </th>
+                                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Người dùng
+                                            </th>
+                                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Thời gian vào
+                                            </th>
+                                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Thời gian ra
+                                            </th>
+                                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Chi phí
+                                            </th>
+                                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Trạng thái
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {parkingHistory.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                                                    <History className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                                                    <p className="text-lg font-medium">Chưa có lịch sử gửi xe</p>
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            parkingHistory.map((session) => (
+                                                <tr key={session.id} className="hover:bg-gray-50 transition-colors">
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex items-center">
+                                                            <div className="text-sm font-medium text-gray-900">
+                                                                {session.vehicle.license_plate}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="text-sm text-gray-900">{session.vehicle.user.username}</div>
+                                                        <div className="text-sm text-gray-500">{session.vehicle.user.email}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                        {new Date(session.entry_time).toLocaleString('vi-VN', {
+                                                            year: 'numeric',
+                                                            month: '2-digit',
+                                                            day: '2-digit',
+                                                            hour: '2-digit',
+                                                            minute: '2-digit'
+                                                        })}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                        {new Date(session.exit_time).toLocaleString('vi-VN', {
+                                                            year: 'numeric',
+                                                            month: '2-digit',
+                                                            day: '2-digit',
+                                                            hour: '2-digit',
+                                                            minute: '2-digit'
+                                                        })}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                        {session.fee.toLocaleString('vi-VN')}₫
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex items-center">
+                                                            {session.payment_status === 'Da_thanh_toan' ? (
+                                                                <>
+                                                                    <CheckCircle className="h-4 w-4 text-emerald-600 mr-2" />
+                                                                    <span className="inline-flex px-3 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800">
+                                                                        Đã thanh toán
+                                                                    </span>
+                                                                </>
+                                                            ) : session.payment_status === 'insufficient' ? (
+                                                                <>
+                                                                    <Clock className="h-4 w-4 text-yellow-600 mr-2" />
+                                                                    <span className="inline-flex px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                                                        Số dư không đủ
+                                                                    </span>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <Clock className="h-4 w-4 text-gray-600 mr-2" />
+                                                                    <span className="inline-flex px-3 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                                                                        Chưa thanh toán
+                                                                    </span>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

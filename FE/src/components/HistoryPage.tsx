@@ -50,19 +50,20 @@ export function HistoryPage() {
             setIsLoading(true);
             setError("");
             
-            // Fetch parking sessions for user vehicles
-            const response = await fetch(apiUrl(`/users/${user.id}/vehicles`));
+            // Fetch parking sessions for user
+            const response = await fetch(apiUrl(`/users/${user.id}/parking-sessions`));
             if (!response.ok) {
                 throw new Error('Không thể tải dữ liệu');
             }
             
-            const vehicles = await response.json();
+            const sessions = await response.json();
+            setHistoryData(sessions);
             
             // Calculate stats from the sessions
-            const totalSessions = historyData.length;
-            const completedSessions = historyData.filter(session => session.exit_time).length;
-            const currentParking = historyData.filter(session => !session.exit_time).length;
-            const totalAmount = historyData.reduce((sum, session) => sum + session.fee, 0);
+            const totalSessions = sessions.length;
+            const completedSessions = sessions.filter((session: ParkingSession) => session.exit_time).length;
+            const currentParking = sessions.filter((session: ParkingSession) => !session.exit_time).length;
+            const totalAmount = sessions.reduce((sum: number, session: ParkingSession) => sum + session.fee, 0);
             
             setStats({
                 totalSessions,

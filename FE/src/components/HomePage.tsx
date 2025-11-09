@@ -10,7 +10,31 @@ interface DashboardStats {
     balance: number;
 }
 
-export function HomePage() {
+interface ParkingActivity {
+    id: number;
+    entry_time: string;
+    exit_time: string | null;
+    fee: number;
+    payment_status: string;
+    vehicle: {
+        license_plate: string;
+    };
+}
+
+interface SystemLog {
+    id: string;
+    type: 'success' | 'info' | 'warning';
+    title: string;
+    message: string;
+    time: string;
+    icon: string;
+}
+
+interface HomePageProps {
+    onNavigate?: (page: string) => void;
+}
+
+export function HomePage({ onNavigate }: HomePageProps = {}) {
     const { user } = useAuth();
     const [stats, setStats] = useState<DashboardStats>({
         vehiclesCount: 0,
@@ -18,13 +42,46 @@ export function HomePage() {
         monthlyParking: 0,
         balance: 0
     });
+    const [recentActivities, setRecentActivities] = useState<ParkingActivity[]>([]);
+    const [systemLogs, setSystemLogs] = useState<SystemLog[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         if (user?.id) {
             fetchDashboardStats();
+            fetchRecentActivities();
+            fetchSystemLogs();
         }
     }, [user?.id]);
+
+    const fetchRecentActivities = async () => {
+        if (!user?.id) return;
+        
+        try {
+            const response = await fetch(apiUrl(`/users/${user.id}/parking-sessions`));
+            if (response.ok) {
+                const data = await response.json();
+                // Get last 5 sessions
+                setRecentActivities(data.slice(0, 5));
+            }
+        } catch (error) {
+            console.error('Error fetching recent activities:', error);
+        }
+    };
+    
+    const fetchSystemLogs = async () => {
+        if (!user?.id) return;
+        
+        try {
+            const response = await fetch(apiUrl(`/users/${user.id}/system-logs?limit=5`));
+            if (response.ok) {
+                const data = await response.json();
+                setSystemLogs(data);
+            }
+        } catch (error) {
+            console.error('Error fetching system logs:', error);
+        }
+    };
 
     const fetchDashboardStats = async () => {
         if (!user?.id) return;
@@ -70,63 +127,51 @@ export function HomePage() {
         }
     ];
 
-    const recentActivities = [
-        {
-            id: 1,
-            type: "Xe vào bãi",
-            plateNumber: "49P1-12345",
-            time: "10:30 AM",
-            // status: "Thành công",
-            // fee: "2,000₫"
-        },
-        {
-            id: 2,
-            type: "Xe ra bãi",
-            plateNumber: "49P2-67890",
-            time: "11:15 AM",
-            status: "Thành công",
-            fee: "2,000₫"
-        },
-        {
-            id: 3,
-            type: "Nạp tiền",
-            plateNumber: "-",
-            time: "09:45 AM",
-            status: "Thành công",
-            fee: "+50,000₫"
-        }
-    ];
-
-    const notifications = [
-        {
-            id: 1,
-            type: "success",
-            title: "Nạp tiền thành công",
-            message: "Đã nạp 50,000₫ vào tài khoản",
-            time: "2 phút trước"
-        },
-        {
-            id: 2,
-            type: "info",
-            title: "Xe vào bãi thành công",
-            message: "Biển số 49P1-12345 đã được nhận diện thành công",
-            time: "1 giờ trước"
-        }
-    ];
-
-    const getStatusColor = (status: string | undefined) => {
-        if (status === "Thành công") return "bg-emerald-100 text-emerald-800";
+    const getStatusColor = (status: string) => {
+        if (status === "Da_thanh_toan") return "bg-emerald-100 text-emerald-800";
+        if (status === "insufficient") return "bg-yellow-100 text-yellow-800";
         return "bg-amber-100 text-amber-800";
     };
-
-    const getNotificationColor = (type: string) => {
-        if (type === "success") return "bg-emerald-50 border-emerald-200";
-        return "bg-cyan-50 border-cyan-200";
+    
+    const getStatusText = (session: ParkingActivity) => {
+        if (session.exit_time) {
+            if (session.payment_status === "Da_thanh_toan") return "Đã thanh toán";
+            if (session.payment_status === "insufficient") return "Số dư không đủ";
+            return "Chưa thanh toán";
+        }
+        return "Đang gửi";
     };
-
+    
+    const getTimeAgo = (dateString: string) => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+        
+        if (diffMins < 1) return "Vừa xong";
+        if (diffMins < 60) return `${diffMins} phút trước`;
+        if (diffHours < 24) return `${diffHours} giờ trước`;
+        return `${diffDays} ngày trước`;
+    };
+    
     const getNotificationIcon = (type: string) => {
-        if (type === "success") return <CheckCircle className="h-5 w-5 text-emerald-600" />;
-        return <Camera className="h-5 w-5 text-cyan-600" />;
+        switch (type) {
+            case 'success': return '✓';
+            case 'info': return 'ℹ';
+            case 'warning': return '⚠';
+            default: return '•';
+        }
+    };
+    
+    const getNotificationColor = (type: string) => {
+        switch (type) {
+            case 'success': return 'bg-emerald-50 border-emerald-200';
+            case 'info': return 'bg-blue-50 border-blue-200';
+            case 'warning': return 'bg-amber-50 border-amber-200';
+            default: return 'bg-gray-50 border-gray-200';
+        }
     };
 
     return (
@@ -192,37 +237,51 @@ export function HomePage() {
                         </div>
                         <div className="p-6">
                             <div className="space-y-4">
-                                {recentActivities.map((activity) => (
-                                    <div key={activity.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                                        <div className="flex items-center space-x-4">
-                                            <div className={`p-2 rounded-lg ${activity.type === "Xe vào bãi" ? "bg-emerald-100" :
-                                                activity.type === "Xe ra bãi" ? "bg-blue-100" :
-                                                    "bg-violet-100"
-                                                }`}>
-                                                {activity.type === "Xe vào bãi" ? (
-                                                    <Bike className="h-5 w-5 text-emerald-600" />
-                                                ) : activity.type === "Xe ra bãi" ? (
-                                                    <Bike className="h-5 w-5 text-blue-600" />
-                                                ) : (
-                                                    <CreditCard className="h-5 w-5 text-violet-600" />
-                                                )}
+                                {recentActivities.length === 0 ? (
+                                    <p className="text-center text-gray-500 py-4">Chưa có hoạt động gần đây</p>
+                                ) : (
+                                    recentActivities.map((activity) => {
+                                        const activityType = activity.exit_time ? "Xe ra bãi" : "Xe vào bãi";
+                                        const activityIcon = activity.exit_time ? "bg-blue-100" : "bg-emerald-100";
+                                        const iconColor = activity.exit_time ? "text-blue-600" : "text-emerald-600";
+                                        const timeString = activity.exit_time 
+                                            ? new Date(activity.exit_time).toLocaleString('vi-VN', { 
+                                                month: '2-digit', 
+                                                day: '2-digit', 
+                                                hour: '2-digit', 
+                                                minute: '2-digit' 
+                                            })
+                                            : new Date(activity.entry_time).toLocaleString('vi-VN', { 
+                                                month: '2-digit', 
+                                                day: '2-digit', 
+                                                hour: '2-digit', 
+                                                minute: '2-digit' 
+                                            });
+                                        
+                                        return (
+                                            <div key={activity.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                                                <div className="flex items-center space-x-4">
+                                                    <div className={`p-2 rounded-lg ${activityIcon}`}>
+                                                        <Bike className={`h-5 w-5 ${iconColor}`} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium text-gray-900">{activityType}</p>
+                                                        <p className="text-sm text-gray-500">
+                                                            {activity.vehicle.license_plate}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-sm text-gray-500">{timeString}</p>
+                                                    <p className="font-medium text-gray-900">{activity.fee.toLocaleString('vi-VN')}₫</p>
+                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(activity.payment_status)}`}>
+                                                        {getStatusText(activity)}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="font-medium text-gray-900">{activity.type}</p>
-                                                <p className="text-sm text-gray-500">
-                                                    {activity.plateNumber !== "-" ? activity.plateNumber : "Nạp tiền"}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-sm text-gray-500">{activity.time}</p>
-                                            <p className="font-medium text-gray-900">{activity.fee}</p>
-                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(activity.status)}`}>
-                                                {activity.status || "Đang gửi"}
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))}
+                                        );
+                                    })
+                                )}
                             </div>
                         </div>
                     </div>
@@ -237,18 +296,24 @@ export function HomePage() {
                         </div>
                         <div className="p-6">
                             <div className="space-y-4">
-                                {notifications.map((notification) => (
-                                    <div key={notification.id} className={`p-4 rounded-xl border ${getNotificationColor(notification.type)}`}>
-                                        <div className="flex items-start space-x-3">
-                                            {getNotificationIcon(notification.type)}
-                                            <div className="flex-1">
-                                                <p className="font-medium text-gray-900">{notification.title}</p>
-                                                <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
-                                                <p className="text-xs text-gray-500 mt-2">{notification.time}</p>
+                                {systemLogs.length > 0 ? (
+                                    systemLogs.map((log) => (
+                                        <div key={log.id} className={`p-4 rounded-xl border ${getNotificationColor(log.type)}`}>
+                                            <div className="flex items-start space-x-3">
+                                                <span className="text-lg">{getNotificationIcon(log.type)}</span>
+                                                <div className="flex-1">
+                                                    <p className="font-medium text-gray-900">{log.title}</p>
+                                                    <p className="text-sm text-gray-600 mt-1">{log.message}</p>
+                                                    <p className="text-xs text-gray-500 mt-2">{getTimeAgo(log.time)}</p>
+                                                </div>
                                             </div>
                                         </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-8 text-gray-500">
+                                        <p>Chưa có thông báo nào</p>
                                     </div>
-                                ))}
+                                )}
                             </div>
                         </div>
                     </div>
@@ -260,15 +325,24 @@ export function HomePage() {
                         </div>
                         <div className="p-6">
                             <div className="grid grid-cols-2 gap-4">
-                                <button className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white p-4 rounded-xl hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                                <button 
+                                    onClick={() => onNavigate?.('vehicles')}
+                                    className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white p-4 rounded-xl hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                                >
                                     <Bike className="h-6 w-6 mb-2" />
                                     <span className="text-sm font-medium">Thêm xe</span>
                                 </button>
-                                <button className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-4 rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                                <button 
+                                    onClick={() => onNavigate?.('payment')}
+                                    className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-4 rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                                >
                                     <CreditCard className="h-6 w-6 mb-2" />
                                     <span className="text-sm font-medium">Nạp tiền</span>
                                 </button>
-                                <button className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                                <button 
+                                    onClick={() => onNavigate?.('history')}
+                                    className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                                >
                                     <History className="h-6 w-6 mb-2" />
                                     <span className="text-sm font-medium">Lịch sử</span>
                                 </button>
