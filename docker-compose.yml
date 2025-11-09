@@ -50,8 +50,9 @@ services:
     volumes:
       - ./BE:/app
       - /app/node_modules
-      # Persist ML models and detected images
-      - ml_models:/app/ml_models
+      # Bind mount ML models (include custom plate recognizer)
+      - ./BE/ml_models:/app/ml_models
+      # Persist detected images only
       - detected_plates:/app/detected_plates
     networks:
       - eparking_network

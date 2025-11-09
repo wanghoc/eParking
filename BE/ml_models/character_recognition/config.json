@@ -1,6 +1,6 @@
 {
   "model_type": "cnn_lstm",
-  "model_path": "model.pt",
+  "model_path": "plate_recognizer.pt",
   "input_size": [128, 32],
   "characters": "0123456789ABCDEFGHKLMNPRSTUVXYZ-",
   "max_length": 10,

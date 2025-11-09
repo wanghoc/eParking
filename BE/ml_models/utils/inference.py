@@ -31,9 +31,9 @@ class LicensePlateDetector:
     """Class nhận diện biển số xe - tích hợp từ dự án test_model"""
     
     def __init__(self):
-        """Khởi tạo detector với YOLOv8 OBB và EasyOCR"""
+        """Khởi tạo detector với YOLOv8 OBB và Custom Plate Recognizer"""
         if not ML_AVAILABLE:
-            raise RuntimeError("ML libraries not available. Please install: ultralytics, easyocr, opencv-python")
+            raise RuntimeError("ML libraries not available. Please install: ultralytics, torch, opencv-python")
         
         # Đường dẫn model
         model_path = os.path.join(os.path.dirname(__file__), '..', 'plate_detector', 'best.pt')
@@ -48,12 +48,10 @@ class LicensePlateDetector:
         except Exception as e:
             raise RuntimeError(f"Failed to load YOLO model: {e}")
         
-        # Khởi tạo EasyOCR reader (Vietnamese + English)
-        try:
-            self.ocr_reader = easyocr.Reader(['vi', 'en'], gpu=False, verbose=False)
-            print("[INFO] EasyOCR reader initialized", file=sys.stderr)
-        except Exception as e:
-            raise RuntimeError(f"Failed to initialize EasyOCR: {e}")
+        # Initialize OCR reader
+        print("Loading EasyOCR...")
+        self.ocr_reader = easyocr.Reader(['vi', 'en'], gpu=False, verbose=False)
+        print("EasyOCR loaded successfully")
     
     def validate_plate_format(self, text):
         """
@@ -169,17 +167,17 @@ class LicensePlateDetector:
             
             cropped_plate = image[y1:y2, x1:x2]
             
-            # Tiền xử lý cho OCR
+            # Tiền xử lý cho OCR (tăng độ tương phản)
             gray = cv2.cvtColor(cropped_plate, cv2.COLOR_BGR2GRAY)
             gray = cv2.equalizeHist(gray)  # Tăng độ tương phản
             
-            # Resize nếu quá nhỏ
+            # Resize nếu quá nhỏ (để đảm bảo chất lượng OCR)
             if gray.shape[1] < 200:
                 scale = 200 / gray.shape[1]
                 gray = cv2.resize(gray, None, fx=scale, fy=scale, 
                                 interpolation=cv2.INTER_CUBIC)
             
-            # OCR với EasyOCR
+            # OCR với EasyOCR từ ảnh xám tăng tương phản
             ocr_results = self.ocr_reader.readtext(gray, detail=0)
             plate_text_raw = ''.join(ocr_results).replace(' ', '')
             

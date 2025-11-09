@@ -150,7 +150,7 @@ class PersistentDetector:
         
         cropped_plate = frame[y1:y2, x1:x2]
         
-        # Tiền xử lý cho OCR (GIỐNG Y PROJECT TEST)
+        # Tiền xử lý cho OCR (tăng độ tương phản)
         gray = cv2.cvtColor(cropped_plate, cv2.COLOR_BGR2GRAY)
         gray = cv2.equalizeHist(gray)
         
@@ -159,7 +159,7 @@ class PersistentDetector:
             scale = 200 / gray.shape[1]
             gray = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
         
-        # OCR
+        # OCR với EasyOCR
         ocr_results = self.reader.readtext(gray, detail=0)
         plate_text_raw = ''.join(ocr_results).replace(' ', '')
         

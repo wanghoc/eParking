@@ -71,6 +71,6 @@ try {
 Write-Host ""
 Write-Host "💡 Tips:" -ForegroundColor Cyan
 Write-Host "  - View live logs: docker-compose logs -f backend"
-Write-Host "  - Check ML status: docker exec eparking_backend python3 -c 'import torch, easyocr'"
+Write-Host "  - Check ML status: docker exec eparking_backend python3 -c 'import torch; from ultralytics import YOLO'"
 Write-Host "  - Rebuild: docker-compose build --no-cache backend"
 Write-Host "  - Full restart: docker-compose down && docker-compose up -d"
