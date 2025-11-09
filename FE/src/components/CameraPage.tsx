@@ -42,6 +42,7 @@ export function CameraPage() {
     const [showLiveModal, setShowLiveModal] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [showAddWebcamModal, setShowAddWebcamModal] = useState(false); // NEW: Quick add webcam modal
     const [editingCamera, setEditingCamera] = useState<CameraData | null>(null);
     const [cameras, setCameras] = useState<CameraData[]>([]);
     const [parkingLots, setParkingLots] = useState<ParkingLot[]>([]);
@@ -49,6 +50,13 @@ export function CameraPage() {
     const [selectedCameraForFull, setSelectedCameraForFull] = useState<number | null>(null);
     const [selectedTab, setSelectedTab] = useState("live");
     const cameraRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
+    
+    // NEW: Quick webcam form state
+    const [quickWebcam, setQuickWebcam] = useState({
+        parking_lot_id: null as number | null,
+        type: 'Vào' as 'Vào' | 'Ra',
+        name: ''
+    });
 
     useEffect(() => {
         loadCameras();
@@ -118,27 +126,41 @@ export function CameraPage() {
     const handleUpdateCamera = async () => {
         if (!editingCamera) return;
 
+        // Validate required fields
+        if (!editingCamera.name || !editingCamera.type) {
+            alert('Vui lòng nhập tên camera và chọn loại!');
+            return;
+        }
+
         try {
+            console.log('Updating camera:', {
+                id: editingCamera.id,
+                name: editingCamera.name,
+                parking_lot_id: editingCamera.parking_lot_id,
+                type: editingCamera.type,
+                location: editingCamera.location
+            });
+
             const response = await fetch(apiUrl(`/cameras/${editingCamera.id}`), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     name: editingCamera.name,
-                    location: editingCamera.location,
-                    parking_lot_id: editingCamera.parking_lot_id, // ✅ FIX: Thêm parking_lot_id
+                    location: editingCamera.location || '',
+                    parking_lot_id: editingCamera.parking_lot_id || null, // Allow null
                     type: editingCamera.type,
                     status: editingCamera.status,
-                    ip_address: editingCamera.ip_address,
-                    port: editingCamera.port,
-                    protocol: editingCamera.protocol,
-                    device_id: editingCamera.device_id,
-                    username: editingCamera.username,
-                    password: editingCamera.password,
-                    rtsp_url: editingCamera.rtsp_url,
-                    http_url: editingCamera.http_url,
-                    camera_brand: editingCamera.camera_brand,
-                    resolution: editingCamera.resolution,
-                    fps: editingCamera.fps
+                    ip_address: editingCamera.ip_address || null,
+                    port: editingCamera.port || null,
+                    protocol: editingCamera.protocol || null,
+                    device_id: editingCamera.device_id || null,
+                    username: editingCamera.username || null,
+                    password: editingCamera.password || null,
+                    rtsp_url: editingCamera.rtsp_url || null,
+                    http_url: editingCamera.http_url || null,
+                    camera_brand: editingCamera.camera_brand || null,
+                    resolution: editingCamera.resolution || '720p',
+                    fps: editingCamera.fps || 30
                 })
             });
 
@@ -149,10 +171,65 @@ export function CameraPage() {
                 setEditingCamera(null);
             } else {
                 const data = await response.json();
+                console.error('Update error response:', data);
                 alert(data.message || 'Lỗi khi cập nhật camera!');
             }
         } catch (error) {
             console.error('Update camera error:', error);
+            alert('Lỗi kết nối server!');
+        }
+    };
+
+    // NEW: Quick add webcam handler
+    const handleAddWebcam = async () => {
+        if (!quickWebcam.parking_lot_id) {
+            alert('Vui lòng chọn bãi xe!');
+            return;
+        }
+
+        try {
+            const selectedLot = parkingLots.find(l => l.id === quickWebcam.parking_lot_id);
+            
+            // Generate unique camera name with timestamp if no name provided
+            const timestamp = Date.now();
+            const defaultName = `Webcam ${quickWebcam.type} - ${selectedLot?.name || 'Camera'} - ${timestamp}`;
+            const cameraName = quickWebcam.name.trim() || defaultName;
+            
+            console.log('Adding webcam:', {
+                name: cameraName,
+                location: selectedLot?.name || '',
+                parking_lot_id: quickWebcam.parking_lot_id,
+                type: quickWebcam.type
+            });
+            
+            const response = await fetch(apiUrl('/cameras'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: cameraName,
+                    location: selectedLot?.name || '',
+                    parking_lot_id: quickWebcam.parking_lot_id,
+                    type: quickWebcam.type,
+                    status: 'Hoạt động',
+                    device_id: 'webcam', // Mark as webcam for frontend detection
+                    protocol: 'Webcam',
+                    resolution: '720p',
+                    fps: 30
+                })
+            });
+
+            if (response.ok) {
+                alert('Thêm webcam thành công!');
+                await loadCameras();
+                setShowAddWebcamModal(false);
+                setQuickWebcam({ parking_lot_id: null, type: 'Vào', name: '' });
+            } else {
+                const data = await response.json();
+                console.error('Error response:', data);
+                alert(data.message || 'Lỗi khi thêm webcam!');
+            }
+        } catch (error) {
+            console.error('Add webcam error:', error);
             alert('Lỗi kết nối server!');
         }
     };
@@ -217,11 +294,18 @@ export function CameraPage() {
                     </div>
                     <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
                         <button 
+                            onClick={() => setShowAddWebcamModal(true)}
+                            className="bg-emerald-500 bg-opacity-90 px-4 lg:px-6 py-2 lg:py-3 rounded-xl flex items-center justify-center space-x-2 hover:bg-opacity-100 transition-all duration-300 shadow-lg"
+                        >
+                            <Video className="h-4 w-4 lg:h-5 lg:w-5" />
+                            <span className="text-sm lg:text-base font-medium">Thêm Webcam nhanh</span>
+                        </button>
+                        <button 
                             onClick={() => setShowAddModal(true)}
                             className="bg-white bg-opacity-20 px-4 lg:px-6 py-2 lg:py-3 rounded-xl flex items-center justify-center space-x-2 hover:bg-opacity-30 transition-all duration-300"
                         >
                             <Camera className="h-4 w-4 lg:h-5 lg:w-5" />
-                            <span className="text-sm lg:text-base">Thêm camera</span>
+                            <span className="text-sm lg:text-base">Thêm camera IP</span>
                         </button>
                     </div>
                 </div>
@@ -760,6 +844,123 @@ export function CameraPage() {
                                 </>
                             );
                         })()}
+                    </div>
+                </div>
+            )}
+
+            {/* Quick Add Webcam Modal */}
+            {showAddWebcamModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+                        <div className="sticky top-0 bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+                            <h2 className="text-xl font-bold text-white">Thêm Webcam nhanh</h2>
+                            <button
+                                onClick={() => {
+                                    setShowAddWebcamModal(false);
+                                    setQuickWebcam({ parking_lot_id: null, type: 'Vào', name: '' });
+                                }}
+                                className="text-white hover:text-gray-200 transition-colors"
+                            >
+                                <X className="h-6 w-6" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Tên camera (tùy chọn)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={quickWebcam.name}
+                                    onChange={(e) => setQuickWebcam({...quickWebcam, name: e.target.value})}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    placeholder="Để trống để tự động đặt tên"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Ví dụ: "Webcam Vào - Bãi xe A"
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Bãi xe <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                    value={quickWebcam.parking_lot_id || ''}
+                                    onChange={(e) => setQuickWebcam({
+                                        ...quickWebcam, 
+                                        parking_lot_id: e.target.value ? parseInt(e.target.value) : null
+                                    })}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                >
+                                    <option value="">Chọn bãi xe</option>
+                                    {parkingLots.map(lot => (
+                                        <option key={lot.id} value={lot.id}>{lot.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Vị trí <span className="text-red-500">*</span>
+                                </label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                        onClick={() => setQuickWebcam({...quickWebcam, type: 'Vào'})}
+                                        className={`px-4 py-3 rounded-lg border-2 font-medium transition-all ${
+                                            quickWebcam.type === 'Vào' 
+                                                ? 'border-emerald-500 bg-emerald-50 text-emerald-700' 
+                                                : 'border-gray-300 bg-white text-gray-700 hover:border-emerald-300'
+                                        }`}
+                                    >
+                                        Vào
+                                    </button>
+                                    <button
+                                        onClick={() => setQuickWebcam({...quickWebcam, type: 'Ra'})}
+                                        className={`px-4 py-3 rounded-lg border-2 font-medium transition-all ${
+                                            quickWebcam.type === 'Ra' 
+                                                ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                                                : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
+                                        }`}
+                                    >
+                                        Ra
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <div className="flex items-start space-x-3">
+                                    <Video className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                                    <div className="text-sm text-blue-800">
+                                        <p className="font-medium mb-1">Lưu ý:</p>
+                                        <ul className="list-disc list-inside space-y-1 text-xs">
+                                            <li>Camera sẽ tự động sử dụng webcam của thiết bị</li>
+                                            <li>Cần cấp quyền truy cập webcam khi yêu cầu</li>
+                                            <li>Hỗ trợ AI nhận diện biển số tự động</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="sticky bottom-0 bg-gray-50 px-6 py-4 flex justify-end space-x-3 rounded-b-2xl border-t">
+                            <button
+                                onClick={() => {
+                                    setShowAddWebcamModal(false);
+                                    setQuickWebcam({ parking_lot_id: null, type: 'Vào', name: '' });
+                                }}
+                                className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                onClick={handleAddWebcam}
+                                className="px-6 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors font-medium"
+                            >
+                                Thêm Webcam
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

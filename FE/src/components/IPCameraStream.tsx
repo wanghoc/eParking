@@ -5,6 +5,7 @@ import { apiUrl } from '../api';
 interface IPCameraStreamProps {
     cameraId: number;
     name: string;
+    cameraType?: string; // 'Vào' | 'Ra' - Loại camera để hiển thị trạng thái đúng
     ipAddress?: string;
     port?: number;
     protocol?: string;
@@ -23,11 +24,18 @@ interface DetectionResult {
     confidence?: number;
     message?: string;
     annotated_image_base64?: string;
+    database?: {
+        registered: boolean;
+        camera_type?: string;
+        status_message?: string;
+        payment_status?: string;
+    };
 }
 
 export function IPCameraStream({
     cameraId,
     name,
+    cameraType,
     ipAddress,
     port,
     protocol,
@@ -217,13 +225,14 @@ export function IPCameraStream({
                 
                 if (result.success && result.plate_number) {
                     console.log(`[IPCamera ${cameraId}] Detected plate:`, result.plate_number, `(${(result.confidence! * 100).toFixed(1)}%)`);
+                    console.log(`[IPCamera ${cameraId}] Database result:`, result.database);
                     setLastDetection(result);
                     
-                    // Clear detection after 3 seconds
+                    // Clear detection after 5 seconds (tăng thời gian để người dùng đọc được)
                     setTimeout(() => {
                         setLastDetection(null);
                         setAnnotatedImageUrl(null);
-                    }, 3000);
+                    }, 5000);
                 } else {
                     // Clear annotated image if no detection
                     setTimeout(() => {
@@ -303,35 +312,99 @@ export function IPCameraStream({
                 />
             )}
 
-            {/* Status indicators - Left column (stacked vertically) */}
-            {!hideIndicators && (
-                <div className="absolute top-2 left-2 flex flex-col space-y-2">
-                    {/* Detection status only */}
-                    {connectionStatus === 'connected' && (
-                        <div className="flex items-center space-x-2 bg-black bg-opacity-70 px-3 py-2 rounded-lg">
-                            <ScanLine className={`w-5 h-5 ${isDetecting ? 'text-cyan-400 animate-pulse' : 'text-gray-400'}`} />
-                            <span className="text-sm font-medium text-white">
-                                {isDetecting ? 'Đang quét...' : 'Sẵn sàng'}
-                            </span>
-                        </div>
-                    )}
-                </div>
-            )}
+            {/* Status indicators removed per user request */}
 
-            {/* Detection result badge - minimal để không che khuất annotated image */}
-            {lastDetection && lastDetection.plate_number && (
-                <div className="absolute top-12 right-2 bg-green-600 bg-opacity-95 px-3 py-2 rounded-lg shadow-xl animate-fade-in border-2 border-green-400">
-                    <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-5 h-5 text-white" />
-                        <div>
-                            <div className="text-white font-bold text-base">{lastDetection.plate_number}</div>
-                            <div className="text-white text-xs opacity-90">
-                                {((lastDetection.confidence || 0) * 100).toFixed(1)}%
+            {/* Detection result badge with status message */}
+            {lastDetection && lastDetection.plate_number && (() => {
+                // Xác định màu sắc và trạng thái dựa trên database response
+                const db = lastDetection.database;
+                let bgColor = 'bg-green-600';
+                let borderColor = 'border-green-400';
+                let statusText = '';
+                let statusIcon = <CheckCircle className="w-5 h-5 text-white" />;
+
+                if (db) {
+                    // Xe chưa đăng ký
+                    if (db.registered === false) {
+                        bgColor = 'bg-red-600';
+                        borderColor = 'border-red-400';
+                        statusText = db.status_message || 'Chưa đăng ký xe';
+                        statusIcon = <AlertCircle className="w-5 h-5 text-white" />;
+                    }
+                    // Xe đã đăng ký - kiểm tra trạng thái thanh toán (camera Ra)
+                    else if (db.payment_status === 'insufficient') {
+                        bgColor = 'bg-yellow-600';
+                        borderColor = 'border-yellow-400';
+                        statusText = db.status_message || 'Số dư không đủ';
+                        statusIcon = <AlertCircle className="w-5 h-5 text-white" />;
+                    }
+                    // Xe đã đăng ký - có status_message từ backend
+                    else if (db.status_message) {
+                        // Check-in thành công (camera Vào)
+                        if (db.status_message.includes('Check-in') || db.status_message.includes('thành công')) {
+                            bgColor = 'bg-green-600';
+                            borderColor = 'border-green-400';
+                            statusText = db.status_message;
+                        }
+                        // Đã thanh toán (camera Ra)
+                        else if (db.status_message.includes('thanh toán') || db.status_message.includes('Đã thanh toán')) {
+                            bgColor = 'bg-green-600';
+                            borderColor = 'border-green-400';
+                            statusText = db.status_message;
+                        }
+                        // Xe chưa check-in (camera Ra)
+                        else if (db.status_message.includes('chưa check-in')) {
+                            bgColor = 'bg-red-600';
+                            borderColor = 'border-red-400';
+                            statusText = db.status_message;
+                            statusIcon = <AlertCircle className="w-5 h-5 text-white" />;
+                        }
+                        // Xe đã đang gửi (camera Vào)
+                        else if (db.status_message.includes('đang gửi')) {
+                            bgColor = 'bg-yellow-600';
+                            borderColor = 'border-yellow-400';
+                            statusText = db.status_message;
+                            statusIcon = <AlertCircle className="w-5 h-5 text-white" />;
+                        }
+                        // Mặc định
+                        else {
+                            statusText = db.status_message;
+                        }
+                    }
+                    // Xe đã đăng ký nhưng không có status_message - dựa vào camera type
+                    else if (cameraType === 'Vào' || cameraType === 'Vao') {
+                        statusText = 'Đang xử lý check-in...';
+                    } else if (cameraType === 'Ra') {
+                        statusText = 'Đang xử lý checkout...';
+                    }
+                } else {
+                    // Không có database response - hiển thị dựa vào camera type
+                    if (cameraType === 'Vào' || cameraType === 'Vao') {
+                        statusText = 'Đang kiểm tra...';
+                    } else if (cameraType === 'Ra') {
+                        statusText = 'Đang kiểm tra...';
+                    }
+                }
+
+                return (
+                    <div className={`absolute top-2 right-2 px-4 py-3 rounded-lg shadow-xl animate-fade-in border-2 ${bgColor} bg-opacity-95 ${borderColor} z-50`}>
+                        <div className="flex items-center space-x-2">
+                            {statusIcon}
+                            <div>
+                                <div className="text-white font-bold text-lg">{lastDetection.plate_number}</div>
+                                {statusText && (
+                                    <div className="text-white text-sm font-semibold mt-1 whitespace-nowrap">
+                                        {statusText}
+                                    </div>
+                                )}
+                                <div className="text-white text-xs opacity-90 mt-1">
+                                    Độ chính xác: {((lastDetection.confidence || 0) * 100).toFixed(1)}%
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
 
             {/* Camera info overlay */}
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4">

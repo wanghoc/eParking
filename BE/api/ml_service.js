@@ -83,13 +83,9 @@ async function saveDetection(cameraId, result) {
 
     // Check if vehicle exists
     const vehicle = await prisma.vehicle.findUnique({
-      where: { license_plate: result.plate_number }
+      where: { license_plate: result.plate_number },
+      include: { user: true }
     });
-
-    if (!vehicle) {
-      console.log('Vehicle not registered:', result.plate_number);
-      return { registered: false };
-    }
 
     // Check camera type
     const camera = await prisma.camera.findUnique({
@@ -101,15 +97,45 @@ async function saveDetection(cameraId, result) {
       return { error: 'Camera not found' };
     }
 
-    if (camera.type === 'Vào') {
-      // Entry camera - create parking session
-      await handleEntry(vehicle, camera);
-    } else if (camera.type === 'Ra') {
-      // Exit camera - end parking session and charge
-      await handleExit(vehicle, camera);
+    if (!vehicle) {
+      console.log('Vehicle not registered:', result.plate_number);
+      return { 
+        registered: false,
+        camera_type: camera.type,
+        status_message: 'Chưa đăng ký xe'
+      };
     }
 
-    return { registered: true };
+    // Vehicle is registered - handle based on camera type
+    // Handle both Prisma enum format (Vao/Ra) and Vietnamese format (Vào/Ra)
+    const isEntrance = camera.type === 'Vào' || camera.type === 'Vao';
+    const isExit = camera.type === 'Ra';
+    
+    if (isEntrance) {
+      // Entry camera - create parking session
+      const entryResult = await handleEntry(vehicle, camera);
+      return { 
+        registered: true,
+        camera_type: camera.type,
+        status_message: entryResult && entryResult.status === 'already_parked' ? 'Xe đã đang gửi' : 'Check-in thành công'
+      };
+    } else if (isExit) {
+      // Exit camera - check balance and process payment
+      const exitResult = await handleExit(vehicle, camera);
+      return {
+        registered: true,
+        camera_type: camera.type,
+        status_message: exitResult && exitResult.status_message ? exitResult.status_message : 'Đang xử lý checkout...',
+        payment_status: exitResult && exitResult.payment_status ? exitResult.payment_status : undefined
+      };
+    }
+
+    // Camera type không xác định
+    return { 
+      registered: true,
+      camera_type: camera.type,
+      status_message: 'Đã nhận diện biển số'
+    };
   } catch (error) {
     console.error('Error saving detection:', error);
     throw error;
@@ -130,7 +156,21 @@ async function handleEntry(vehicle, camera) {
 
   if (openSession) {
     console.log('Vehicle already has open session:', vehicle.license_plate);
-    return;
+    return {
+      status: 'already_parked',
+      message: 'Xe đã đang gửi trong bãi'
+    };
+  }
+
+  // Get parking lot name for logging
+  let parkingLotName = 'Không xác định';
+  if (camera.parking_lot_id) {
+    const parkingLot = await prisma.parkingLot.findUnique({
+      where: { id: camera.parking_lot_id }
+    });
+    if (parkingLot) {
+      parkingLotName = parkingLot.name;
+    }
   }
 
   // Create new parking session
@@ -144,26 +184,56 @@ async function handleEntry(vehicle, camera) {
     }
   });
 
-  console.log('Vehicle entry recorded:', vehicle.license_plate);
+  // Add detailed system log for check-in
+  await prisma.systemLog.create({
+    data: {
+      action: `Xe ${vehicle.license_plate} đang gửi tại ${parkingLotName}`,
+      type: 'Recognition',
+      user_id: vehicle.user_id
+    }
+  });
+
+  console.log(`Vehicle check-in successful: ${vehicle.license_plate} at ${parkingLotName}`);
+  
+  return {
+    status: 'success',
+    message: 'Check-in thành công'
+  };
 }
 
 /**
  * Handle vehicle exit
  */
 async function handleExit(vehicle, camera) {
-  // Find open parking session
+  // Find open parking session (MUST have checked in before)
   const session = await prisma.parkingSession.findFirst({
     where: {
       vehicle_id: vehicle.id,
       exit_time: null
     },
-    orderBy: { entry_time: 'desc' }
+    orderBy: { entry_time: 'desc' },
+    include: {
+      parking_lot: true
+    }
   });
 
   if (!session) {
     console.log('No open session found for vehicle:', vehicle.license_plate);
-    return;
+    // Log the failed checkout attempt
+    await prisma.systemLog.create({
+      data: {
+        action: `Xe ${vehicle.license_plate} cố gắng checkout nhưng chưa check-in`,
+        type: 'Recognition',
+        user_id: vehicle.user_id
+      }
+    });
+    return {
+      status_message: 'Xe chưa check-in',
+      payment_status: 'error'
+    };
   }
+
+  const parkingLotName = session.parking_lot?.name || 'Không xác định';
 
   // Get fee from system settings
   const feeSettings = await prisma.systemSetting.findUnique({
@@ -179,19 +249,32 @@ async function handleExit(vehicle, camera) {
   if (!wallet || Number(wallet.balance) < fee) {
     console.log('Insufficient balance for vehicle:', vehicle.license_plate);
     // Mark session as unpaid but still update exit time
-    await prisma.parkingSession.update({
-      where: { id: session.id },
-      data: {
-        exit_time: new Date(),
-        fee: fee,
-        status: 'OUT',
-        payment_status: 'Chua_thanh_toan'
-      }
-    });
-    return;
+    await prisma.$transaction([
+      prisma.parkingSession.update({
+        where: { id: session.id },
+        data: {
+          exit_time: new Date(),
+          fee: fee,
+          status: 'OUT',
+          payment_status: 'Chua_thanh_toan'
+        }
+      }),
+      // Log insufficient balance checkout
+      prisma.systemLog.create({
+        data: {
+          action: `Xe ${vehicle.license_plate} đã được lấy khỏi ${parkingLotName} - Số dư không đủ (Thiếu ${fee - (wallet ? Number(wallet.balance) : 0)} VND)`,
+          type: 'Payment',
+          user_id: vehicle.user_id
+        }
+      })
+    ]);
+    return {
+      status_message: 'Số dư không đủ',
+      payment_status: 'insufficient'
+    };
   }
 
-  // Process payment
+  // Process payment and checkout
   await prisma.$transaction([
     // Deduct from wallet
     prisma.wallet.update({
@@ -223,16 +306,21 @@ async function handleExit(vehicle, camera) {
         payment_status: 'Da_thanh_toan'
       }
     }),
-    // Log
+    // Log successful checkout
     prisma.systemLog.create({
       data: {
-        action: `Xe ra bãi - ${vehicle.license_plate}`,
-        type: 'Payment'
+        action: `Xe ${vehicle.license_plate} đã được lấy khỏi ${parkingLotName} - Đã thanh toán ${fee} VND`,
+        type: 'Payment',
+        user_id: vehicle.user_id
       }
     })
   ]);
 
-  console.log('Vehicle exit recorded and payment processed:', vehicle.license_plate);
+  console.log(`Vehicle checkout successful: ${vehicle.license_plate} from ${parkingLotName}, paid ${fee} VND`);
+  return {
+    status_message: 'Đã thanh toán',
+    payment_status: 'paid'
+  };
 }
 
 /**
@@ -282,6 +370,108 @@ router.post('/detect-plate', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('ML detection error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+/**
+ * POST /api/ml/check-vehicle-status
+ * Check vehicle status in database without running ML inference
+ * Used when plate number is already detected by WebSocket
+ */
+router.post('/check-vehicle-status', async (req, res) => {
+  try {
+    const { plate_number, camera_id } = req.body;
+    
+    if (!plate_number) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing plate_number parameter' 
+      });
+    }
+
+    if (!camera_id) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing camera_id parameter' 
+      });
+    }
+    
+    console.log(`[ML] Checking vehicle status for plate: ${plate_number}, camera: ${camera_id}`);
+    
+    // Check vehicle in database
+    const vehicle = await prisma.vehicle.findUnique({
+      where: { license_plate: plate_number },
+      include: { user: true }
+    });
+
+    // Get camera info
+    const camera = await prisma.camera.findUnique({
+      where: { id: parseInt(camera_id) }
+    });
+
+    if (!camera) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Camera not found' 
+      });
+    }
+
+    // If vehicle not registered
+    if (!vehicle) {
+      return res.json({
+        success: true,
+        database: {
+          registered: false,
+          camera_type: camera.type,
+          status_message: 'Chưa đăng ký xe'
+        }
+      });
+    }
+
+    // Vehicle is registered - handle based on camera type
+    const isEntrance = camera.type === 'Vào' || camera.type === 'Vao';
+    const isExit = camera.type === 'Ra';
+    
+    if (isEntrance) {
+      // Entry camera - create parking session
+      const entryResult = await handleEntry(vehicle, camera);
+      return res.json({
+        success: true,
+        database: {
+          registered: true,
+          camera_type: camera.type,
+          status_message: entryResult && entryResult.status === 'already_parked' ? 'Xe đã đang gửi' : 'Check-in thành công'
+        }
+      });
+    } else if (isExit) {
+      // Exit camera - check balance and process payment
+      const exitResult = await handleExit(vehicle, camera);
+      return res.json({
+        success: true,
+        database: {
+          registered: true,
+          camera_type: camera.type,
+          status_message: exitResult && exitResult.status_message ? exitResult.status_message : 'Đang xử lý checkout...',
+          payment_status: exitResult && exitResult.payment_status ? exitResult.payment_status : undefined
+        }
+      });
+    }
+
+    // Camera type không xác định
+    return res.json({
+      success: true,
+      database: {
+        registered: true,
+        camera_type: camera.type,
+        status_message: 'Đã nhận diện biển số'
+      }
+    });
+  } catch (error) {
+    console.error('Vehicle status check error:', error);
     res.status(500).json({ 
       success: false, 
       error: error.message 

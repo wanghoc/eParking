@@ -6,6 +6,7 @@ import { io, Socket } from 'socket.io-client';
 interface WebcamStreamProps {
     cameraId: number;
     name: string;
+    cameraType?: string; // 'Vào' | 'Ra' - Loại camera để hiển thị trạng thái đúng
     onError?: (error: string) => void;
     onDetection?: (plateNumber: string, confidence: number) => void; // NEW: Callback for detected plates
     hideIndicators?: boolean; // NEW: Hide status indicators (for AdminDashboard)
@@ -17,11 +18,18 @@ interface DetectionResult {
     confidence?: number;
     message?: string;
     annotated_image_base64?: string;
+    database?: {
+        registered: boolean;
+        camera_type?: string;
+        status_message?: string;
+        payment_status?: string;
+    };
 }
 
 export function WebcamStream({
     cameraId,
     name,
+    cameraType,
     onError,
     onDetection,
     hideIndicators = false
@@ -73,7 +81,7 @@ export function WebcamStream({
                 console.log(`[Webcam ${cameraId}] 📹 Camera registered:`, data);
             });
             
-            socket.on('detection_result', (data: any) => {
+            socket.on('detection_result', async (data: any) => {
                 try {
                     console.log(`[Webcam ${cameraId}] 📦 Detection result:`, data);
                     
@@ -84,26 +92,65 @@ export function WebcamStream({
                     if (data.detection && data.detection.is_valid) {
                         console.log(`[Webcam ${cameraId}] 🎯 DETECTED:`, data.detection.text);
                         
-                        // Update detection state for badge
-                        setLastDetection({
-                            success: true,
-                            plate_number: data.detection.text,
-                            confidence: data.detection.confidence
-                        });
+                        // CRITICAL: Call backend to check database and get status
+                        // Use lightweight endpoint that only checks database, doesn't run ML
+                        const plateNumber = data.detection.text;
+                        const confidence = data.detection.confidence;
+                        
+                        try {
+                            // Call lightweight endpoint to check vehicle status
+                            const response = await fetch(apiUrl('/ml/check-vehicle-status'), {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    plate_number: plateNumber,
+                                    camera_id: cameraId
+                                })
+                            });
+                            
+                            if (response.ok) {
+                                const backendResult = await response.json();
+                                console.log(`[Webcam ${cameraId}] 📊 Database check result:`, backendResult.database);
+                                
+                                // Update detection with database info
+                                setLastDetection({
+                                    success: true,
+                                    plate_number: plateNumber,
+                                    confidence: confidence,
+                                    database: backendResult.database
+                                });
+                            } else {
+                                // Fallback if backend check fails
+                                console.warn(`[Webcam ${cameraId}] ⚠️ Database check failed, showing detection only`);
+                                setLastDetection({
+                                    success: true,
+                                    plate_number: plateNumber,
+                                    confidence: confidence
+                                });
+                            }
+                        } catch (dbError) {
+                            console.error(`[Webcam ${cameraId}] ❌ Database check error:`, dbError);
+                            // Still show detection even if database check fails
+                            setLastDetection({
+                                success: true,
+                                plate_number: plateNumber,
+                                confidence: confidence
+                            });
+                        }
                         
                         // Callback to parent component (for AdminDashboard)
                         if (onDetection) {
-                            onDetection(data.detection.text, data.detection.confidence);
+                            onDetection(plateNumber, confidence);
                         }
                         
                         // Draw bounding box on overlay canvas
                         drawDetectionOverlay(data.detection);
                         
-                        // Clear after 3s
+                        // Clear after 5s (increased from 3s to allow reading status)
                         setTimeout(() => {
                             setLastDetection(null);
                             clearOverlay();
-                        }, 3000);
+                        }, 5000);
                     } else if (data.detection === null) {
                         // No plate detected - clear overlay
                         clearOverlay();
@@ -433,35 +480,99 @@ export function WebcamStream({
                 style={{ display: isLoading ? 'none' : 'block' }}
             />
 
-            {/* Status indicators - Left column (stacked vertically) */}
-            {!hideIndicators && (
-                <div className="absolute top-2 left-2 flex flex-col space-y-2">
-                    {/* Detection status only */}
-                    {isConnected && (
-                        <div className="flex items-center space-x-2 bg-black bg-opacity-70 px-3 py-2 rounded-lg">
-                            <ScanLine className={`w-5 h-5 ${isDetecting ? 'text-cyan-400 animate-pulse' : 'text-gray-400'}`} />
-                            <span className="text-sm font-medium text-white">
-                                {isDetecting ? 'Đang quét...' : 'Sẵn sàng'}
-                            </span>
-                        </div>
-                    )}
-                </div>
-            )}
+            {/* Status indicators removed per user request */}
 
-            {/* Detection result badge - minimal để không che khuất annotated image */}
-            {lastDetection && lastDetection.plate_number && (
-                <div className="absolute top-12 right-2 bg-green-600 bg-opacity-95 px-3 py-2 rounded-lg shadow-xl animate-fade-in border-2 border-green-400">
-                    <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-5 h-5 text-white" />
-                        <div>
-                            <div className="text-white font-bold text-base">{lastDetection.plate_number}</div>
-                            <div className="text-white text-xs opacity-90">
-                                {((lastDetection.confidence || 0) * 100).toFixed(1)}%
+            {/* Detection result badge with status message */}
+            {lastDetection && lastDetection.plate_number && (() => {
+                // Xác định màu sắc và trạng thái dựa trên database response
+                const db = lastDetection.database;
+                let bgColor = 'bg-green-600';
+                let borderColor = 'border-green-400';
+                let statusText = '';
+                let statusIcon = <CheckCircle className="w-5 h-5 text-white" />;
+
+                if (db) {
+                    // Xe chưa đăng ký
+                    if (db.registered === false) {
+                        bgColor = 'bg-red-600';
+                        borderColor = 'border-red-400';
+                        statusText = db.status_message || 'Chưa đăng ký xe';
+                        statusIcon = <AlertCircle className="w-5 h-5 text-white" />;
+                    }
+                    // Xe đã đăng ký - kiểm tra trạng thái thanh toán (camera Ra)
+                    else if (db.payment_status === 'insufficient') {
+                        bgColor = 'bg-yellow-600';
+                        borderColor = 'border-yellow-400';
+                        statusText = db.status_message || 'Số dư không đủ';
+                        statusIcon = <AlertCircle className="w-5 h-5 text-white" />;
+                    }
+                    // Xe đã đăng ký - có status_message từ backend
+                    else if (db.status_message) {
+                        // Check-in thành công (camera Vào)
+                        if (db.status_message.includes('Check-in') || db.status_message.includes('thành công')) {
+                            bgColor = 'bg-green-600';
+                            borderColor = 'border-green-400';
+                            statusText = db.status_message;
+                        }
+                        // Đã thanh toán (camera Ra)
+                        else if (db.status_message.includes('thanh toán') || db.status_message.includes('Đã thanh toán')) {
+                            bgColor = 'bg-green-600';
+                            borderColor = 'border-green-400';
+                            statusText = db.status_message;
+                        }
+                        // Xe chưa check-in (camera Ra)
+                        else if (db.status_message.includes('chưa check-in')) {
+                            bgColor = 'bg-red-600';
+                            borderColor = 'border-red-400';
+                            statusText = db.status_message;
+                            statusIcon = <AlertCircle className="w-5 h-5 text-white" />;
+                        }
+                        // Xe đã đang gửi (camera Vào)
+                        else if (db.status_message.includes('đang gửi')) {
+                            bgColor = 'bg-yellow-600';
+                            borderColor = 'border-yellow-400';
+                            statusText = db.status_message;
+                            statusIcon = <AlertCircle className="w-5 h-5 text-white" />;
+                        }
+                        // Mặc định
+                        else {
+                            statusText = db.status_message;
+                        }
+                    }
+                    // Xe đã đăng ký nhưng không có status_message - dựa vào camera type
+                    else if (cameraType === 'Vào' || cameraType === 'Vao') {
+                        statusText = 'Đang xử lý check-in...';
+                    } else if (cameraType === 'Ra') {
+                        statusText = 'Đang xử lý checkout...';
+                    }
+                } else {
+                    // Không có database response - hiển thị dựa vào camera type
+                    if (cameraType === 'Vào' || cameraType === 'Vao') {
+                        statusText = 'Đang kiểm tra...';
+                    } else if (cameraType === 'Ra') {
+                        statusText = 'Đang kiểm tra...';
+                    }
+                }
+
+                return (
+                    <div className={`absolute top-2 right-2 px-4 py-3 rounded-lg shadow-xl animate-fade-in border-2 ${bgColor} bg-opacity-95 ${borderColor} z-50`}>
+                        <div className="flex items-center space-x-2">
+                            {statusIcon}
+                            <div>
+                                <div className="text-white font-bold text-lg">{lastDetection.plate_number}</div>
+                                {statusText && (
+                                    <div className="text-white text-sm font-semibold mt-1 whitespace-nowrap">
+                                        {statusText}
+                                    </div>
+                                )}
+                                <div className="text-white text-xs opacity-90 mt-1">
+                                    Độ chính xác: {((lastDetection.confidence || 0) * 100).toFixed(1)}%
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
 
             {/* Camera info overlay */}
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4">

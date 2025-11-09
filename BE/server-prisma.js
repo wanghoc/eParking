@@ -414,12 +414,20 @@ app.post('/api/cameras', async (req, res) => {
       return res.status(409).json({ message: 'Camera name already exists' });
     }
 
+    // Normalize camera type to match Prisma enum (handle both "Vào"/"Ra" and "Vao"/"Ra")
+    let normalizedType = type;
+    if (type === 'Vào' || type === 'Vao') {
+      normalizedType = 'Vao';
+    } else if (type === 'Ra') {
+      normalizedType = 'Ra';
+    }
+
     const camera = await prisma.camera.create({
       data: {
         name,
         location: location || null,
         parking_lot_id: parking_lot_id ? parseInt(parking_lot_id) : null,
-        type,
+        type: normalizedType,
         ip_address: ip_address || null,
         camera_brand: camera_brand || null,
         rtsp_url: rtsp_url || null,
@@ -457,8 +465,11 @@ app.post('/api/cameras', async (req, res) => {
       camera: camera 
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error creating camera' });
+    console.error('Create camera error:', err);
+    res.status(500).json({ 
+      message: 'Error creating camera',
+      error: err.message 
+    });
   }
 });
 
@@ -1525,13 +1536,35 @@ app.put('/api/cameras/:cameraId', async (req, res) => {
   } = req.body;
   
   try {
+    // Check if camera name already exists (excluding current camera)
+    if (name) {
+      const existingCamera = await prisma.camera.findFirst({
+        where: { 
+          name,
+          NOT: { id: parseInt(cameraId) }
+        }
+      });
+
+      if (existingCamera) {
+        return res.status(409).json({ message: 'Camera name already exists' });
+      }
+    }
+
+    // Normalize camera type to match Prisma enum (handle both "Vào"/"Ra" and "Vao"/"Ra")
+    let normalizedType = type;
+    if (type === 'Vào' || type === 'Vao') {
+      normalizedType = 'Vao';
+    } else if (type === 'Ra') {
+      normalizedType = 'Ra';
+    }
+
     const camera = await prisma.camera.update({
       where: { id: parseInt(cameraId) },
       data: {
         name,
         location: location || null,
         parking_lot_id: parking_lot_id ? parseInt(parking_lot_id) : null,
-        type,
+        type: normalizedType,
         status: status || 'Hoạt động',
         ip_address: ip_address || null,
         camera_brand: camera_brand || null,
@@ -1567,8 +1600,11 @@ app.put('/api/cameras/:cameraId', async (req, res) => {
       camera: camera 
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error updating camera' });
+    console.error('Update camera error:', err);
+    res.status(500).json({ 
+      message: 'Error updating camera',
+      error: err.message 
+    });
   }
 });
 

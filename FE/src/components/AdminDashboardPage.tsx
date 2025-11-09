@@ -1,4 +1,4 @@
-import { Shield, Camera, AlertCircle, CheckCircle, DollarSign, Bike, Clock, Video, RefreshCw, Settings as SettingsIcon, FileText, Map, XCircle, ChevronDown, Maximize2, Minimize2, ScanLine } from "lucide-react";
+import { Shield, Camera, AlertCircle, CheckCircle, DollarSign, Bike, Clock, Video, RefreshCw, Settings as SettingsIcon, FileText, Map, XCircle, ChevronDown, Maximize2, Minimize2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiUrl } from "../api";
 import { WebcamStream } from "./WebcamStream"; // CHANGED: Use WebcamStream instead of WebcamStreamWS
@@ -387,20 +387,15 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
     const getCameraStatusBadge = (camera: CameraFeed) => {
         const status = camera.lastStatus;
         
-        // For entrance cameras: show check-in status
-        // Position: next to detection status (horizontal layout)
+        console.log(`[Badge] Camera ${camera.id} (${camera.type}): status=${status}, plate=${camera.lastPlate}`);
+        
+        // For entrance cameras: show check-in status ONLY (removed "Đang quét" badge)
         if (camera.type === 'Vào') {
             if (status === 'checkin_success') {
                 // Check-in successful - vehicle registered
                 return (
-                    <div className="absolute top-2 left-2 z-20 flex items-center space-x-2">
-                        {/* Detection status */}
-                        <div className="flex items-center space-x-2 bg-black bg-opacity-70 px-3 py-2 rounded-lg">
-                            <ScanLine className="w-5 h-5 text-cyan-400 animate-pulse" />
-                            <span className="text-sm font-medium text-white">Đang quét...</span>
-                        </div>
-                        {/* Check-in status */}
-                        <div className="flex items-center space-x-2 bg-emerald-500 bg-opacity-95 px-3 py-2 rounded-lg">
+                    <div className="absolute top-2 left-2 z-20">
+                        <div className="flex items-center space-x-2 bg-emerald-500 bg-opacity-95 px-3 py-2 rounded-lg shadow-lg">
                             <CheckCircle className="w-5 h-5 text-white" />
                             <span className="text-sm font-medium text-white">Check-in thành công</span>
                         </div>
@@ -410,45 +405,25 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
             if (status === 'unregistered' || status === 'checkin_failed') {
                 // Vehicle not registered or check-in failed
                 return (
-                    <div className="absolute top-2 left-2 z-20 flex items-center space-x-2">
-                        {/* Detection status */}
-                        <div className="flex items-center space-x-2 bg-black bg-opacity-70 px-3 py-2 rounded-lg">
-                            <ScanLine className="w-5 h-5 text-cyan-400 animate-pulse" />
-                            <span className="text-sm font-medium text-white">Đang quét...</span>
-                        </div>
-                        {/* Unregistered status */}
-                        <div className="flex items-center space-x-2 bg-amber-500 bg-opacity-95 px-3 py-2 rounded-lg">
+                    <div className="absolute top-2 left-2 z-20">
+                        <div className="flex items-center space-x-2 bg-amber-500 bg-opacity-95 px-3 py-2 rounded-lg shadow-lg">
                             <AlertCircle className="w-5 h-5 text-white" />
                             <span className="text-sm font-medium text-white">Chưa đăng ký xe</span>
                         </div>
                     </div>
                 );
             }
-            // Normal state - show only detection status
-            return (
-                <div className="absolute top-2 left-2 z-20">
-                    <div className="flex items-center space-x-2 bg-black bg-opacity-70 px-3 py-2 rounded-lg">
-                        <ScanLine className="w-5 h-5 text-gray-400" />
-                        <span className="text-sm font-medium text-white">Sẵn sàng</span>
-                    </div>
-                </div>
-            );
+            // No badge when idle for entrance cameras
+            return null;
         }
         
-        // For exit cameras: show payment status next to detection status
-        // Position: horizontal layout
+        // For exit cameras: show payment status ONLY (removed "Đang quét" badge)
         if (camera.type === 'Ra') {
             if (status === 'paid') {
                 // Payment successful
                 return (
-                    <div className="absolute top-2 left-2 z-20 flex items-center space-x-2">
-                        {/* Detection status */}
-                        <div className="flex items-center space-x-2 bg-black bg-opacity-70 px-3 py-2 rounded-lg">
-                            <ScanLine className="w-5 h-5 text-cyan-400 animate-pulse" />
-                            <span className="text-sm font-medium text-white">Đang quét...</span>
-                        </div>
-                        {/* Payment status */}
-                        <div className="flex items-center space-x-2 bg-emerald-500 bg-opacity-95 px-3 py-2 rounded-lg">
+                    <div className="absolute top-2 left-2 z-20">
+                        <div className="flex items-center space-x-2 bg-emerald-500 bg-opacity-95 px-3 py-2 rounded-lg shadow-lg">
                             <CheckCircle className="w-5 h-5 text-white" />
                             <span className="text-sm font-medium text-white">Đã thanh toán</span>
                         </div>
@@ -458,14 +433,8 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
             if (status === 'insufficient') {
                 // Insufficient balance
                 return (
-                    <div className="absolute top-2 left-2 z-20 flex items-center space-x-2">
-                        {/* Detection status */}
-                        <div className="flex items-center space-x-2 bg-black bg-opacity-70 px-3 py-2 rounded-lg">
-                            <ScanLine className="w-5 h-5 text-cyan-400 animate-pulse" />
-                            <span className="text-sm font-medium text-white">Đang quét...</span>
-                        </div>
-                        {/* Insufficient balance status */}
-                        <div className="flex items-center space-x-2 bg-red-500 bg-opacity-95 px-3 py-2 rounded-lg">
+                    <div className="absolute top-2 left-2 z-20">
+                        <div className="flex items-center space-x-2 bg-red-500 bg-opacity-95 px-3 py-2 rounded-lg shadow-lg">
                             <XCircle className="w-5 h-5 text-white" />
                             <span className="text-sm font-medium text-white">Số dư không đủ</span>
                         </div>
@@ -475,29 +444,16 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
             if (status === 'unregistered') {
                 // Vehicle not registered
                 return (
-                    <div className="absolute top-2 left-2 z-20 flex items-center space-x-2">
-                        {/* Detection status */}
-                        <div className="flex items-center space-x-2 bg-black bg-opacity-70 px-3 py-2 rounded-lg">
-                            <ScanLine className="w-5 h-5 text-cyan-400 animate-pulse" />
-                            <span className="text-sm font-medium text-white">Đang quét...</span>
-                        </div>
-                        {/* Unregistered status */}
-                        <div className="flex items-center space-x-2 bg-amber-500 bg-opacity-95 px-3 py-2 rounded-lg">
+                    <div className="absolute top-2 left-2 z-20">
+                        <div className="flex items-center space-x-2 bg-amber-500 bg-opacity-95 px-3 py-2 rounded-lg shadow-lg">
                             <AlertCircle className="w-5 h-5 text-white" />
                             <span className="text-sm font-medium text-white">Chưa đăng ký xe</span>
                         </div>
                     </div>
                 );
             }
-            // Normal state for exit - show only detection status
-            return (
-                <div className="absolute top-2 left-2 z-20">
-                    <div className="flex items-center space-x-2 bg-black bg-opacity-70 px-3 py-2 rounded-lg">
-                        <ScanLine className="w-5 h-5 text-gray-400" />
-                        <span className="text-sm font-medium text-white">Sẵn sàng</span>
-                    </div>
-                </div>
-            );
+            // No badge when idle for exit cameras
+            return null;
         }
         
         return null;
@@ -669,6 +625,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                                                     <WebcamStream
                                                         cameraId={camera.id}
                                                         name={camera.name}
+                                                        cameraType={camera.type}
                                                         hideIndicators={true}
                                                         onDetection={(plateNumber, confidence) => {
                                                             console.log(`[AdminDashboard] Detection from camera ${camera.id}: ${plateNumber}`);
@@ -680,6 +637,7 @@ export function AdminDashboardPage({ onNavigate }: AdminDashboardPageProps = {})
                                                     <IPCameraStream
                                                         cameraId={camera.id}
                                                         name={camera.name}
+                                                        cameraType={camera.type}
                                                         hideIndicators={true}
                                                         ipAddress={camera.ip_address}
                                                         port={camera.port}
