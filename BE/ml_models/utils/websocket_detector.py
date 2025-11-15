@@ -64,18 +64,30 @@ class PersistentDetector:
         self.total_frames = 0
         self.total_detections = 0
         self.start_time = time.time()
+        
+        # Frame skipping for performance
+        self.frame_skip = 0  # Process every frame (0 = no skip)
+        self.frame_counter = 0
     
     def validate_plate_format(self, text):
-        """Kiểm tra format biển số Việt Nam: 30A-12345"""
+        """Kiểm tra format biển số xe máy VN: XXYY-1234(5)
+        XX: 2 số đầu (01-99)
+        YY: 2 ký tự (AA, AB, A1, 1A, etc)
+        1234(5): 4 hoặc 5 số cuối
+        """
         text = text.upper().replace(' ', '').replace('-', '').replace('.', '')
-        pattern = r'\d{2}[A-Z]{1,2}\d{4,5}'
+        # Pattern: 2 số + 2 ký tự (chữ hoặc số) + 4-5 số
+        pattern = r'\d{2}[A-Z0-9]{2}\d{4,5}'
         match = re.search(pattern, text)
         return match is not None, text
     
     def format_plate_text(self, text):
-        """Format biển số: 30A-12345"""
+        """Format biển số xe máy: XXYY-1234(5)
+        VD: 30A1-12345, 29AB-1234, 51F1-98765
+        """
         text = text.upper().replace(' ', '').replace('-', '').replace('.', '')
-        match = re.search(r'(\d{2})([A-Z]{1,2})(\d{4,5})', text)
+        # Match: 2 số + 2 ký tự (chữ/số) + 4-5 số
+        match = re.search(r'(\d{2})([A-Z0-9]{2})(\d{4,5})', text)
         if match:
             return f"{match.group(1)}{match.group(2)}-{match.group(3)}"
         return text
@@ -94,6 +106,15 @@ class PersistentDetector:
         """
         start_time = time.time()
         self.total_frames += 1
+        self.frame_counter += 1
+        
+        # Frame skipping - chỉ process mỗi N frame
+        if self.frame_skip > 0 and self.frame_counter % (self.frame_skip + 1) != 0:
+            # Skip frame - return original without processing
+            fps = 1.0 / (time.time() - start_time) if (time.time() - start_time) > 0 else 0
+            cv2.putText(frame, f"FPS: {fps:.1f} (skipped)", (10, 30),
+                       cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            return frame, None
         
         # Detect với YOLO
         results = self.model(frame, conf=0.25, verbose=False)
@@ -150,17 +171,21 @@ class PersistentDetector:
         
         cropped_plate = frame[y1:y2, x1:x2]
         
-        # Tiền xử lý cho OCR (tăng độ tương phản)
+        # Tiền xử lý cho OCR - OPTIMIZED
         gray = cv2.cvtColor(cropped_plate, cv2.COLOR_BGR2GRAY)
-        gray = cv2.equalizeHist(gray)
         
-        # Resize nếu quá nhỏ
-        if gray.shape[1] < 200:
-            scale = 200 / gray.shape[1]
-            gray = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+        # Chỉ resize nếu quá nhỏ (< 150px width)
+        if gray.shape[1] < 150:
+            scale = 150 / gray.shape[1]
+            gray = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
         
-        # OCR với EasyOCR
-        ocr_results = self.reader.readtext(gray, detail=0)
+        # Apply adaptive threshold để tăng độ tương phản
+        gray = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                     cv2.THRESH_BINARY, 11, 2)
+        
+        # OCR với EasyOCR - allowlist để tăng tốc
+        ocr_results = self.reader.readtext(gray, detail=0, 
+                                          allowlist='0123456789ABCDEFGHKLMNPRSTUVXYZ')
         plate_text_raw = ''.join(ocr_results).replace(' ', '')
         
         # Validate và format

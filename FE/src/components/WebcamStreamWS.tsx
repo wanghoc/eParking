@@ -60,10 +60,16 @@ export function WebcamStreamWS({
     const [annotatedFrame, setAnnotatedFrame] = useState<string | null>(null);
     const [stats, setStats] = useState<DetectionResult['stats'] | null>(null);
     const [fps, setFps] = useState<number>(0);
+    const [statusMessage, setStatusMessage] = useState<{
+        text: string;
+        type: 'success' | 'error' | 'info';
+        plateNumber?: string;
+    } | null>(null);
     
     // Refs for intervals
     const streamIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const detectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const statusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // WebSocket URL - auto-detect from current window location
     const getWebSocketURL = () => {
@@ -133,6 +139,9 @@ export function WebcamStreamWS({
                 if (result.detection.is_valid) {
                     console.log(`[Camera ${cameraId}] 🎯 DETECTED: ${result.detection.text} ` +
                                `(Conf: ${(result.detection.confidence * 100).toFixed(1)}%, FPS: ${result.detection.fps.toFixed(1)})`);
+                    
+                    // ✨ AUTO-SAVE TO DATABASE - REALTIME!
+                    handlePlateDetected(result.detection.text);
                 }
                 
                 // Clear detection after 3 seconds if no new detection
@@ -162,6 +171,9 @@ export function WebcamStreamWS({
             }
             if (detectionTimeoutRef.current) {
                 clearTimeout(detectionTimeoutRef.current);
+            }
+            if (statusTimeoutRef.current) {
+                clearTimeout(statusTimeoutRef.current);
             }
         };
     }, [cameraId]);
@@ -278,8 +290,8 @@ export function WebcamStreamWS({
 
         console.log(`[Camera ${cameraId}] 🚀 Starting frame streaming...`);
 
-        // Stream frames every 100ms (10fps) - điều chỉnh cho realtime
-        // Có thể tăng frequency nếu backend handle được
+        // Stream frames every 200ms (5fps) - tối ưu cho realtime với OCR
+        // OCR rất nặng nên giảm FPS để tránh lag
         streamIntervalRef.current = setInterval(() => {
             if (!wsConnected || !isConnected) {
                 return;
@@ -296,9 +308,81 @@ export function WebcamStreamWS({
                 frame: frameData,
                 timestamp: Date.now()
             });
-        }, 100); // 10fps - có thể điều chỉnh: 50ms = 20fps, 33ms = 30fps
+        }, 200); // 5fps - tối ưu cho OCR processing
 
-        console.log(`[Camera ${cameraId}] ✅ Frame streaming started (10fps)`);
+        console.log(`[Camera ${cameraId}] ✅ Frame streaming started (5fps - optimized for OCR)`);
+    };
+
+    // Handle plate detected - save to database with debounce
+    const lastSavedPlateRef = useRef<string>('');
+    const lastSavedTimeRef = useRef<number>(0);
+    
+    const handlePlateDetected = async (plateNumber: string) => {
+        const now = Date.now();
+        const DEBOUNCE_TIME = 3000; // 3 seconds - tránh lưu trùng
+        
+        // Skip if same plate detected within 3 seconds
+        if (lastSavedPlateRef.current === plateNumber && (now - lastSavedTimeRef.current) < DEBOUNCE_TIME) {
+            return;
+        }
+        
+        try {
+            console.log(`[Camera ${cameraId}] 💾 Saving to database: ${plateNumber}`);
+            
+            const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+            const response = await fetch(`${apiUrl}/api/ml/check-vehicle-status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    plate_number: plateNumber,
+                    camera_id: cameraId
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success && result.database) {
+                console.log(`[Camera ${cameraId}] ✅ Database saved:`, result.database.status_message);
+                
+                // Update last saved
+                lastSavedPlateRef.current = plateNumber;
+                lastSavedTimeRef.current = now;
+                
+                // Show status message for 2 seconds
+                const statusType = result.database.status_message.includes('thành công') || 
+                                 result.database.status_message.includes('thanh toán') ? 'success' : 
+                                 result.database.status_message.includes('không đủ') || 
+                                 result.database.status_message.includes('chưa') ? 'error' : 'info';
+                
+                setStatusMessage({
+                    text: result.database.status_message,
+                    type: statusType,
+                    plateNumber: plateNumber
+                });
+                
+                // Clear status after 2 seconds
+                if (statusTimeoutRef.current) {
+                    clearTimeout(statusTimeoutRef.current);
+                }
+                statusTimeoutRef.current = setTimeout(() => {
+                    setStatusMessage(null);
+                }, 2000);
+            } else {
+                console.error(`[Camera ${cameraId}] ❌ Database save failed:`, result.error);
+                setStatusMessage({
+                    text: 'Lỗi lưu dữ liệu',
+                    type: 'error'
+                });
+                setTimeout(() => setStatusMessage(null), 2000);
+            }
+        } catch (error) {
+            console.error(`[Camera ${cameraId}] ❌ Error saving to database:`, error);
+            setStatusMessage({
+                text: 'Lỗi kết nối',
+                type: 'error'
+            });
+            setTimeout(() => setStatusMessage(null), 2000);
+        }
     };
 
     // Error display
@@ -395,6 +479,33 @@ export function WebcamStreamWS({
                             <div className="text-white font-bold text-base">{lastDetection.text}</div>
                             <div className="text-white text-xs opacity-90">
                                 {(lastDetection.confidence * 100).toFixed(1)}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Status Message Overlay - Check-in/Check-out Success */}
+            {statusMessage && (
+                <div className="absolute inset-0 flex items-center justify-center z-20 bg-black bg-opacity-50">
+                    <div className={`px-8 py-6 rounded-2xl shadow-2xl animate-fade-in border-4 ${
+                        statusMessage.type === 'success' ? 'bg-green-600 border-green-400' :
+                        statusMessage.type === 'error' ? 'bg-red-600 border-red-400' :
+                        'bg-blue-600 border-blue-400'
+                    }`}>
+                        <div className="flex flex-col items-center space-y-3">
+                            {statusMessage.type === 'success' ? (
+                                <CheckCircle className="w-16 h-16 text-white" />
+                            ) : (
+                                <AlertCircle className="w-16 h-16 text-white" />
+                            )}
+                            {statusMessage.plateNumber && (
+                                <div className="text-white font-bold text-3xl">
+                                    {statusMessage.plateNumber}
+                                </div>
+                            )}
+                            <div className="text-white font-semibold text-xl text-center">
+                                {statusMessage.text}
                             </div>
                         </div>
                     </div>

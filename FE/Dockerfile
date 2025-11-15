@@ -13,7 +13,7 @@ ARG REACT_APP_WS_URL
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci
+RUN npm install
 
 # Set env vars so CRA picks them up at build time
 ENV REACT_APP_API_URL=${REACT_APP_API_URL}
