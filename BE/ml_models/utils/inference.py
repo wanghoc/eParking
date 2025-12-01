@@ -28,10 +28,10 @@ except ImportError as e:
 
 
 class LicensePlateDetector:
-    """Class nhận diện biển số xe - tích hợp từ dự án test_model"""
+    """Class nhận diện biển số xe - Sử dụng EasyOCR với preprocessing cải tiến"""
     
     def __init__(self):
-        """Khởi tạo detector với YOLOv8 OBB và Custom Plate Recognizer"""
+        """Khởi tạo detector với YOLOv8 OBB và EasyOCR tối ưu"""
         if not ML_AVAILABLE:
             raise RuntimeError("ML libraries not available. Please install: ultralytics, torch, opencv-python")
         
@@ -48,21 +48,21 @@ class LicensePlateDetector:
         except Exception as e:
             raise RuntimeError(f"Failed to load YOLO model: {e}")
         
-        # Initialize OCR reader
-        print("Loading EasyOCR...")
+        # Initialize EasyOCR with optimized settings
+        print("[INFO] Loading EasyOCR reader (Vietnamese + English - OPTIMIZED)...", file=sys.stderr)
         self.ocr_reader = easyocr.Reader(['vi', 'en'], gpu=False, verbose=False)
-        print("EasyOCR loaded successfully")
+        print("[INFO] EasyOCR reader loaded successfully", file=sys.stderr)
     
     def validate_plate_format(self, text):
         """
         Kiểm tra format biển số Việt Nam
-        Format: 30A-12345, 51F1-12345, 29A12345, etc.
+        Format: 30A-12345, 51F1-12345, 29AB-12345, etc.
         Returns: (is_valid, cleaned_text)
         """
         text = text.upper().replace(' ', '').replace('-', '').replace('.', '')
-        # Pattern cho biển số VN: 2 số + 1-2 chữ + 4-5 số
-        pattern = r'\d{2}[A-Z]{1,2}\d{4,5}'
-        match = re.search(pattern, text)
+        # Pattern linh hoạt hơn: 2 số + 1-2 ký tự (chữ hoặc kết hợp) + 4-5 số
+        pattern = r'^(\d{2})([A-Z]{1,2}|[A-Z]\d|\d[A-Z])(\d{4,5})$'
+        match = re.match(pattern, text)
         return match is not None, text
     
     def format_plate_text(self, text):
@@ -167,19 +167,74 @@ class LicensePlateDetector:
             
             cropped_plate = image[y1:y2, x1:x2]
             
-            # Tiền xử lý cho OCR (tăng độ tương phản)
+            # MULTI-PASS OCR với preprocessing cải tiến
             gray = cv2.cvtColor(cropped_plate, cv2.COLOR_BGR2GRAY)
-            gray = cv2.equalizeHist(gray)  # Tăng độ tương phản
             
-            # Resize nếu quá nhỏ (để đảm bảo chất lượng OCR)
-            if gray.shape[1] < 200:
-                scale = 200 / gray.shape[1]
-                gray = cv2.resize(gray, None, fx=scale, fy=scale, 
-                                interpolation=cv2.INTER_CUBIC)
+            # Resize to optimal size
+            if gray.shape[1] < 300:
+                scale = 300 / gray.shape[1]
+                gray = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
             
-            # OCR với EasyOCR từ ảnh xám tăng tương phản
-            ocr_results = self.ocr_reader.readtext(gray, detail=0)
-            plate_text_raw = ''.join(ocr_results).replace(' ', '')
+            candidates = []
+            
+            # Method 1: CLAHE + Bilateral Filter
+            try:
+                denoised1 = cv2.bilateralFilter(gray, 11, 17, 17)
+                clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+                enhanced1 = clahe.apply(denoised1)
+                kernel_sharpen = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
+                sharpened1 = cv2.filter2D(enhanced1, -1, kernel_sharpen)
+                
+                result1 = self.ocr_reader.readtext(sharpened1, detail=0,
+                                                  allowlist='0123456789ABCDEFGHKLMNPRSTUVXYZ',
+                                                  paragraph=False, batch_size=1)
+                if result1:
+                    text1 = ''.join(result1).replace(' ', '').upper()
+                    if len(text1) >= 7:
+                        candidates.append(text1)
+            except:
+                pass
+            
+            # Method 2: Adaptive Threshold
+            try:
+                denoised2 = cv2.fastNlMeansDenoising(gray, None, h=10, templateWindowSize=7, searchWindowSize=21)
+                thresh2 = cv2.adaptiveThreshold(denoised2, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                               cv2.THRESH_BINARY, 11, 2)
+                
+                result2 = self.ocr_reader.readtext(thresh2, detail=0,
+                                                  allowlist='0123456789ABCDEFGHKLMNPRSTUVXYZ',
+                                                  paragraph=False, batch_size=1)
+                if result2:
+                    text2 = ''.join(result2).replace(' ', '').upper()
+                    if len(text2) >= 7:
+                        candidates.append(text2)
+            except:
+                pass
+            
+            # Method 3: Simple enhancement
+            try:
+                enhanced3 = cv2.equalizeHist(gray)
+                result3 = self.ocr_reader.readtext(enhanced3, detail=0,
+                                                  allowlist='0123456789ABCDEFGHKLMNPRSTUVXYZ',
+                                                  paragraph=False, batch_size=1)
+                if result3:
+                    text3 = ''.join(result3).replace(' ', '').upper()
+                    if len(text3) >= 7:
+                        candidates.append(text3)
+            except:
+                pass
+            
+            # Chọn kết quả tốt nhất
+            plate_text_raw = ''
+            if candidates:
+                for cand in candidates:
+                    is_valid, _ = self.validate_plate_format(cand)
+                    if is_valid:
+                        plate_text_raw = cand
+                        break
+                
+                if not plate_text_raw:
+                    plate_text_raw = max(candidates, key=len)
             
             # Validate và format
             is_valid, plate_text = self.validate_plate_format(plate_text_raw)

@@ -31,7 +31,7 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading',
 class PersistentDetector:
     """
     Detector PERSISTENT - Model load 1 lần duy nhất!
-    Giống y hệt project test
+    Sử dụng EasyOCR với preprocessing cải tiến cho độ chính xác cao hơn
     """
     
     def __init__(self, model_path='ml_models/plate_detector/best.pt'):
@@ -50,8 +50,8 @@ class PersistentDetector:
         self.model = YOLO(model_path)
         print(f"[1/2] ✅ YOLO model loaded in {time.time() - start_time:.2f}s")
         
-        # Load EasyOCR reader - 1 LẦN DUY NHẤT!
-        print(f"\n[2/2] 📖 Initializing EasyOCR reader (Vietnamese + English)...")
+        # Load EasyOCR reader with improved config - 1 LẦN DUY NHẤT!
+        print(f"\n[2/2] 📖 Initializing EasyOCR reader (Vietnamese + English - OPTIMIZED)...")
         start_time = time.time()
         self.reader = easyocr.Reader(['vi', 'en'], gpu=False, verbose=False)
         print(f"[2/2] ✅ EasyOCR reader loaded in {time.time() - start_time:.2f}s")
@@ -72,21 +72,29 @@ class PersistentDetector:
     def validate_plate_format(self, text):
         """Kiểm tra format biển số xe máy VN: XXYY-1234(5)
         XX: 2 số đầu (01-99)
-        YY: 2 ký tự (AA, AB, A1, 1A, etc)
+        YY: 2 ký tự (AA, AB, A1, 1A, B2, etc) - BẮT BUỘC 2 KÝ TỰ
         1234(5): 4 hoặc 5 số cuối
+        
+        VD hợp lệ: 29T1-82843, 30AB-1234, 51F9-98765
+        VD KHÔNG hợp lệ: 29T-82843 (chỉ có 1 ký tự T)
         """
         text = text.upper().replace(' ', '').replace('-', '').replace('.', '')
-        # Pattern: 2 số + 2 ký tự (chữ hoặc số) + 4-5 số
-        pattern = r'\d{2}[A-Z0-9]{2}\d{4,5}'
-        match = re.search(pattern, text)
+        # Pattern CHÍNH XÁC: 2 số + 2 ký tự (chữ hoặc số) + 4-5 số
+        # [A-Z0-9]{2} = chính xác 2 ký tự (có thể là AA, AB, A1, 1A, B2, etc)
+        pattern = r'^(\d{2})([A-Z0-9]{2})(\d{4,5})$'
+        match = re.match(pattern, text)
         return match is not None, text
     
     def format_plate_text(self, text):
-        """Format biển số xe máy: XXYY-1234(5)
-        VD: 30A1-12345, 29AB-1234, 51F1-98765
+        """Format biển số xe máy VN: XXYY-1234(5)
+        XX: 2 số đầu
+        YY: 2 ký tự (chữ hoặc số) - BẮT BUỘC 2 KÝ TỰ
+        1234(5): 4 hoặc 5 số cuối
+        
+        VD: 29T1-82843, 30AB-1234, 51F9-98765
         """
         text = text.upper().replace(' ', '').replace('-', '').replace('.', '')
-        # Match: 2 số + 2 ký tự (chữ/số) + 4-5 số
+        # Match CHÍNH XÁC: 2 số + 2 ký tự + 4-5 số
         match = re.search(r'(\d{2})([A-Z0-9]{2})(\d{4,5})', text)
         if match:
             return f"{match.group(1)}{match.group(2)}-{match.group(3)}"
@@ -171,22 +179,79 @@ class PersistentDetector:
         
         cropped_plate = frame[y1:y2, x1:x2]
         
-        # Tiền xử lý cho OCR - OPTIMIZED
+        # MULTI-PASS OCR với preprocessing cải tiến - Độ chính xác cao hơn!
+        # Thử nhiều phương pháp tiền xử lý và chọn kết quả tốt nhất
+        
         gray = cv2.cvtColor(cropped_plate, cv2.COLOR_BGR2GRAY)
         
-        # Chỉ resize nếu quá nhỏ (< 150px width)
-        if gray.shape[1] < 150:
-            scale = 150 / gray.shape[1]
-            gray = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
+        # Resize to optimal size (300px width for better OCR)
+        if gray.shape[1] < 300:
+            scale = 300 / gray.shape[1]
+            gray = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
         
-        # Apply adaptive threshold để tăng độ tương phản
-        gray = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                     cv2.THRESH_BINARY, 11, 2)
+        candidates = []
         
-        # OCR với EasyOCR - allowlist để tăng tốc
-        ocr_results = self.reader.readtext(gray, detail=0, 
-                                          allowlist='0123456789ABCDEFGHKLMNPRSTUVXYZ')
-        plate_text_raw = ''.join(ocr_results).replace(' ', '')
+        # Method 1: CLAHE + Bilateral Filter (tốt cho hầu hết trường hợp)
+        try:
+            denoised1 = cv2.bilateralFilter(gray, 11, 17, 17)
+            clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+            enhanced1 = clahe.apply(denoised1)
+            # Sharpen
+            kernel_sharpen = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
+            sharpened1 = cv2.filter2D(enhanced1, -1, kernel_sharpen)
+            
+            result1 = self.reader.readtext(sharpened1, detail=0, 
+                                          allowlist='0123456789ABCDEFGHKLMNPRSTUVXYZ',
+                                          paragraph=False, batch_size=1)
+            if result1:
+                text1 = ''.join(result1).replace(' ', '').upper()
+                if len(text1) >= 7:  # Minimum plate length
+                    candidates.append(text1)
+        except:
+            pass
+        
+        # Method 2: Adaptive Threshold (tốt cho ánh sáng không đều)
+        try:
+            denoised2 = cv2.fastNlMeansDenoising(gray, None, h=10, templateWindowSize=7, searchWindowSize=21)
+            thresh2 = cv2.adaptiveThreshold(denoised2, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                           cv2.THRESH_BINARY, 11, 2)
+            
+            result2 = self.reader.readtext(thresh2, detail=0,
+                                          allowlist='0123456789ABCDEFGHKLMNPRSTUVXYZ',
+                                          paragraph=False, batch_size=1)
+            if result2:
+                text2 = ''.join(result2).replace(' ', '').upper()
+                if len(text2) >= 7:
+                    candidates.append(text2)
+        except:
+            pass
+        
+        # Method 3: Simple contrast enhancement (backup)
+        try:
+            enhanced3 = cv2.equalizeHist(gray)
+            result3 = self.reader.readtext(enhanced3, detail=0,
+                                          allowlist='0123456789ABCDEFGHKLMNPRSTUVXYZ',
+                                          paragraph=False, batch_size=1)
+            if result3:
+                text3 = ''.join(result3).replace(' ', '').upper()
+                if len(text3) >= 7:
+                    candidates.append(text3)
+        except:
+            pass
+        
+        # Chọn kết quả tốt nhất (dài nhất và hợp lệ nhất)
+        plate_text_raw = ''
+        if candidates:
+            # Ưu tiên kết quả match format biển số VN
+            for cand in candidates:
+                is_valid, _ = self.validate_plate_format(cand)
+                if is_valid:
+                    plate_text_raw = cand
+                    break
+            
+            # Nếu không có valid, chọn dài nhất
+            if not plate_text_raw:
+                plate_text_raw = max(candidates, key=len)
         
         # Validate và format
         is_valid, plate_text = self.validate_plate_format(plate_text_raw)
