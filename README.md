@@ -115,9 +115,9 @@ npm run dev
 
 ## 📄 Ghi chú
 Giảng viên hướng dẫn:
-KS. Nguyễn Trọng Hiếu
+- KS. Nguyễn Trọng Hiếu
 Nhóm tác giả:
-2212375	Triệu Quang Học - 22123752dlu.edu.vn
-2212343	Đinh Lâm Gia Bảo - 22123752dlu.edu.vn
-2212456	Lê Thành Thái - 22123752dlu.edu.vn
+- 2212375	Triệu Quang Học - 22123752dlu.edu.vn
+- 2212343	Đinh Lâm Gia Bảo - 22123752dlu.edu.vn
+- 2212456	Lê Thành Thái - 22123752dlu.edu.vn
 
