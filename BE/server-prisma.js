@@ -27,7 +27,7 @@ async function ensureWallet(userId) {
   let wallet = await prisma.wallet.findUnique({
     where: { user_id: userId }
   });
-  
+
   if (!wallet) {
     wallet = await prisma.wallet.create({
       data: {
@@ -36,7 +36,7 @@ async function ensureWallet(userId) {
       }
     });
   }
-  
+
   return wallet;
 }
 
@@ -46,7 +46,7 @@ async function getFeePerTurn() {
     const feeSettings = await prisma.systemSetting.findUnique({
       where: { setting_key: 'fee_per_turn' }
     });
-    
+
     return feeSettings ? parseFloat(feeSettings.setting_value) : DEFAULT_FEE_PER_TURN;
   } catch (error) {
     console.error('Error getting fee per turn:', error);
@@ -69,11 +69,11 @@ app.get('/api/health', (_req, res) => {
 // AUTH ENDPOINTS
 app.post('/api/register', async (req, res) => {
   const { username, mssv, email, password, phone } = req.body;
-  
+
   if (!username || !mssv || !email || !password) {
     return res.status(400).json({ message: 'Vui lòng điền đầy đủ thông tin' });
   }
-  
+
   try {
     // Check for existing user
     const existingUser = await prisma.user.findFirst({
@@ -84,14 +84,14 @@ app.post('/api/register', async (req, res) => {
         ]
       }
     });
-    
+
     if (existingUser) {
       return res.status(409).json({ message: 'Email or MSSV already registered' });
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
-    
+
     // Create user
     const user = await prisma.user.create({
       data: {
@@ -106,7 +106,7 @@ app.post('/api/register', async (req, res) => {
 
     // Create wallet for user
     await ensureWallet(user.id);
-    
+
     res.status(201).json({ message: 'User registered', userId: user.id });
   } catch (err) {
     console.error(err);
@@ -116,28 +116,28 @@ app.post('/api/register', async (req, res) => {
 
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
-  
+
   if (!email || !password) {
     return res.status(400).json({ message: 'Vui lòng nhập email và mật khẩu' });
   }
-  
+
   try {
     const user = await prisma.user.findUnique({
       where: { email }
     });
-    
+
     if (!user) {
       return res.status(401).json({ message: 'Email hoặc mật khẩu không đúng' });
     }
-    
+
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       return res.status(401).json({ message: 'Email hoặc mật khẩu không đúng' });
     }
-    
-    res.json({ 
-      message: 'Đăng nhập thành công', 
-      user: sanitizeUserRow(user) 
+
+    res.json({
+      message: 'Đăng nhập thành công',
+      user: sanitizeUserRow(user)
     });
   } catch (err) {
     console.error(err);
@@ -147,7 +147,7 @@ app.post('/api/login', async (req, res) => {
 
 app.get('/api/users/:userId', async (req, res) => {
   const { userId } = req.params;
-  
+
   try {
     const user = await prisma.user.findUnique({
       where: { id: parseInt(userId) },
@@ -161,11 +161,11 @@ app.get('/api/users/:userId', async (req, res) => {
         created_at: true
       }
     });
-    
+
     if (!user) {
       return res.status(404).json({ message: 'Không tìm thấy người dùng' });
     }
-    
+
     res.json(user);
   } catch (err) {
     console.error(err);
@@ -176,13 +176,13 @@ app.get('/api/users/:userId', async (req, res) => {
 // VEHICLES ENDPOINTS
 app.get('/api/users/:userId/vehicles', async (req, res) => {
   const { userId } = req.params;
-  
+
   try {
     const vehicles = await prisma.vehicle.findMany({
       where: { user_id: parseInt(userId) },
       orderBy: { created_at: 'desc' }
     });
-    
+
     res.json(vehicles);
   } catch (err) {
     console.error(err);
@@ -193,7 +193,7 @@ app.get('/api/users/:userId/vehicles', async (req, res) => {
 // GET parking sessions for a specific user (across all their vehicles)
 app.get('/api/users/:userId/parking-sessions', async (req, res) => {
   const { userId } = req.params;
-  
+
   try {
     const sessions = await prisma.parkingSession.findMany({
       where: {
@@ -213,13 +213,13 @@ app.get('/api/users/:userId/parking-sessions', async (req, res) => {
       },
       orderBy: { entry_time: 'desc' }
     });
-    
+
     // Format response with fee as number
     const formattedSessions = sessions.map(session => ({
       ...session,
       fee: Number(session.fee) // Convert Decimal to Number
     }));
-    
+
     res.json(formattedSessions);
   } catch (err) {
     console.error('Error fetching user parking sessions:', err);
@@ -232,15 +232,15 @@ app.get('/api/users/:userId/system-logs', async (req, res) => {
   try {
     const { userId } = req.params;
     const limit = parseInt(req.query.limit) || 5;
-    
+
     // Get user's vehicles
     const vehicles = await prisma.vehicle.findMany({
       where: { user_id: parseInt(userId) },
       select: { id: true }
     });
-    
+
     const vehicleIds = vehicles.map(v => v.id);
-    
+
     // Get recent parking sessions for user's vehicles
     const sessions = await prisma.parking_session.findMany({
       where: {
@@ -256,11 +256,11 @@ app.get('/api/users/:userId/system-logs', async (req, res) => {
         }
       }
     });
-    
+
     // Convert sessions to log entries
     const logs = sessions.flatMap(session => {
       const logs = [];
-      
+
       // Entry log
       logs.push({
         id: `entry-${session.id}`,
@@ -270,7 +270,7 @@ app.get('/api/users/:userId/system-logs', async (req, res) => {
         time: session.entry_time,
         icon: 'check-circle'
       });
-      
+
       // Exit/Payment log if exists
       if (session.exit_time) {
         if (session.payment_status === 'Da_thanh_toan') {
@@ -284,13 +284,13 @@ app.get('/api/users/:userId/system-logs', async (req, res) => {
           });
         }
       }
-      
+
       return logs;
     });
-    
+
     // Sort by time descending and limit
     logs.sort((a, b) => new Date(b.time) - new Date(a.time));
-    
+
     res.json(logs.slice(0, limit));
   } catch (err) {
     console.error('Error fetching system logs:', err);
@@ -300,17 +300,17 @@ app.get('/api/users/:userId/system-logs', async (req, res) => {
 
 app.post('/api/vehicles', async (req, res) => {
   const { user_id, license_plate, brand, model, vehicle_type } = req.body;
-  
+
   if (!user_id || !license_plate) {
     return res.status(400).json({ message: 'Vui lòng điền thông tin người dùng và biển số xe' });
   }
-  
+
   try {
     // Check for existing license plate
     const existingVehicle = await prisma.vehicle.findUnique({
       where: { license_plate }
     });
-    
+
     if (existingVehicle) {
       return res.status(409).json({ message: 'License plate already exists' });
     }
@@ -324,7 +324,7 @@ app.post('/api/vehicles', async (req, res) => {
         vehicle_type: vehicle_type || 'Xe_may'
       }
     });
-    
+
     res.status(201).json({ message: 'Vehicle registered', vehicleId: vehicle.id });
   } catch (err) {
     console.error(err);
@@ -334,7 +334,7 @@ app.post('/api/vehicles', async (req, res) => {
 
 app.delete('/api/vehicles/:vehicleId', async (req, res) => {
   const { vehicleId } = req.params;
-  
+
   try {
     // Check for open parking sessions
     const openSession = await prisma.parkingSession.findFirst({
@@ -343,15 +343,15 @@ app.delete('/api/vehicles/:vehicleId', async (req, res) => {
         exit_time: null
       }
     });
-    
+
     if (openSession) {
       return res.status(400).json({ message: 'Cannot delete vehicle with open parking session' });
     }
-    
+
     await prisma.vehicle.delete({
       where: { id: parseInt(vehicleId) }
     });
-    
+
     res.json({ message: 'Vehicle deleted' });
   } catch (err) {
     console.error(err);
@@ -362,12 +362,12 @@ app.delete('/api/vehicles/:vehicleId', async (req, res) => {
 // WALLET ENDPOINTS
 app.get('/api/wallet/:userId', async (req, res) => {
   const { userId } = req.params;
-  
+
   try {
     const wallet = await ensureWallet(parseInt(userId));
-    res.json({ 
-      user_id: parseInt(userId), 
-      balance: Number(wallet.balance) 
+    res.json({
+      user_id: parseInt(userId),
+      balance: Number(wallet.balance)
     });
   } catch (err) {
     console.error(err);
@@ -377,17 +377,17 @@ app.get('/api/wallet/:userId', async (req, res) => {
 
 app.post('/api/wallet/topup', async (req, res) => {
   const { user_id, amount, method } = req.body;
-  
+
   if (!user_id || !amount) {
     return res.status(400).json({ message: 'Vui lòng điền thông tin người dùng và số tiền' });
   }
-  
+
   try {
     // Update wallet balance and create transaction in a transaction
     const result = await prisma.$transaction(async (tx) => {
       // Ensure wallet exists
       await ensureWallet(parseInt(user_id));
-      
+
       // Update wallet balance
       const wallet = await tx.wallet.update({
         where: { user_id: parseInt(user_id) },
@@ -397,7 +397,7 @@ app.post('/api/wallet/topup', async (req, res) => {
           }
         }
       });
-      
+
       // Create transaction record
       const transaction = await tx.transaction.create({
         data: {
@@ -409,13 +409,13 @@ app.post('/api/wallet/topup', async (req, res) => {
           description: 'Nạp tiền vào ví'
         }
       });
-      
+
       return { wallet, transaction };
     });
-    
-    res.status(201).json({ 
-      message: 'Topup successful', 
-      transactionId: result.transaction.id 
+
+    res.status(201).json({
+      message: 'Topup successful',
+      transactionId: result.transaction.id
     });
   } catch (err) {
     console.error(err);
@@ -426,16 +426,16 @@ app.post('/api/wallet/topup', async (req, res) => {
 // TRANSACTIONS ENDPOINTS
 app.get('/api/transactions', async (req, res) => {
   const { user_id } = req.query;
-  
+
   try {
     const whereClause = user_id ? { user_id: parseInt(user_id) } : {};
-    
+
     const transactions = await prisma.transaction.findMany({
       where: whereClause,
       orderBy: { created_at: 'desc' },
       take: 100
     });
-    
+
     res.json(transactions);
   } catch (err) {
     console.error(err);
@@ -449,7 +449,7 @@ app.get('/api/parking-lots', async (req, res) => {
     const parkingLots = await prisma.parkingLot.findMany({
       orderBy: { id: 'asc' }
     });
-    
+
     res.json(parkingLots);
   } catch (err) {
     console.error(err);
@@ -463,7 +463,7 @@ app.get('/api/payment-methods', async (req, res) => {
     const paymentMethods = await prisma.paymentMethod.findMany({
       orderBy: { id: 'asc' }
     });
-    
+
     res.json(paymentMethods);
   } catch (err) {
     console.error(err);
@@ -477,7 +477,7 @@ app.get('/api/cameras', async (req, res) => {
     const cameras = await prisma.camera.findMany({
       orderBy: { id: 'asc' }
     });
-    
+
     res.json(cameras);
   } catch (err) {
     console.error(err);
@@ -488,32 +488,17 @@ app.get('/api/cameras', async (req, res) => {
 app.post('/api/cameras', async (req, res) => {
   const {
     name,
-    location,
     parking_lot_id,
     type,
-    ip_address,
-    camera_brand,
-    rtsp_url,
-    http_url,
-    username,
-    password,
-    port,
-    channel,
-    protocol,
-    main_stream_url,
-    sub_stream_url,
-    audio_enabled,
-    ptz_enabled,
-    device_id,
-    mac_address,
-    serial_number,
-    onvif_id,
-    resolution,
-    fps
+    rtsp_url
   } = req.body;
 
   if (!name || !type) {
     return res.status(400).json({ message: 'Vui lòng điền tên và loại camera' });
+  }
+
+  if (!rtsp_url) {
+    return res.status(400).json({ message: 'Vui lòng điền RTSP URL' });
   }
 
   try {
@@ -534,33 +519,42 @@ app.post('/api/cameras', async (req, res) => {
       normalizedType = 'Ra';
     }
 
+    // Parse RTSP URL to extract IP, port, username, password if possible
+    let parsedData = {
+      ip_address: null,
+      port: 554,
+      username: null,
+      password: null
+    };
+
+    try {
+      const url = new URL(rtsp_url);
+      parsedData.ip_address = url.hostname;
+      parsedData.port = url.port ? parseInt(url.port) : 554;
+      parsedData.username = url.username || null;
+      parsedData.password = url.password || null;
+    } catch (parseError) {
+      console.log('Could not parse RTSP URL, storing as-is:', parseError.message);
+    }
+
     const camera = await prisma.camera.create({
       data: {
         name,
-        location: location || null,
         parking_lot_id: parking_lot_id ? parseInt(parking_lot_id) : null,
         type: normalizedType,
-        ip_address: ip_address || null,
-        camera_brand: camera_brand || null,
-        rtsp_url: rtsp_url || null,
-        http_url: http_url || null,
-        username: username || null,
-        password: password || null,
-        port: port || (protocol === 'RTSP' ? 554 : 80),
-        channel: channel || 0,
-        protocol: protocol || 'RTSP',
-        main_stream_url: main_stream_url || null,
-        sub_stream_url: sub_stream_url || null,
-        audio_enabled: audio_enabled || false,
-        ptz_enabled: ptz_enabled || false,
-        device_id: device_id || null,
-        mac_address: mac_address || null,
-        serial_number: serial_number || null,
-        onvif_id: onvif_id || null,
-        resolution: resolution || '1080p',
-        fps: fps || 30,
+        rtsp_url: rtsp_url,
+        ip_address: parsedData.ip_address,
+        port: parsedData.port,
+        username: parsedData.username,
+        password: parsedData.password,
+        protocol: 'RTSP',
+        resolution: '1080p',
+        fps: 30,
         status: 'Hoạt động',
-        connection: 'Online'
+        connection: 'Online',
+        channel: 0,
+        audio_enabled: false,
+        ptz_enabled: false
       }
     });
 
@@ -571,16 +565,16 @@ app.post('/api/cameras', async (req, res) => {
       }
     });
 
-    res.status(201).json({ 
-      message: 'Camera created successfully', 
+    res.status(201).json({
+      message: 'Camera created successfully',
       cameraId: camera.id,
-      camera: camera 
+      camera: camera
     });
   } catch (err) {
     console.error('Create camera error:', err);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Error creating camera',
-      error: err.message 
+      error: err.message
     });
   }
 });
@@ -616,58 +610,59 @@ app.delete('/api/cameras/:cameraId', async (req, res) => {
 });
 
 app.post('/api/cameras/test-connection', async (req, res) => {
-  const {
-    ip_address,
-    port,
-    username,
-    password,
-    protocol,
-    rtsp_url,
-    http_url
-  } = req.body;
+  const { rtsp_url } = req.body;
 
   try {
     // Basic validation
-    if (protocol === 'RTSP' && !rtsp_url && !ip_address) {
-      return res.status(400).json({ message: 'RTSP URL or IP address is required for RTSP protocol' });
+    if (!rtsp_url) {
+      return res.status(400).json({
+        success: false,
+        message: 'RTSP URL is required'
+      });
     }
 
-    if (protocol === 'HTTP' && !http_url && !ip_address) {
-      return res.status(400).json({ message: 'HTTP URL or IP address is required for HTTP protocol' });
+    if (!rtsp_url.startsWith('rtsp://')) {
+      return res.status(400).json({
+        success: false,
+        message: 'URL phải bắt đầu bằng rtsp://'
+      });
     }
 
-    // For now, we'll simulate a connection test
-    // In a real implementation, you would use libraries like node-ffmpeg or similar
-    // to test actual camera connections
-    
+    // Parse RTSP URL to validate format
+    let parsedData = {};
+    try {
+      const url = new URL(rtsp_url);
+      parsedData = {
+        protocol: url.protocol,
+        hostname: url.hostname,
+        port: url.port || '554',
+        hasAuth: !!(url.username && url.password)
+      };
+    } catch (parseError) {
+      return res.status(400).json({
+        success: false,
+        message: 'URL không đúng định dạng. Ví dụ: rtsp://username:password@192.168.1.16:554/stream'
+      });
+    }
+
+    // For now, we simulate a successful connection test
+    // In a real implementation, you would use ffmpeg or similar to test actual RTSP stream
     const testResult = {
       success: true,
-      message: 'Connection test successful',
+      message: `Định dạng RTSP URL hợp lệ. Host: ${parsedData.hostname}, Port: ${parsedData.port}`,
       details: {
-        protocol: protocol,
-        ip_address: ip_address,
-        port: port,
-        stream_url: protocol === 'RTSP' ? rtsp_url : http_url,
+        ...parsedData,
         timestamp: new Date().toISOString()
       }
     };
 
-    // Simulate some connection scenarios
-    if (ip_address && ip_address.includes('192.168')) {
-      testResult.success = true;
-      testResult.message = 'Local network camera connection successful';
-    } else if (ip_address && ip_address.includes('127.0.0.1')) {
-      testResult.success = false;
-      testResult.message = 'Cannot connect to localhost camera';
-    }
-
     res.json(testResult);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ 
+    console.error('Test connection error:', err);
+    res.status(500).json({
       success: false,
       message: 'Error testing camera connection',
-      error: err.message 
+      error: err.message
     });
   }
 });
@@ -696,16 +691,16 @@ app.get('/api/cameras/:id/stream', async (req, res) => {
         // Yoosee snapshot URL
         streamUrl = `http://${camera.ip_address}:${camera.port || 8000}/snapshot.jpg`;
         break;
-        
+
       case 'HTTP':
         // HTTP stream/snapshot URL
         streamUrl = camera.http_url || `http://${camera.ip_address}:${camera.port || 80}/videostream.cgi`;
         break;
-        
+
       case 'RTSP':
         // RTSP stream - use FFmpeg to convert to JPEG snapshot
         const rtspUrl = camera.rtsp_url || `rtsp://${camera.ip_address}:${camera.port || 554}/live/ch00_0`;
-        
+
         // Build FFmpeg command with authentication if provided
         let ffmpegUrl = rtspUrl;
         if (camera.username && camera.password && !rtspUrl.includes('@')) {
@@ -716,11 +711,11 @@ app.get('/api/cameras/:id/stream', async (req, res) => {
         // Use FFmpeg to capture a single frame as JPEG
         const { exec } = require('child_process');
         const ffmpegCmd = `ffmpeg -rtsp_transport tcp -i "${ffmpegUrl}" -vframes 1 -f image2pipe -vcodec mjpeg -`;
-        
+
         exec(ffmpegCmd, { encoding: 'buffer', maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
           if (error) {
             console.error('FFmpeg error:', error);
-            return res.status(500).json({ 
+            return res.status(500).json({
               message: 'Failed to capture RTSP stream',
               error: error.message
             });
@@ -733,20 +728,20 @@ app.get('/api/cameras/:id/stream', async (req, res) => {
             res.setHeader('Expires', '0');
             res.send(stdout);
           } else {
-            res.status(500).json({ 
+            res.status(500).json({
               message: 'FFmpeg produced no output',
               stderr: stderr.toString()
             });
           }
         });
-        
+
         return; // Exit early, FFmpeg handles response
-        
+
       case 'ONVIF':
         // ONVIF snapshot - usually at /onvif/snapshot
         streamUrl = `http://${camera.ip_address}:${camera.port || 80}/onvif/snapshot`;
         break;
-        
+
       default:
         // Generic HTTP snapshot
         streamUrl = `http://${camera.ip_address}:${camera.port || 80}/snapshot.jpg`;
@@ -767,7 +762,7 @@ app.get('/api/cameras/:id/stream', async (req, res) => {
 
     // Fetch the image from camera using axios
     const axios = require('axios');
-    
+
     try {
       const axiosResponse = await axios.get(streamUrl, {
         responseType: 'arraybuffer',
@@ -783,16 +778,16 @@ app.get('/api/cameras/:id/stream', async (req, res) => {
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
-        
+
         // Send image data
         res.send(Buffer.from(axiosResponse.data));
       } else if (axiosResponse.status === 401) {
-        res.status(401).json({ 
+        res.status(401).json({
           message: 'Camera authentication failed',
           details: 'Invalid username or password'
         });
       } else {
-        res.status(axiosResponse.status).json({ 
+        res.status(axiosResponse.status).json({
           message: 'Camera returned error',
           statusCode: axiosResponse.status,
           details: axiosResponse.statusText
@@ -800,7 +795,7 @@ app.get('/api/cameras/:id/stream', async (req, res) => {
       }
     } catch (error) {
       console.error('Camera stream error:', error.message);
-      res.status(500).json({ 
+      res.status(500).json({
         message: 'Failed to connect to camera',
         error: error.message,
         streamUrl: streamUrl.replace(/:[^:]*@/, ':****@') // Hide password in logs
@@ -809,9 +804,9 @@ app.get('/api/cameras/:id/stream', async (req, res) => {
 
   } catch (err) {
     console.error('Stream endpoint error:', err);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Error fetching camera stream',
-      error: err.message 
+      error: err.message
     });
   }
 });
@@ -819,7 +814,7 @@ app.get('/api/cameras/:id/stream', async (req, res) => {
 // DASHBOARD STATS
 app.get('/api/dashboard/stats', async (req, res) => {
   const { userId } = req.query;
-  
+
   try {
     const [vehiclesCount, currentParking, monthlyParking, wallet] = await Promise.all([
       prisma.vehicle.count({ where: { user_id: parseInt(userId) } }),
@@ -937,29 +932,29 @@ app.get('/api/admin/users', async (_req, res) => {
 app.delete('/api/admin/users/:userId', async (req, res) => {
   const { userId } = req.params;
   const { adminPassword } = req.body;
-  
+
   if (!adminPassword) {
     return res.status(400).json({ message: 'Mật khẩu admin là bắt buộc' });
   }
-  
+
   try {
     // Verify admin password by checking against admin user in database
     const adminUser = await prisma.user.findFirst({
       where: { role: 'admin' }
     });
-    
+
     if (!adminUser) {
       return res.status(500).json({ message: 'Không tìm thấy tài khoản admin' });
     }
-    
+
     const isValidPassword = await bcrypt.compare(adminPassword, adminUser.password);
     if (!isValidPassword) {
       return res.status(401).json({ message: 'Mật khẩu admin không đúng' });
     }
-    
+
     const user = await prisma.user.findUnique({
       where: { id: parseInt(userId) },
-      select: { 
+      select: {
         id: true,
         username: true,
         mssv: true,
@@ -967,25 +962,25 @@ app.delete('/api/admin/users/:userId', async (req, res) => {
         wallet: { select: { balance: true } }
       }
     });
-    
+
     if (!user) {
       return res.status(404).json({ message: 'Không tìm thấy người dùng' });
     }
-    
+
     // Check if user is admin
     if (user.role === 'admin') {
       return res.status(403).json({ message: 'Không thể xóa tài khoản admin' });
     }
-    
+
     // Check if user has zero balance
     const balance = user.wallet ? Number(user.wallet.balance) : 0;
     if (balance !== 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: 'Chỉ có thể xóa tài khoản khi số dư bằng 0₫',
         currentBalance: balance
       });
     }
-    
+
     // Check for active parking sessions
     const activeSessions = await prisma.parkingSession.count({
       where: {
@@ -993,18 +988,18 @@ app.delete('/api/admin/users/:userId', async (req, res) => {
         exit_time: null
       }
     });
-    
+
     if (activeSessions > 0) {
-      return res.status(400).json({ 
-        message: 'Không thể xóa tài khoản đang có xe gửi trong bãi' 
+      return res.status(400).json({
+        message: 'Không thể xóa tài khoản đang có xe gửi trong bãi'
       });
     }
-    
+
     // Delete user (cascade will handle related records)
     await prisma.user.delete({
       where: { id: parseInt(userId) }
     });
-    
+
     // Log the action
     await prisma.systemLog.create({
       data: {
@@ -1012,8 +1007,8 @@ app.delete('/api/admin/users/:userId', async (req, res) => {
         type: 'Admin'
       }
     });
-    
-    res.json({ 
+
+    res.json({
       message: 'Xóa tài khoản thành công',
       deletedUser: {
         username: user.username,
@@ -1031,7 +1026,7 @@ app.delete('/api/admin/users/:userId', async (req, res) => {
 // PARKING SESSIONS & HISTORY
 app.get('/api/parking-history/:vehicle_id', async (req, res) => {
   const { vehicle_id } = req.params;
-  
+
   try {
     const sessions = await prisma.parkingSession.findMany({
       where: { vehicle_id: parseInt(vehicle_id) },
@@ -1048,7 +1043,7 @@ app.get('/api/parking-history/:vehicle_id', async (req, res) => {
       orderBy: { entry_time: 'desc' },
       take: 50
     });
-    
+
     res.json(sessions);
   } catch (err) {
     console.error(err);
@@ -1058,20 +1053,20 @@ app.get('/api/parking-history/:vehicle_id', async (req, res) => {
 
 app.post('/api/parking-sessions/check-in', async (req, res) => {
   const { license_plate, lot_id, recognition_method } = req.body;
-  
+
   if (!license_plate) {
     return res.status(400).json({ message: 'license_plate required' });
   }
-  
+
   try {
     const vehicle = await prisma.vehicle.findUnique({
       where: { license_plate }
     });
-    
+
     if (!vehicle) {
       return res.status(404).json({ message: 'Vehicle not found' });
     }
-    
+
     // Check for open session
     const openSession = await prisma.parkingSession.findFirst({
       where: {
@@ -1079,11 +1074,11 @@ app.post('/api/parking-sessions/check-in', async (req, res) => {
         exit_time: null
       }
     });
-    
+
     if (openSession) {
       return res.status(400).json({ message: 'Vehicle already checked in' });
     }
-    
+
     await prisma.parkingSession.create({
       data: {
         vehicle_id: vehicle.id,
@@ -1093,14 +1088,14 @@ app.post('/api/parking-sessions/check-in', async (req, res) => {
         payment_status: 'Chua_thanh_toan'
       }
     });
-    
+
     await prisma.systemLog.create({
       data: {
         action: 'Xe vào bãi',
         type: 'Recognition'
       }
     });
-    
+
     res.status(201).json({ message: 'Checked in' });
   } catch (err) {
     console.error(err);
@@ -1110,21 +1105,21 @@ app.post('/api/parking-sessions/check-in', async (req, res) => {
 
 app.post('/api/parking-sessions/check-out', async (req, res) => {
   const { license_plate } = req.body;
-  
+
   if (!license_plate) {
     return res.status(400).json({ message: 'license_plate required' });
   }
-  
+
   try {
     const vehicle = await prisma.vehicle.findUnique({
       where: { license_plate },
       include: { user: true }
     });
-    
+
     if (!vehicle) {
       return res.status(404).json({ message: 'Vehicle not found' });
     }
-    
+
     const session = await prisma.parkingSession.findFirst({
       where: {
         vehicle_id: vehicle.id,
@@ -1132,22 +1127,22 @@ app.post('/api/parking-sessions/check-out', async (req, res) => {
       },
       orderBy: { entry_time: 'desc' }
     });
-    
+
     if (!session) {
       return res.status(400).json({ message: 'No open session' });
     }
-    
+
     const fee = await getFeePerTurn();
-    
+
     const wallet = await ensureWallet(vehicle.user_id);
     if (Number(wallet.balance) < fee) {
-      return res.status(400).json({ 
-        message: 'Insufficient balance', 
-        required: fee, 
-        balance: Number(wallet.balance) 
+      return res.status(400).json({
+        message: 'Insufficient balance',
+        required: fee,
+        balance: Number(wallet.balance)
       });
     }
-    
+
     await prisma.$transaction([
       prisma.wallet.update({
         where: { user_id: vehicle.user_id },
@@ -1183,7 +1178,7 @@ app.post('/api/parking-sessions/check-out', async (req, res) => {
         }
       })
     ]);
-    
+
     res.json({ message: 'Checked out', fee });
   } catch (err) {
     console.error(err);
@@ -1197,10 +1192,10 @@ app.get('/api/parking-lots/overview', async (_req, res) => {
     const lots = await prisma.parkingLot.findMany({
       orderBy: { id: 'asc' }
     });
-    
+
     // Get system-wide fee
     const systemFee = await getFeePerTurn();
-    
+
     const lotsWithOccupancy = await Promise.all(
       lots.map(async (lot) => {
         const occupied = await prisma.parkingSession.count({
@@ -1209,7 +1204,7 @@ app.get('/api/parking-lots/overview', async (_req, res) => {
             exit_time: null
           }
         });
-        
+
         return {
           id: lot.id,
           name: lot.name,
@@ -1220,7 +1215,7 @@ app.get('/api/parking-lots/overview', async (_req, res) => {
         };
       })
     );
-    
+
     res.json(lotsWithOccupancy);
   } catch (err) {
     console.error(err);
@@ -1239,9 +1234,9 @@ app.get('/api/activities/recent', async (_req, res) => {
       orderBy: { entry_time: 'desc' },
       take: 30
     });
-    
+
     const activities = [];
-    
+
     for (const session of sessions) {
       // Entry activity
       activities.push({
@@ -1252,7 +1247,7 @@ app.get('/api/activities/recent', async (_req, res) => {
         location: session.parking_lot?.name || '-',
         recognitionMethod: session.recognition_method
       });
-      
+
       // Exit activity (if exists)
       if (session.exit_time) {
         activities.push({
@@ -1265,10 +1260,10 @@ app.get('/api/activities/recent', async (_req, res) => {
         });
       }
     }
-    
+
     // Sort by time descending
     activities.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-    
+
     res.json(activities.slice(0, 30));
   } catch (err) {
     console.error(err);
@@ -1286,7 +1281,7 @@ app.get('/api/alerts', async (_req, res) => {
       orderBy: { created_at: 'desc' },
       take: 100
     });
-    
+
     const formatted = alerts.map(a => ({
       id: a.id,
       type: a.type,
@@ -1295,7 +1290,7 @@ app.get('/api/alerts', async (_req, res) => {
       created_at: a.created_at,
       camera: a.camera?.name || null
     }));
-    
+
     res.json(formatted);
   } catch (err) {
     console.error(err);
@@ -1310,7 +1305,7 @@ app.get('/api/logs', async (_req, res) => {
       orderBy: { created_at: 'desc' },
       take: 200
     });
-    
+
     res.json(logs);
   } catch (err) {
     console.error(err);
@@ -1334,7 +1329,7 @@ app.get('/api/users', async (_req, res) => {
       },
       orderBy: { created_at: 'desc' }
     });
-    
+
     const formatted = users.map(u => ({
       id: u.id,
       name: u.username,
@@ -1345,7 +1340,7 @@ app.get('/api/users', async (_req, res) => {
       status: u.status,
       vehicles: u.vehicles.length
     }));
-    
+
     res.json(formatted);
   } catch (err) {
     console.error(err);
@@ -1357,7 +1352,7 @@ app.get('/api/users', async (_req, res) => {
 app.put('/api/users/:userId', async (req, res) => {
   const { userId } = req.params;
   const { username, phone } = req.body;
-  
+
   try {
     const user = await prisma.user.update({
       where: { id: parseInt(userId) },
@@ -1372,7 +1367,7 @@ app.put('/api/users/:userId', async (req, res) => {
         created_at: true
       }
     });
-    
+
     res.json(user);
   } catch (err) {
     console.error(err);
@@ -1384,36 +1379,36 @@ app.put('/api/users/:userId', async (req, res) => {
 app.put('/api/users/:userId/password', async (req, res) => {
   const { userId } = req.params;
   const { currentPassword, newPassword } = req.body;
-  
+
   if (!currentPassword || !newPassword) {
     return res.status(400).json({ message: 'Vui lòng điền đầy đủ thông tin' });
   }
-  
+
   if (newPassword.length < 6) {
     return res.status(400).json({ message: 'Mật khẩu mới phải có ít nhất 6 ký tự' });
   }
-  
+
   try {
     const user = await prisma.user.findUnique({
       where: { id: parseInt(userId) }
     });
-    
+
     if (!user) {
       return res.status(404).json({ message: 'Không tìm thấy người dùng' });
     }
-    
+
     const isValidPassword = await bcrypt.compare(currentPassword, user.password);
     if (!isValidPassword) {
       return res.status(400).json({ message: 'Mật khẩu hiện tại không đúng' });
     }
-    
+
     const hashedNewPassword = await bcrypt.hash(newPassword, 12);
-    
+
     await prisma.user.update({
       where: { id: parseInt(userId) },
       data: { password: hashedNewPassword }
     });
-    
+
     res.json({ message: 'Đổi mật khẩu thành công' });
   } catch (err) {
     console.error(err);
@@ -1425,43 +1420,43 @@ app.put('/api/users/:userId/password', async (req, res) => {
 app.put('/api/admin/users/:userId/balance', async (req, res) => {
   const { userId } = req.params;
   const { newBalance, adminPassword } = req.body;
-  
+
   if (newBalance === undefined || newBalance === null || !adminPassword) {
     return res.status(400).json({ message: 'Thiếu thông tin bắt buộc' });
   }
-  
+
   if (isNaN(Number(newBalance)) || Number(newBalance) < 0) {
     return res.status(400).json({ message: 'Số dư không hợp lệ' });
   }
-  
+
   try {
     // Verify admin password by checking against admin user in database
     const adminUser = await prisma.user.findFirst({
       where: { role: 'admin' }
     });
-    
+
     if (!adminUser) {
       return res.status(500).json({ message: 'Không tìm thấy tài khoản admin' });
     }
-    
+
     const isValidPassword = await bcrypt.compare(adminPassword, adminUser.password);
     if (!isValidPassword) {
       return res.status(401).json({ message: 'Mật khẩu admin không đúng' });
     }
-    
+
     const user = await prisma.user.findUnique({
       where: { id: parseInt(userId) },
       select: { username: true }
     });
-    
+
     if (!user) {
       return res.status(404).json({ message: 'Không tìm thấy người dùng' });
     }
-    
+
     const wallet = await ensureWallet(parseInt(userId));
     const oldBalance = Number(wallet.balance);
     const balanceChange = Number(newBalance) - oldBalance;
-    
+
     await prisma.$transaction([
       prisma.wallet.update({
         where: { user_id: parseInt(userId) },
@@ -1475,7 +1470,7 @@ app.put('/api/admin/users/:userId/balance', async (req, res) => {
             method: 'ADMIN',
             amount: balanceChange,
             status: 'Thành công',
-            description: balanceChange > 0 
+            description: balanceChange > 0
               ? `Admin cộng tiền vào tài khoản (+${balanceChange.toLocaleString()}₫)`
               : `Admin trừ tiền từ tài khoản (${balanceChange.toLocaleString()}₫)`
           }
@@ -1489,7 +1484,7 @@ app.put('/api/admin/users/:userId/balance', async (req, res) => {
         })
       ] : [])
     ]);
-    
+
     res.json({
       message: 'Cập nhật số dư thành công',
       oldBalance,
@@ -1506,13 +1501,13 @@ app.put('/api/admin/users/:userId/balance', async (req, res) => {
 app.put('/api/vehicles/:vehicleId', async (req, res) => {
   const { vehicleId } = req.params;
   const { brand, model, vehicle_type } = req.body;
-  
+
   try {
     const vehicle = await prisma.vehicle.update({
       where: { id: parseInt(vehicleId) },
       data: { brand, model, vehicle_type }
     });
-    
+
     res.json(vehicle);
   } catch (err) {
     console.error(err);
@@ -1523,11 +1518,11 @@ app.put('/api/vehicles/:vehicleId', async (req, res) => {
 // PARKING LOT CREATE
 app.post('/api/parking-lots', async (req, res) => {
   const { name, capacity, status } = req.body;
-  
+
   if (!name || !capacity) {
     return res.status(400).json({ message: 'Tên bãi xe và sức chứa là bắt buộc' });
   }
-  
+
   try {
     // Note: fee_per_turn is no longer used, all parking lots use system-wide fee
     const lot = await prisma.parkingLot.create({
@@ -1538,17 +1533,17 @@ app.post('/api/parking-lots', async (req, res) => {
         status: status || 'Hoạt động'
       }
     });
-    
+
     await prisma.systemLog.create({
       data: {
         action: `Tạo bãi xe mới: ${name}`,
         type: 'Admin'
       }
     });
-    
-    res.status(201).json({ 
-      message: 'Tạo bãi xe thành công', 
-      parkingLot: lot 
+
+    res.status(201).json({
+      message: 'Tạo bãi xe thành công',
+      parkingLot: lot
     });
   } catch (err) {
     console.error(err);
@@ -1560,26 +1555,26 @@ app.post('/api/parking-lots', async (req, res) => {
 app.put('/api/parking-lots/:lotId', async (req, res) => {
   const { lotId } = req.params;
   const { name, capacity, status } = req.body;
-  
+
   try {
     // Note: fee_per_turn is no longer used, all parking lots use system-wide fee
     const lot = await prisma.parkingLot.update({
       where: { id: parseInt(lotId) },
-      data: { 
-        name, 
-        capacity: parseInt(capacity), 
+      data: {
+        name,
+        capacity: parseInt(capacity),
         fee_per_turn: 0, // Deprecated field, kept for backward compatibility
-        status 
+        status
       }
     });
-    
+
     await prisma.systemLog.create({
       data: {
         action: `Cập nhật bãi xe: ${name}`,
         type: 'Admin'
       }
     });
-    
+
     res.json(lot);
   } catch (err) {
     console.error(err);
@@ -1590,7 +1585,7 @@ app.put('/api/parking-lots/:lotId', async (req, res) => {
 // PARKING LOT DELETE
 app.delete('/api/parking-lots/:lotId', async (req, res) => {
   const { lotId } = req.params;
-  
+
   try {
     // Check if there are active parking sessions
     const activeSessions = await prisma.parkingSession.count({
@@ -1599,17 +1594,17 @@ app.delete('/api/parking-lots/:lotId', async (req, res) => {
         exit_time: null
       }
     });
-    
+
     if (activeSessions > 0) {
-      return res.status(400).json({ 
-        message: 'Không thể xóa bãi xe đang có xe gửi' 
+      return res.status(400).json({
+        message: 'Không thể xóa bãi xe đang có xe gửi'
       });
     }
-    
+
     await prisma.parkingLot.delete({
       where: { id: parseInt(lotId) }
     });
-    
+
     res.json({ message: 'Xóa bãi xe thành công' });
   } catch (err) {
     console.error(err);
@@ -1646,12 +1641,12 @@ app.put('/api/cameras/:cameraId', async (req, res) => {
     resolution,
     fps
   } = req.body;
-  
+
   try {
     // Check if camera name already exists (excluding current camera)
     if (name) {
       const existingCamera = await prisma.camera.findFirst({
-        where: { 
+        where: {
           name,
           NOT: { id: parseInt(cameraId) }
         }
@@ -1706,16 +1701,16 @@ app.put('/api/cameras/:cameraId', async (req, res) => {
         type: 'Admin'
       }
     });
-    
-    res.json({ 
+
+    res.json({
       message: 'Camera updated successfully',
-      camera: camera 
+      camera: camera
     });
   } catch (err) {
     console.error('Update camera error:', err);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Error updating camera',
-      error: err.message 
+      error: err.message
     });
   }
 });
@@ -1726,7 +1721,7 @@ app.get('/api/system-settings', async (_req, res) => {
     const settings = await prisma.systemSetting.findMany({
       orderBy: { setting_key: 'asc' }
     });
-    
+
     const formatted = {};
     settings.forEach(row => {
       let value = row.setting_value;
@@ -1737,7 +1732,7 @@ app.get('/api/system-settings', async (_req, res) => {
       }
       formatted[row.setting_key] = value;
     });
-    
+
     res.json(formatted);
   } catch (err) {
     console.error(err);
@@ -1747,11 +1742,11 @@ app.get('/api/system-settings', async (_req, res) => {
 
 app.put('/api/system-settings', async (req, res) => {
   const { settings } = req.body;
-  
+
   if (!settings || typeof settings !== 'object') {
     return res.status(400).json({ message: 'Invalid settings data' });
   }
-  
+
   try {
     await Promise.all(
       Object.entries(settings).map(([key, value]) =>
@@ -1761,14 +1756,14 @@ app.put('/api/system-settings', async (req, res) => {
         })
       )
     );
-    
+
     await prisma.systemLog.create({
       data: {
         action: 'Cập nhật cấu hình hệ thống',
         type: 'Admin'
       }
     });
-    
+
     res.json({ message: 'Cập nhật cấu hình thành công' });
   } catch (err) {
     console.error(err);
@@ -1797,7 +1792,7 @@ app.get('/api/admin/parking-sessions/active', async (_req, res) => {
       orderBy: { entry_time: 'desc' },
       take: 50
     });
-    
+
     const formatted = sessions.map(s => ({
       id: s.id,
       license_plate: s.vehicle.license_plate,
@@ -1808,7 +1803,7 @@ app.get('/api/admin/parking-sessions/active', async (_req, res) => {
       user_id: s.vehicle.user_id,
       balance: s.vehicle.user?.wallet ? Number(s.vehicle.user.wallet.balance) : 0
     }));
-    
+
     res.json(formatted);
   } catch (err) {
     console.error(err);
@@ -1843,13 +1838,13 @@ app.get('/api/admin/parking-sessions/history', async (_req, res) => {
       orderBy: { exit_time: 'desc' },
       take: 100 // Limit to last 100 sessions
     });
-    
+
     // Format sessions with fee as number
     const formattedSessions = sessions.map(session => ({
       ...session,
       fee: Number(session.fee)
     }));
-    
+
     res.json(formattedSessions);
   } catch (err) {
     console.error('Error fetching parking history:', err);
@@ -1860,7 +1855,7 @@ app.get('/api/admin/parking-sessions/history', async (_req, res) => {
 // ADMIN DASHBOARD: Confirm Cash Payment
 app.post('/api/admin/parking-sessions/:sessionId/confirm-cash', async (req, res) => {
   const { sessionId } = req.params;
-  
+
   try {
     await prisma.$transaction([
       prisma.parkingSession.update({
@@ -1874,7 +1869,7 @@ app.post('/api/admin/parking-sessions/:sessionId/confirm-cash', async (req, res)
         }
       })
     ]);
-    
+
     res.json({ message: 'Đã xác nhận thu tiền mặt' });
   } catch (err) {
     console.error(err);
