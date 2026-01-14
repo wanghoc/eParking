@@ -42,6 +42,8 @@ services:
       DATABASE_URL: "postgresql://${DB_USER:-eparking_user}:${DB_PASSWORD:-eparking_password_2024}@postgres:5432/${DB_DATABASE_NAME:-eParking_db}?schema=public"
       USE_PRISMA: ${USE_PRISMA:-true}
       USE_ML: ${USE_ML:-true}
+      # Gemini AI API Key for Chatbot
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
       # Python path for ML inference
       PYTHONUNBUFFERED: 1
     ports:

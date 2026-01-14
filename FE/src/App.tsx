@@ -14,12 +14,15 @@ import { AdminDashboardPage } from "./components/AdminDashboardPage";
 import { CameraPage } from "./components/CameraPage";
 import { FAQPage } from "./components/FAQPage";
 import { ProfileModal } from "./components/ProfileModal";
+import ChatBot from "./components/ChatBot";
+import { MessageCircle } from "lucide-react";
 
 function AuthenticatedApp() {
     const { user } = useAuth();
     const [activeItem, setActiveItem] = useState("home");
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [showProfileModal, setShowProfileModal] = useState(false);
+    const [chatBotOpen, setChatBotOpen] = useState(false);
 
     // Enforce role-based accessible pages by auto-redirecting when not allowed
     useEffect(() => {
@@ -155,6 +158,25 @@ function AuthenticatedApp() {
                 isOpen={showProfileModal} 
                 onClose={() => setShowProfileModal(false)} 
             />
+
+            {/* ChatBot - Only for Admin */}
+            {user?.role === 'admin' && (
+                <>
+                    <ChatBot isOpen={chatBotOpen} onClose={() => setChatBotOpen(false)} />
+
+                    {/* Floating ChatBot Button */}
+                    {!chatBotOpen && (
+                        <button
+                            onClick={() => setChatBotOpen(true)}
+                            className="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300 group"
+                            title="Mở trợ lý ảo"
+                        >
+                            <MessageCircle className="w-6 h-6" />
+                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                        </button>
+                    )}
+                </>
+            )}
         </div>
     );
 }

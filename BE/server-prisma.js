@@ -16,6 +16,10 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 const mlService = require('./api/ml_service');
 app.use('/api/ml', mlService);
 
+// Import Chatbot service
+const chatbotService = require('./api/chatbot_service');
+app.use('/api/chatbot', chatbotService);
+
 const DEFAULT_FEE_PER_TURN = 2000; // VND
 
 // Helper function to ensure wallet exists

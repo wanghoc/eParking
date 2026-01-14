@@ -19,6 +19,7 @@
   "license": "ISC",
   "description": "eParking backend server",
   "dependencies": {
+    "@google/generative-ai": "^0.21.0",
     "@prisma/client": "^6.17.1",
     "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
