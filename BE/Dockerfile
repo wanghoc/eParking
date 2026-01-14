@@ -7,6 +7,8 @@ FROM node:22-alpine AS node-deps
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production
+COPY prisma/ ./
+RUN npx prisma generate
 
 # Stage 2: Python ML environment
 FROM python:3.11-slim AS python-ml
@@ -29,16 +31,16 @@ RUN pip3 install --no-cache-dir --extra-index-url https://download.pytorch.org/w
 # Stage 3: Final image with Node.js + Python
 FROM python:3.11-slim
 
-# Install Node.js
-RUN apt-get update && apt-get install -y \
-    curl \
-    ffmpeg \
-    netcat-openbsd \
-    libgl1 \
-    libglib2.0-0 \
-    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y nodejs \
-    && rm -rf /var/lib/apt/lists/*
+
+    RUN apt-get update && apt-get install -y \
+        curl \
+        ffmpeg \
+        netcat-openbsd \
+        libgl1 \
+        libglib2.0-0 \
+        nodejs \
+        npm \
+        && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -59,9 +61,6 @@ RUN mkdir -p detected_plates ml_models/plate_detector
 # Copy and setup entrypoint
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN sed -i 's/\r$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
-
-# Generate Prisma client
-RUN npx prisma generate
 
 # Create non-root user and ensure home exists
 RUN groupadd -g 1001 nodejs && \

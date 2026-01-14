@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 # Development override for docker-compose.yml
 # Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
@@ -6,6 +6,7 @@ version: '3.8'
 services:
   # Database - same as production but with exposed port for direct access
   postgres:
+    image: postgres:alpine
     ports:
       - "5432:5432"
     environment:
@@ -42,7 +43,3 @@ services:
       - ./FE:/app
       - /app/node_modules
     command: npm start
-
-  # Always include adminer in development
-  adminer:
-    profiles: []  # Remove profiles to always run

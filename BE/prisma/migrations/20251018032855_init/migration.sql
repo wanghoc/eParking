@@ -102,6 +102,7 @@ CREATE TABLE "payment_methods" (
 CREATE TABLE "parking_lots" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
+    "occupied" INTEGER NOT NULL DEFAULT 0,
     "capacity" INTEGER NOT NULL,
     "fee_per_turn" DECIMAL(65,30) NOT NULL DEFAULT 2000.00,
     "status" TEXT NOT NULL DEFAULT 'Hoạt động',
@@ -158,6 +159,7 @@ CREATE TABLE "cameras" (
     "firmware_version" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "parking_lot_id" INTEGER NOT NULL DEFAULT 0,
 
     CONSTRAINT "cameras_pkey" PRIMARY KEY ("id")
 );
