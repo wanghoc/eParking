@@ -2,10 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Camera, CheckCircle, ScanLine } from "lucide-react";
 import { apiUrl } from "../api";
 import { io, Socket } from "socket.io-client";
+import { getCameraStream } from "../utils";
+import { useJanus } from "../hooks/use-janus";
 
 interface WebcamStreamProps {
   cameraId: number;
   name: string;
+  streamUrl: string;
   cameraType?: string; // 'Vào' | 'Ra' - Loại camera để hiển thị trạng thái đúng
   onError?: (error: string) => void;
   onDetection?: (plateNumber: string, confidence: number) => void; // NEW: Callback for detected plates
@@ -26,15 +29,16 @@ interface DetectionResult {
   };
 }
 
-export function WebcamStream({
+export function CameraStream({
   cameraId,
   name,
   cameraType,
+  streamUrl,
   onError,
   onDetection,
   hideIndicators = false,
 }: WebcamStreamProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useJanus(streamUrl);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,11 +47,26 @@ export function WebcamStream({
   const [lastDetection, setLastDetection] = useState<DetectionResult | null>(
     null
   );
+  const streamIdRef = useRef<string | null>(null);
   const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    let stream: MediaStream | null = null;
+    getCameraStream(streamUrl)
+      .then(({ stream, streamId }) => {
+        streamIdRef.current = streamId;
+      })
+      .catch((err) => {
+        console.error(
+          `[Webcam ${cameraId}] ❌ Failed to get camera stream:`,
+          err
+        );
+        setError("Không thể truy cập luồng webcam");
+        setIsLoading(false);
+        onError?.("Không thể truy cập luồng webcam");
+      });
+  }, []);
 
+  useEffect(() => {
     // Initialize SocketIO connection
     const initializeWebSocket = () => {
       console.log(`[Webcam ${cameraId}] 🔌 Connecting to SocketIO detector...`);
@@ -70,18 +89,9 @@ export function WebcamStream({
 
       socket.on("connect", () => {
         console.log(`[Webcam ${cameraId}] ✅ SocketIO connected!`);
-
-        // Register camera
-        socket.emit("register_camera", {
-          cameraId: cameraId,
-        });
       });
 
-      socket.on("camera_registered", (data: any) => {
-        console.log(`[Webcam ${cameraId}] 📹 Camera registered:`, data);
-      });
-
-      socket.on("detection_result", async (data) => {
+      socket.on("result", (data: any) => {
         if (!data?.detection?.is_valid) {
           clearOverlay();
           return;
@@ -104,6 +114,10 @@ export function WebcamStream({
           setLastDetection(null);
           clearOverlay();
         }, 7000);
+      });
+
+      socket.on("error", (data: any) => {
+        console.error(`[Webcam ${cameraId}] ❌ Detector error:`, data);
       });
 
       socket.on("detection_error", (data: any) => {
@@ -129,19 +143,7 @@ export function WebcamStream({
         setIsLoading(true);
         setError(null);
 
-        // Request access to webcam
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            facingMode: "environment", // Use back camera on mobile if available
-          },
-          audio: false,
-        });
-
         if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-
           // Set connected immediately after stream assigned
           console.log(
             `[Webcam ${cameraId}] ✅ Stream assigned to video element`
@@ -231,12 +233,6 @@ export function WebcamStream({
 
     // Cleanup function
     return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-      }
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
       if (detectionIntervalRef.current) {
         clearInterval(detectionIntervalRef.current);
       }
@@ -371,17 +367,13 @@ export function WebcamStream({
       return;
     }
 
-    console.log(
-      `[Webcam ${cameraId}] 📸 Captured frame, sending via SocketIO...`
-    );
-
     try {
       // Send frame via SocketIO event (NON-BLOCKING!)
-      socketRef.current.emit("video_frame", {
-        cameraId: cameraId,
+      socketRef.current.emit("frame", {
         frame: frameBase64,
-        timestamp: Date.now(),
+        ts: Date.now(),
       });
+
       console.log(`[Webcam ${cameraId}] ✅ Frame sent via SocketIO`);
     } catch (error) {
       console.error(`[Webcam ${cameraId}] ❌ SocketIO send error:`, error);
@@ -402,12 +394,19 @@ export function WebcamStream({
     const video = videoRef.current;
     if (!video) return;
 
-    const loop = () => {
-      detectPlate();
+    let lastSent = 0;
+
+    const loop = (now: number) => {
+      if (now - lastSent > 200) {
+        // 5 FPS
+        detectPlate();
+        lastSent = now;
+      }
       video.requestVideoFrameCallback(loop);
     };
 
     video.requestVideoFrameCallback(loop);
+
     console.log(
       `[Webcam ${cameraId}] ✅ REALTIME detection started (1s interval via WebSocket)`
     );
