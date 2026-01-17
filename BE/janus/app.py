@@ -3,10 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import requests
 import uuid
+import os
 
 # ---------------- CONFIG ----------------
 
-JANUS_URL = "http://localhost:7088/janus"
+JANUS_URL = os.getenv("JANUS_URL", "http://localhost:7088/janus")
 
 
 REQUEST_TIMEOUT = 5
@@ -42,6 +43,12 @@ def janus_request(url: str, payload: dict) -> dict:
     if data.get("janus") not in ("ack", "success"):
         raise HTTPException(500, f"Janus error: {data}")
     return data
+
+
+@app.get("/api/health")
+def health_check():
+    """Health check endpoint for Docker"""
+    return {"status": "healthy", "service": "janus-proxy"}
 
 
 @app.post("/api/create-stream", response_model=CreateStreamResponse)

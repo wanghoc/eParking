@@ -7,13 +7,12 @@ declare const process: {
   };
 };
 
-export const API_BASE_URL = `${
-  process.env.REACT_APP_API_URL || "http://localhost:5000"
-}/api`;
+export const API_BASE_URL = `${process.env.REACT_APP_API_URL || "http://localhost:5000"
+  }/api`;
 
-export const CAMERA_STREAM_BASE_URL = `${
-  process.env.REACT_APP_CAMERA_STREAM_URL || "http://localhost:9000"
-}/api`;
+// Janus proxy service for creating RTSP streams
+export const CAMERA_STREAM_BASE_URL = `${process.env.REACT_APP_CAMERA_STREAM_URL || "http://localhost:9000"
+  }/api`;
 export const apiUrl = (path: string) => `${API_BASE_URL}${path}`;
 export const cameraStreamUrl = (path: string) =>
   `${CAMERA_STREAM_BASE_URL}${path}`;

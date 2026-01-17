@@ -4,8 +4,14 @@ import { getCameraStream } from "../utils";
 
 export function useJanus(
   rtspUrl: string,
-  janusUrl = "http://localhost:8088/janus"
+  janusUrl?: string
 ) {
+  // Auto-detect Janus URL: use localhost for local dev, otherwise use current hostname
+  const defaultJanusUrl = typeof window !== 'undefined'
+    ? `http://${window.location.hostname}:8088/janus`
+    : "http://localhost:8088/janus";
+
+  const finalJanusUrl = janusUrl || defaultJanusUrl;
   const videoRef = useRef<HTMLVideoElement>(null);
   const janusRef = useRef<Janus | null>(null);
   const pluginRef = useRef<JanusJS.PluginHandle | null>(null);
@@ -17,7 +23,7 @@ export function useJanus(
       debug: "all",
       callback: () => {
         janusRef.current = new Janus({
-          server: janusUrl,
+          server: finalJanusUrl,
 
           success: async () => {
             const streamId = await getCameraStream(rtspUrl);
@@ -40,7 +46,7 @@ export function useJanus(
       pluginRef.current?.detach();
       janusRef.current?.destroy({});
     };
-  }, [rtspUrl, janusUrl]);
+  }, [rtspUrl, finalJanusUrl]);
 
   function attachStreamingPlugin() {
     janusRef.current!.attach({

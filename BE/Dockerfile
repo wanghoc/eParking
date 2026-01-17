@@ -31,16 +31,15 @@ RUN pip3 install --no-cache-dir --extra-index-url https://download.pytorch.org/w
 # Stage 3: Final image with Node.js + Python
 FROM python:3.11-slim
 
-
-    RUN apt-get update && apt-get install -y \
-        curl \
-        ffmpeg \
-        netcat-openbsd \
-        libgl1 \
-        libglib2.0-0 \
-        nodejs \
-        npm \
-        && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    curl \
+    ffmpeg \
+    netcat-openbsd \
+    libgl1 \
+    libglib2.0-0 \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
