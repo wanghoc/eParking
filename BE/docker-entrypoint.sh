@@ -39,7 +39,7 @@ if [ "$USE_ML" = "true" ]; then
     echo "========================================="
     echo "Port: 5001"
     echo "Protocol: WebSocket + HTTP"
-    echo "Model: YOLO OBB + EasyOCR (PERSISTENT)"
+    echo "Model: YOLO OBB + CNN-LSTM PlateRecognizer (PERSISTENT)"
     echo ""
     
     # Start WebSocket detector in background

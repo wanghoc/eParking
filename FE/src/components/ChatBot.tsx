@@ -13,13 +13,14 @@ interface Message {
 interface ChatBotProps {
   isOpen: boolean;
   onClose: () => void;
+  userId?: number;
 }
 
-const ChatBot: React.FC<ChatBotProps> = ({ isOpen, onClose }) => {
+const ChatBot: React.FC<ChatBotProps> = ({ isOpen, onClose, userId }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: 'Xin chào! Tôi là trợ lý ảo của hệ thống eParking. Tôi có thể giúp bạn:\n\n• Tra cứu thông tin biển số xe\n• Xem lịch sử gửi xe và thanh toán\n• Thống kê doanh thu\n• Nhận diện biển số từ hình ảnh\n\nBạn cần tôi hỗ trợ gì?',
+      content: 'Xin chào! Tôi là trợ lý ảo của hệ thống eParking. Tôi có thể giúp bạn:\n\n• Tra cứu phiên gửi xe của bạn\n• Xem thông tin phương tiện đã đăng ký\n• Kiểm tra số dư ví và lịch sử giao dịch\n• Xem trạng thái bãi đỗ xe\n\nBạn cần tôi hỗ trợ gì?',
       timestamp: new Date().toISOString()
     }
   ]);
@@ -60,6 +61,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen, onClose }) => {
         body: JSON.stringify({
           message: inputMessage,
           image: imageToSend,
+          userId: userId,
           conversationHistory: messages
             .filter(msg => msg.role === 'user' || messages.indexOf(msg) > 0)
             .map(msg => ({
@@ -261,7 +263,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
         <p className="text-xs text-gray-500 mt-2">
-          💡 Bạn có thể hỏi về biển số xe, doanh thu, lịch sử gửi xe hoặc tải lên ảnh biển số
+          💡 Bạn có thể hỏi về phiên gửi xe, phương tiện, số dư ví hoặc tải lên ảnh biển số
         </p>
       </div>
     </div>

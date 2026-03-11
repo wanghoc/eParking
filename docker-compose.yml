@@ -42,19 +42,12 @@ services:
       DATABASE_URL: "postgresql://${DB_USER:-eparking_user}:${DB_PASSWORD:-eparking_password_2024}@postgres:5432/${DB_DATABASE_NAME:-eParking_db}?schema=public"
       USE_PRISMA: ${USE_PRISMA:-true}
       USE_ML: ${USE_ML:-true}
-      # Gemini AI API Key for Chatbot
       GEMINI_API_KEY: ${GEMINI_API_KEY}
-      # Python path for ML inference
       PYTHONUNBUFFERED: 1
     ports:
       - "5000:5000"
-      - "5001:5001"  # WebSocket Detector port
+      - "5001:5001"
     volumes:
-      - ./BE:/app
-      - /app/node_modules
-      # Bind mount ML models (include custom plate recognizer)
-      - ./BE/ml_models:/app/ml_models
-      # Persist detected images only
       - detected_plates:/app/detected_plates
     networks:
       - eparking_network
@@ -78,62 +71,10 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    environment:
-      REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:5000}
-      REACT_APP_ENVIRONMENT: ${NODE_ENV:-production}
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     networks:
       - eparking_network
-    healthcheck:
-      test: [ "CMD", "sh", "-c", "curl -fsS http://localhost:3000/ || exit 1" ]
-      timeout: 10s
-      retries: 3
-      interval: 30s
-      start_period: 20s
-
-  # Prisma Studio Database Management
-  prisma-studio:
-    build:
-      context: ./BE
-      dockerfile: Dockerfile
-    container_name: eparking_prisma_studio
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      DATABASE_URL: "postgresql://${DB_USER:-eparking_user}:${DB_PASSWORD:-eparking_password_2024}@postgres:5432/${DB_DATABASE_NAME:-eParking_db}?schema=public"
-      PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK: 1
-      SKIP_PRISMA_VERSION_CHECK: 1
-    ports:
-      - "5555:5555"
-    volumes:
-      - ./BE:/app
-      - /app/node_modules
-    networks:
-      - eparking_network
-    command: [ "npx", "prisma", "studio", "--port", "5555", "--hostname", "0.0.0.0", "--browser", "none" ]
-    user: backend
-    working_dir: /app
-
-  # Adminer for Database Management (optional)
-  adminer:
-    image: adminer:4.9.1
-    container_name: eparking_adminer
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-    ports:
-      - "${ADMINER_PORT:-8080}:8080"
-    networks:
-      - eparking_network
-    environment:
-      ADMINER_DEFAULT_SERVER: postgres
-    profiles:
-      - tools
 
 networks:
   eparking_network:
@@ -144,9 +85,6 @@ volumes:
   pg_data:
     driver: local
     name: eparking_pg_data
-  ml_models:
-    driver: local
-    name: eparking_ml_models
   detected_plates:
     driver: local
     name: eparking_detected_plates

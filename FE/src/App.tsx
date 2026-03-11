@@ -159,10 +159,10 @@ function AuthenticatedApp() {
                 onClose={() => setShowProfileModal(false)} 
             />
 
-            {/* ChatBot - Only for Admin */}
-            {user?.role === 'admin' && (
+            {/* ChatBot - For Student */}
+            {user?.role === 'student' && (
                 <>
-                    <ChatBot isOpen={chatBotOpen} onClose={() => setChatBotOpen(false)} />
+                    <ChatBot isOpen={chatBotOpen} onClose={() => setChatBotOpen(false)} userId={user?.id} />
 
                     {/* Floating ChatBot Button */}
                     {!chatBotOpen && (

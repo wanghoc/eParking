@@ -2,7 +2,7 @@
 Inference script for license plate detection and recognition
 Usage: python inference.py --image <base64_encoded_image>
 
-Tích hợp YOLOv8 OBB + EasyOCR cho hệ thống eParking
+Tích hợp YOLOv8 OBB + YOLO character detector cho hệ thống eParking
 """
 
 import sys
@@ -17,10 +17,13 @@ import os
 import re
 from datetime import datetime
 
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 # Import các thư viện ML
 try:
     from ultralytics import YOLO
-    import easyocr
+    from character_recognition.plate_recognizer_inference import get_recognizer
     ML_AVAILABLE = True
 except ImportError as e:
     print(f"Warning: ML libraries not available: {e}", file=sys.stderr)
@@ -28,10 +31,10 @@ except ImportError as e:
 
 
 class LicensePlateDetector:
-    """Class nhận diện biển số xe - Sử dụng EasyOCR với preprocessing cải tiến"""
+    """Class nhận diện biển số xe - Sử dụng YOLO character detector với preprocessing cải tiến"""
     
     def __init__(self):
-        """Khởi tạo detector với YOLOv8 OBB và EasyOCR tối ưu"""
+        """Khởi tạo detector với YOLOv8 OBB và PlateRecognizer"""
         if not ML_AVAILABLE:
             raise RuntimeError("ML libraries not available. Please install: ultralytics, torch, opencv-python")
         
@@ -48,10 +51,10 @@ class LicensePlateDetector:
         except Exception as e:
             raise RuntimeError(f"Failed to load YOLO model: {e}")
         
-        # Initialize EasyOCR with optimized settings
-        print("[INFO] Loading EasyOCR reader (Vietnamese + English - OPTIMIZED)...", file=sys.stderr)
-        self.ocr_reader = easyocr.Reader(['vi', 'en'], gpu=False, verbose=False)
-        print("[INFO] EasyOCR reader loaded successfully", file=sys.stderr)
+        # Initialize PlateRecognizer (YOLO character detector)
+        print("[INFO] Loading PlateRecognizer (YOLO char detector)...", file=sys.stderr)
+        self.recognizer = get_recognizer()
+        print("[INFO] PlateRecognizer loaded successfully", file=sys.stderr)
     
     def validate_plate_format(self, text):
         """
@@ -167,7 +170,7 @@ class LicensePlateDetector:
             
             cropped_plate = image[y1:y2, x1:x2]
             
-            # MULTI-PASS OCR với preprocessing cải tiến
+            # MULTI-PASS Recognition với preprocessing cải tiến
             gray = cv2.cvtColor(cropped_plate, cv2.COLOR_BGR2GRAY)
             
             # Resize to optimal size
@@ -185,13 +188,9 @@ class LicensePlateDetector:
                 kernel_sharpen = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
                 sharpened1 = cv2.filter2D(enhanced1, -1, kernel_sharpen)
                 
-                result1 = self.ocr_reader.readtext(sharpened1, detail=0,
-                                                  allowlist='0123456789ABCDEFGHKLMNPRSTUVXYZ',
-                                                  paragraph=False, batch_size=1)
-                if result1:
-                    text1 = ''.join(result1).replace(' ', '').upper()
-                    if len(text1) >= 7:
-                        candidates.append(text1)
+                text1 = self.recognizer.recognize(sharpened1)
+                if text1 and len(text1) >= 7:
+                    candidates.append(text1.upper())
             except:
                 pass
             
@@ -201,26 +200,18 @@ class LicensePlateDetector:
                 thresh2 = cv2.adaptiveThreshold(denoised2, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                                                cv2.THRESH_BINARY, 11, 2)
                 
-                result2 = self.ocr_reader.readtext(thresh2, detail=0,
-                                                  allowlist='0123456789ABCDEFGHKLMNPRSTUVXYZ',
-                                                  paragraph=False, batch_size=1)
-                if result2:
-                    text2 = ''.join(result2).replace(' ', '').upper()
-                    if len(text2) >= 7:
-                        candidates.append(text2)
+                text2 = self.recognizer.recognize(thresh2)
+                if text2 and len(text2) >= 7:
+                    candidates.append(text2.upper())
             except:
                 pass
             
             # Method 3: Simple enhancement
             try:
                 enhanced3 = cv2.equalizeHist(gray)
-                result3 = self.ocr_reader.readtext(enhanced3, detail=0,
-                                                  allowlist='0123456789ABCDEFGHKLMNPRSTUVXYZ',
-                                                  paragraph=False, batch_size=1)
-                if result3:
-                    text3 = ''.join(result3).replace(' ', '').upper()
-                    if len(text3) >= 7:
-                        candidates.append(text3)
+                text3 = self.recognizer.recognize(enhanced3)
+                if text3 and len(text3) >= 7:
+                    candidates.append(text3.upper())
             except:
                 pass
             

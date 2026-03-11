@@ -1,6 +1,6 @@
 #!/bin/bash
 # Start WebSocket Detector alongside Backend Server
-# Chạy PERSISTENT detector với YOLO + EasyOCR loaded 1 lần
+# Chạy PERSISTENT detector với YOLO + CNN-LSTM PlateRecognizer loaded 1 lần
 
 set -e
 
@@ -43,7 +43,7 @@ echo ""
 echo "[2/3] 🚀 Starting WebSocket Detector Server..."
 echo "    - Port: 5555"
 echo "    - Protocol: WebSocket + HTTP"
-echo "    - Model: YOLO OBB + EasyOCR"
+echo "    - Model: YOLO OBB + CNN-LSTM PlateRecognizer"
 echo ""
 
 # Start WebSocket detector in background

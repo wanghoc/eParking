@@ -1,19 +1,9 @@
 {
-  "model_type": "cnn_lstm",
+  "model_type": "yolo_char_detector",
   "model_path": "plate_recognizer.pt",
-  "input_size": [128, 32],
-  "characters": "0123456789ABCDEFGHKLMNPRSTUVXYZ-",
-  "max_length": 10,
-  "device": "cuda",
-  "preprocessing": {
-    "grayscale": true,
-    "normalize": true,
-    "mean": [0.5],
-    "std": [0.5]
-  },
-  "postprocessing": {
-    "remove_duplicates": true,
-    "format_plate": true
-  }
+  "architecture": "yolo11n",
+  "num_classes": 36,
+  "characters": "0123456789ABCDEFGHIKLMNOPQRSTUVWXYZ",
+  "confidence_threshold": 0.25
 }
 

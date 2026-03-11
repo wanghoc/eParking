@@ -4,7 +4,7 @@ Giống y hệt project test nhưng dùng WebSocket cho web-based streaming
 
 Architecture:
 - Frontend gửi video frames qua WebSocket
-- Backend xử lý với PERSISTENT YOLO + EasyOCR (load 1 lần duy nhất!)
+- Backend xử lý với PERSISTENT YOLO + YOLO character detector (load 1 lần duy nhất!)
 - Trả kết quả realtime về frontend để hiển thị
 
 Usage:
@@ -18,10 +18,14 @@ import cv2
 import numpy as np
 import base64
 from ultralytics import YOLO
-import easyocr
 import re
 import time
 import os
+import sys
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from character_recognition.plate_recognizer_inference import PlateRecognizer
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -31,7 +35,7 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading',
 class PersistentDetector:
     """
     Detector PERSISTENT - Model load 1 lần duy nhất!
-    Sử dụng EasyOCR với preprocessing cải tiến cho độ chính xác cao hơn
+    Sử dụng YOLO character detector với preprocessing cải tiến cho độ chính xác cao
     """
     
     def __init__(self, model_path='ml_models/plate_detector/best.pt'):
@@ -50,11 +54,11 @@ class PersistentDetector:
         self.model = YOLO(model_path)
         print(f"[1/2] ✅ YOLO model loaded in {time.time() - start_time:.2f}s")
         
-        # Load EasyOCR reader with improved config - 1 LẦN DUY NHẤT!
-        print(f"\n[2/2] 📖 Initializing EasyOCR reader (Vietnamese + English - OPTIMIZED)...")
+        # Load PlateRecognizer (YOLO char detector) - 1 LẦN DUY NHẤT!
+        print(f"\n[2/2] 📖 Initializing PlateRecognizer (YOLO char detector)...")
         start_time = time.time()
-        self.reader = easyocr.Reader(['vi', 'en'], gpu=False, verbose=False)
-        print(f"[2/2] ✅ EasyOCR reader loaded in {time.time() - start_time:.2f}s")
+        self.recognizer = PlateRecognizer()
+        print(f"[2/2] ✅ PlateRecognizer loaded in {time.time() - start_time:.2f}s")
         
         print("\n" + "=" * 60)
         print("🎉 DETECTOR READY FOR REALTIME DETECTION!")
@@ -179,12 +183,12 @@ class PersistentDetector:
         
         cropped_plate = frame[y1:y2, x1:x2]
         
-        # MULTI-PASS OCR với preprocessing cải tiến - Độ chính xác cao hơn!
+        # MULTI-PASS Recognition với preprocessing cải tiến - Độ chính xác cao!
         # Thử nhiều phương pháp tiền xử lý và chọn kết quả tốt nhất
         
         gray = cv2.cvtColor(cropped_plate, cv2.COLOR_BGR2GRAY)
         
-        # Resize to optimal size (300px width for better OCR)
+        # Resize to optimal size (300px width for better recognition)
         if gray.shape[1] < 300:
             scale = 300 / gray.shape[1]
             gray = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
@@ -200,13 +204,9 @@ class PersistentDetector:
             kernel_sharpen = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
             sharpened1 = cv2.filter2D(enhanced1, -1, kernel_sharpen)
             
-            result1 = self.reader.readtext(sharpened1, detail=0, 
-                                          allowlist='0123456789ABCDEFGHKLMNPRSTUVXYZ',
-                                          paragraph=False, batch_size=1)
-            if result1:
-                text1 = ''.join(result1).replace(' ', '').upper()
-                if len(text1) >= 7:  # Minimum plate length
-                    candidates.append(text1)
+            text1 = self.recognizer.recognize(sharpened1)
+            if text1 and len(text1) >= 7:
+                candidates.append(text1.upper())
         except:
             pass
         
@@ -216,26 +216,18 @@ class PersistentDetector:
             thresh2 = cv2.adaptiveThreshold(denoised2, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                                            cv2.THRESH_BINARY, 11, 2)
             
-            result2 = self.reader.readtext(thresh2, detail=0,
-                                          allowlist='0123456789ABCDEFGHKLMNPRSTUVXYZ',
-                                          paragraph=False, batch_size=1)
-            if result2:
-                text2 = ''.join(result2).replace(' ', '').upper()
-                if len(text2) >= 7:
-                    candidates.append(text2)
+            text2 = self.recognizer.recognize(thresh2)
+            if text2 and len(text2) >= 7:
+                candidates.append(text2.upper())
         except:
             pass
         
         # Method 3: Simple contrast enhancement (backup)
         try:
             enhanced3 = cv2.equalizeHist(gray)
-            result3 = self.reader.readtext(enhanced3, detail=0,
-                                          allowlist='0123456789ABCDEFGHKLMNPRSTUVXYZ',
-                                          paragraph=False, batch_size=1)
-            if result3:
-                text3 = ''.join(result3).replace(' ', '').upper()
-                if len(text3) >= 7:
-                    candidates.append(text3)
+            text3 = self.recognizer.recognize(enhanced3)
+            if text3 and len(text3) >= 7:
+                candidates.append(text3.upper())
         except:
             pass
         

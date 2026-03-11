@@ -1,33 +1,25 @@
 # Python ML Dependencies for eParking License Plate Recognition
-# Optimized for Alpine Linux - Docker
+# Optimized for Docker deployment
 
-# Core Dependencies (install first)
+# Core Dependencies
 numpy
 Pillow
 
-# Deep Learning Frameworks (latest compatible versions for Alpine)
+# Deep Learning Frameworks
 torch
 torchvision
-onnxruntime
 
 # Computer Vision
 opencv-python-headless
-opencv-contrib-python-headless
 
 # Object Detection (YOLO)
 ultralytics
-
-# Character Recognition (OCR)
-easyocr
 
 # WebSocket Server for Realtime Detection
 flask
 flask-socketio
 flask-cors
-python-socketio[client]
 eventlet
-
-# Utils
 python-dotenv
 tqdm
 

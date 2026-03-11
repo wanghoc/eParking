@@ -60,11 +60,11 @@ function runInference(imageBase64) {
     python.stdin.write(imageBase64);
     python.stdin.end();
 
-    // Set timeout (increased for first-time model loading - EasyOCR downloads models)
+    // Set timeout for model loading
     setTimeout(() => {
       python.kill();
-      reject(new Error('Inference timeout - Model loading may take 3-5 minutes on first run'));
-    }, 180000); // 180 seconds (3 minutes) timeout for first-time model load
+      reject(new Error('Inference timeout - Model loading may take time on first run'));
+    }, 120000); // 120 seconds timeout
   });
 }
 
