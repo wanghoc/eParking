@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { apiUrl } from '../api';
+import { portalRoleError } from "../portal";
 
 // Types cho user và authentication
 export interface User {
@@ -96,6 +97,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
             // Login successful
             const loggedInUser = result.user;
+            const portalError = portalRoleError(loggedInUser.role);
+            if (portalError) {
+                return { success: false, error: portalError };
+            }
             setUser(loggedInUser);
             localStorage.setItem('eparking_user', JSON.stringify(loggedInUser));
 

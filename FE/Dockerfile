@@ -50,11 +50,11 @@ RUN touch /var/run/nginx.pid && \
 USER frontend
 
 # Expose port
-EXPOSE 3000
+EXPOSE 3000 3001
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/ || exit 1
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]

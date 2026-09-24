@@ -179,46 +179,8 @@ async function main() {
     },
   });
 
-  // Create sample cameras with parking_lot_id and device_id
-  // CHỈ TẠO 2 CAMERAS BÃI A (theo yêu cầu người dùng)
-  await prisma.camera.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
-      id: 1,
-      name: 'Camera A - Vào',
-      location: 'Bãi xe A - Cổng vào',
-      parking_lot_id: parkingLotA.id,
-      type: 'Vao',
-      status: 'Hoạt động',
-      device_id: 'webcam', // Special marker for webcam
-      protocol: 'HTTP',
-      camera_brand: 'Webcam',
-      resolution: '1080p',
-      fps: 30,
-    },
-  });
-
-  await prisma.camera.upsert({
-    where: { id: 2 },
-    update: {},
-    create: {
-      id: 2,
-      name: 'Camera A - Ra',
-      location: 'Bãi xe A - Cổng ra',
-      parking_lot_id: parkingLotA.id,
-      type: 'Ra',
-      status: 'Hoạt động',
-      device_id: 'webcam', // Special marker for webcam
-      protocol: 'HTTP',
-      camera_brand: 'Webcam',
-      resolution: '1080p',
-      fps: 30,
-    },
-  });
-
-  // NOTE: Cameras cho bãi B và C đã bị XÓA
-  // Admin có thể tự tạo cameras mới qua UI nếu cần
+  // Máy trạm Edge tại cổng được đăng ký bằng CLI (không seed API key):
+  //   node scripts/edge-device.js create --code GATE-A --name "Cổng bãi A" --lane BOTH --lot 1
 
   // Create system settings
   await prisma.systemSetting.upsert({

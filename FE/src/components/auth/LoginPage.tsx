@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Eye, EyeOff, Mail, Lock, Bike, ArrowLeft } from 'lucide-react';
 import { useAuth, LoginData } from '../../contexts/AuthContext';
+import { PORTAL } from "../../portal";
 
 interface LoginPageProps {
     onSwitchToRegister: () => void;
@@ -66,20 +67,20 @@ export function LoginPage({ onSwitchToRegister, onBack }: LoginPageProps) {
             <div className="flex-1 flex items-center justify-center p-8 bg-white">
                 <div className="w-full max-w-md">
                     {/* Back button */}
-                    <button
+                    {PORTAL !== 'admin' && <button
                         onClick={onBack}
                         className="flex items-center text-gray-600 hover:text-gray-800 mb-8 transition-colors"
                     >
                         <ArrowLeft className="h-5 w-5 mr-2" />
                         Quay lại
-                    </button>
+                    </button>}
 
                     {/* Header */}
                     <div className="text-center mb-8">
                         <div className="bg-cyan-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                             <Bike className="h-8 w-8 text-cyan-600" />
                         </div>
-                        <h1 className="text-3xl font-bold text-gray-900 mb-2">Đăng nhập</h1>
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">{PORTAL === 'admin' ? 'Đăng nhập quản trị' : 'Đăng nhập'}</h1>
                         <p className="text-gray-600">Hệ thống eParking - Trường Đại học Đà Lạt</p>
                     </div>
 
@@ -194,7 +195,7 @@ export function LoginPage({ onSwitchToRegister, onBack }: LoginPageProps) {
                     </form>
 
                     {/* Switch to register */}
-                    <div className="mt-6 text-center">
+                    {PORTAL !== 'admin' && <div className="mt-6 text-center">
                         <p className="text-gray-600">
                             Chưa có tài khoản?{' '}
                             <button
@@ -204,7 +205,7 @@ export function LoginPage({ onSwitchToRegister, onBack }: LoginPageProps) {
                                 Đăng ký ngay
                             </button>
                         </p>
-                    </div>
+                    </div>}
                 </div>
             </div>
 

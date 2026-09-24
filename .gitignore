@@ -15,3 +15,7 @@ public/docs/
 *.tmp
 *.temp
 
+
+.gemini/
+gha-creds-*.json
+backups/

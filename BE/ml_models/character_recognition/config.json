@@ -1,9 +1,0 @@
-{
-  "model_type": "yolo_char_detector",
-  "model_path": "plate_recognizer.pt",
-  "architecture": "yolo11n",
-  "num_classes": 36,
-  "characters": "0123456789ABCDEFGHIKLMNOPQRSTUVWXYZ",
-  "confidence_threshold": 0.25
-}
-

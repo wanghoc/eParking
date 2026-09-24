@@ -11,11 +11,11 @@ import { PaymentPage } from "./components/PaymentPage";
 import { ManagementPage } from "./components/ManagementPage";
 import { AdminPage } from "./components/AdminPage";
 import { AdminDashboardPage } from "./components/AdminDashboardPage";
-import { CameraPage } from "./components/CameraPage";
 import { FAQPage } from "./components/FAQPage";
 import { ProfileModal } from "./components/ProfileModal";
 import ChatBot from "./components/ChatBot";
 import { MessageCircle } from "lucide-react";
+import { PORTAL } from "./portal";
 
 function AuthenticatedApp() {
     const { user } = useAuth();
@@ -27,7 +27,7 @@ function AuthenticatedApp() {
     // Enforce role-based accessible pages by auto-redirecting when not allowed
     useEffect(() => {
         if (!user) return;
-        const studentBlocked = ["management", "camera", "admin", "dashboard"];
+        const studentBlocked = ["management", "admin", "dashboard"];
         const adminBlocked = ["vehicles", "payment", "home"];
         
         if (user.role === 'student' && studentBlocked.includes(activeItem)) {
@@ -84,12 +84,6 @@ function AuthenticatedApp() {
                 return (
                     <ProtectedRoute requiredRole="admin">
                         <AdminPage />
-                    </ProtectedRoute>
-                );
-            case "camera":
-                return (
-                    <ProtectedRoute requiredRole="admin">
-                        <CameraPage />
                     </ProtectedRoute>
                 );
             case "faq":
@@ -183,7 +177,8 @@ function AuthenticatedApp() {
 
 function AuthFlow() {
     const { isAuthenticated } = useAuth();
-    const [authMode, setAuthMode] = useState<'login' | 'register' | 'welcome'>('welcome');
+    // Trang admin (cổng 3001) vào thẳng màn hình đăng nhập, không có đăng ký
+    const [authMode, setAuthMode] = useState<'login' | 'register' | 'welcome'>(PORTAL === 'admin' ? 'login' : 'welcome');
 
     if (isAuthenticated) {
         return (
@@ -292,11 +287,11 @@ function AuthFlow() {
         );
     }
 
-    if (authMode === 'login') {
+    if (authMode === 'login' || PORTAL === 'admin') {
         return (
             <LoginPage
                 onSwitchToRegister={() => setAuthMode('register')}
-                onBack={() => setAuthMode('welcome')}
+                onBack={() => setAuthMode(PORTAL === 'admin' ? 'login' : 'welcome')}
             />
         );
     }

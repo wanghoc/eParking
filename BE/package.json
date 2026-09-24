@@ -12,7 +12,9 @@
     "build-src": "babel src -d build --copy-files",
     "docker:build": "docker build -t eparking-backend .",
     "docker:run": "docker run -p 5000:5000 --env-file ../.env eparking-backend",
-    "docker:dev": "docker-compose -f ../docker-compose.yml up --build backend postgres"
+    "docker:dev": "docker-compose -f ../docker-compose.yml up --build backend postgres",
+    "test:edge": "node --test tests/edge_sync.test.js",
+    "edge:device": "node scripts/edge-device.js"
   },
   "keywords": [],
   "author": "",
