@@ -1,0 +1,47 @@
+# Sao chép thành config.yaml rồi chỉnh sửa cho từng máy trạm.
+station_name: "Cổng bãi xe A"
+data_dir: data                      # SQLite, ảnh bằng chứng, log
+
+lanes:
+  - lane: IN
+    camera: "rtsp://admin:password@192.168.1.64:554/Streaming/Channels/102"   # hoặc "0" cho webcam
+    roi: [320, 240, 1280, 720]      # x, y, w, h vùng làn xe (bỏ trống = cả khung hình)
+  - lane: OUT
+    camera: "rtsp://admin:password@192.168.1.65:554/Streaming/Channels/102"
+
+ai:
+  detector_weights: models/plate_obb.pt       # YOLOv8-OBB định vị biển số
+  recognizer_weights: models/char_yolo11n.pt  # YOLO11n nhận dạng ký tự
+  device: cpu                                 # cuda:0 nếu có GPU NVIDIA
+  detector_imgsz: 640
+  recognizer_imgsz: 320
+  detector_conf: 0.5
+  recognizer_conf: 0.25
+  confirm_frames: 2
+  plate_cooldown_s: 20
+
+cloud:
+  base_url: "https://eparking.example.edu.vn"
+  device_key: "edk_..."               # cấp bằng: node scripts/edge-device.js create ...
+  connect_timeout_s: 0.3
+  read_timeout_s: 0.7                 # quá hạn -> xử lý offline, không để xe chờ
+  heartbeat_interval_s: 5
+  failures_before_offline: 2
+  snapshot_interval_s: 300
+
+sync:
+  interval_s: 2
+  batch_size: 50
+  backoff_base_s: 2
+  backoff_max_s: 300
+  request_timeout_s: 15
+
+barrier:
+  kind: log                           # log | serial | http
+  serial_port: COM3
+  baudrate: 9600
+  open_command_hex: { IN: "A00101A2", OUT: "A00201A3" }
+  http_url: { IN: "http://192.168.1.50/relay/1/pulse", OUT: "http://192.168.1.50/relay/2/pulse" }
+
+# Offline + biển số không có trong cache xe đã đăng ký: false = chặn, chờ bảo vệ quyết định
+offline_open_unknown: false

@@ -1,7 +1,6 @@
 import { Building2, Bike, DollarSign, Activity, X, Plus, Edit, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { apiUrl } from "../api";
-import { LiveCameraModal } from "./LiveCameraModal";
 
 interface ParkingLot {
     id: number;
@@ -33,9 +32,6 @@ export function ManagementPage() {
     const [selectedTab, setSelectedTab] = useState("parking");
     const [parkingLots, setParkingLots] = useState<ParkingLot[]>([]);
     const [activities, setActivities] = useState<RecentActivity[]>([]);
-    const [showCameraModal, setShowCameraModal] = useState(false);
-    const [showManualCheckIn, setShowManualCheckIn] = useState(false);
-    const [showManualCheckOut, setShowManualCheckOut] = useState(false);
     const [showAddParkingLot, setShowAddParkingLot] = useState(false);
     const [showEditParkingLot, setShowEditParkingLot] = useState(false);
     const [editingParkingLot, setEditingParkingLot] = useState<ParkingLot | null>(null);
@@ -44,8 +40,6 @@ export function ManagementPage() {
         capacity: '',
         status: 'Hoạt động'
     });
-    const [licensePlate, setLicensePlate] = useState("");
-    const [selectedLotId, setSelectedLotId] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [stats, setStats] = useState<DashboardStats>({
         vehiclesIn: 0,
@@ -107,70 +101,6 @@ export function ManagementPage() {
             console.error('Failed to load management data:', error);
         } finally {
             setIsLoading(false);
-        }
-    };
-
-    const handleCheckIn = async () => {
-        if (!licensePlate) {
-            alert('Vui lòng nhập biển số xe!');
-            return;
-        }
-
-        try {
-            const response = await fetch(apiUrl('/parking-sessions/check-in'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    license_plate: licensePlate,
-                    lot_id: selectedLotId,
-                    recognition_method: 'Thủ công'
-                })
-            });
-
-            const data = await response.json();
-            
-            if (response.ok) {
-                alert('Check-in thành công!');
-                setLicensePlate('');
-                setShowManualCheckIn(false);
-                loadData(); // Reload data
-            } else {
-                alert(data.message || 'Lỗi check-in!');
-            }
-        } catch (error) {
-            console.error('Check-in error:', error);
-            alert('Lỗi kết nối server!');
-        }
-    };
-
-    const handleCheckOut = async () => {
-        if (!licensePlate) {
-            alert('Vui lòng nhập biển số xe!');
-            return;
-        }
-
-        try {
-            const response = await fetch(apiUrl('/parking-sessions/check-out'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    license_plate: licensePlate
-                })
-            });
-
-            const data = await response.json();
-            
-            if (response.ok) {
-                alert(`Check-out thành công! Phí: ${data.fee.toLocaleString()}₫`);
-                setLicensePlate('');
-                setShowManualCheckOut(false);
-                loadData(); // Reload data
-            } else {
-                alert(data.message || 'Lỗi check-out!');
-            }
-        } catch (error) {
-            console.error('Check-out error:', error);
-            alert('Lỗi kết nối server!');
         }
     };
 
@@ -575,119 +505,6 @@ export function ManagementPage() {
                     )}
                 </div>
             </div>
-
-            {/* Live Camera Modal */}
-            {showCameraModal && (
-                <LiveCameraModal
-                    isOpen={showCameraModal}
-                    onClose={() => setShowCameraModal(false)}
-                    cameraCount={0}
-                />
-            )}
-
-            {/* Manual Check-In Modal */}
-            {showManualCheckIn && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-xl font-semibold text-gray-900">Nhập xe thủ công</h3>
-                            <button
-                                onClick={() => setShowManualCheckIn(false)}
-                                className="text-gray-400 hover:text-gray-600 transition-colors"
-                            >
-                                <X className="h-6 w-6" />
-                            </button>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Biển số xe</label>
-                                <input
-                                    type="text"
-                                    value={licensePlate}
-                                    onChange={(e) => setLicensePlate(e.target.value.toUpperCase())}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                                    placeholder="Ví dụ: 49P1-12345"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Bãi xe</label>
-                                <select
-                                    value={selectedLotId || ''}
-                                    onChange={(e) => setSelectedLotId(e.target.value ? parseInt(e.target.value) : null)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                                >
-                                    <option value="">Chọn bãi xe</option>
-                                    {parkingLots.map(lot => (
-                                        <option key={lot.id} value={lot.id}>{lot.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="flex space-x-4 mt-6">
-                            <button
-                                onClick={() => setShowManualCheckIn(false)}
-                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                            >
-                                Hủy
-                            </button>
-                            <button
-                                onClick={handleCheckIn}
-                                className="flex-1 px-4 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-lg hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg hover:shadow-xl"
-                            >
-                                Xác nhận
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Manual Check-Out Modal */}
-            {showManualCheckOut && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-xl font-semibold text-gray-900">Xuất xe thủ công</h3>
-                            <button
-                                onClick={() => setShowManualCheckOut(false)}
-                                className="text-gray-400 hover:text-gray-600 transition-colors"
-                            >
-                                <X className="h-6 w-6" />
-                            </button>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Biển số xe</label>
-                                <input
-                                    type="text"
-                                    value={licensePlate}
-                                    onChange={(e) => setLicensePlate(e.target.value.toUpperCase())}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                    placeholder="Ví dụ: 49P1-12345"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex space-x-4 mt-6">
-                            <button
-                                onClick={() => setShowManualCheckOut(false)}
-                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                            >
-                                Hủy
-                            </button>
-                            <button
-                                onClick={handleCheckOut}
-                                className="flex-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl"
-                            >
-                                Xác nhận
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Add Parking Lot Modal */}
             {showAddParkingLot && (

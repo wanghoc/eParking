@@ -11,21 +11,21 @@ datasource db {
 }
 
 model User {
-  id          Int      @id @default(autoincrement())
-  username    String
-  mssv        String?
-  email       String   @unique
-  phone       String?
-  password    String
-  role        Role     @default(student)
-  status      UserStatus @default(active)
-  created_at  DateTime @default(now())
+  id         Int        @id @default(autoincrement())
+  username   String
+  mssv       String?
+  email      String     @unique
+  phone      String?
+  password   String
+  role       Role       @default(student)
+  status     UserStatus @default(active)
+  created_at DateTime   @default(now())
 
   // Relations
-  vehicles      Vehicle[]
-  wallet        Wallet?
-  transactions  Transaction[]
-  system_logs   SystemLog[]
+  vehicles     Vehicle[]
+  wallet       Wallet?
+  transactions Transaction[]
+  system_logs  SystemLog[]
 
   @@map("users")
 }
@@ -66,25 +66,29 @@ model Transaction {
   amount      Decimal
   status      String          @default("Thành công")
   description String?
+  session_id  Int?            @unique
+  // true khi giao dịch này đẩy số dư ví xuống dưới 0 (nợ cước)
+  overdraft   Boolean         @default(false)
   created_at  DateTime        @default(now())
 
   // Relations
-  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user    User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  session ParkingSession? @relation(fields: [session_id], references: [id], onDelete: SetNull)
 
   @@index([user_id, created_at], map: "IX_transactions_user_created")
   @@map("transactions")
 }
 
 model PaymentMethod {
-  id         Int               @id @default(autoincrement())
+  id         Int                 @id @default(autoincrement())
   name       String
   type       String
   icon       String
   status     PaymentMethodStatus @default(active)
-  created_at DateTime          @default(now())
+  created_at DateTime            @default(now())
 
-  @@map("payment_methods")
   @@unique([name], map: "UQ_payment_methods_name")
+  @@map("payment_methods")
 }
 
 model ParkingLot {
@@ -98,9 +102,10 @@ model ParkingLot {
 
   // Relations
   parking_sessions ParkingSession[]
+  edge_devices     EdgeDevice[]
 
-  @@map("parking_lots")
   @@unique([name], map: "UQ_parking_lots_name")
+  @@map("parking_lots")
 }
 
 model ParkingSession {
@@ -113,84 +118,99 @@ model ParkingSession {
   status             SessionStatus @default(IN)
   recognition_method String        @default("Tự động")
   payment_status     PaymentStatus @default(Chua_thanh_toan)
-  created_at         DateTime      @default(now())
+
+  // Edge-cloud fields: event_id là UUID do Edge sinh ra, dùng để chống ghi trùng khi retry/sync
+  entry_event_id  String?     @unique
+  exit_event_id   String?     @unique
+  entry_device_id Int?
+  exit_device_id  Int?
+  entry_image_url String?
+  exit_image_url  String?
+  entry_source    SyncSource  @default(ONLINE)
+  exit_source     SyncSource?
+  // Phiên được tạo từ sự kiện RA mà không có sự kiện VÀO tương ứng (sync lệch thứ tự / mất sự kiện)
+  entry_missing   Boolean     @default(false)
+  closed_reason   String?
+  override_by     String?
+  created_at      DateTime    @default(now())
 
   // Relations
-  vehicle     Vehicle     @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
-  parking_lot ParkingLot? @relation(fields: [lot_id], references: [id], onDelete: SetNull)
+  vehicle      Vehicle      @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
+  parking_lot  ParkingLot?  @relation(fields: [lot_id], references: [id], onDelete: SetNull)
+  entry_device EdgeDevice?  @relation("EntryDevice", fields: [entry_device_id], references: [id], onDelete: SetNull)
+  exit_device  EdgeDevice?  @relation("ExitDevice", fields: [exit_device_id], references: [id], onDelete: SetNull)
+  transaction  Transaction?
 
   @@index([vehicle_id, entry_time], map: "IX_parking_sessions_vehicle_entry")
   @@index([status], map: "IX_parking_sessions_status")
   @@map("parking_sessions")
 }
 
-model Camera {
-  id                    Int           @id @default(autoincrement())
-  name                  String
-  location              String?
-  parking_lot_id        Int?          // Liên kết với bãi xe
-  type                  CameraType
-  status                String        @default("Hoạt động")
-  ip_address            String?
-  resolution            String?
-  fps                   Int?
-  last_activity         DateTime?
-  recognition_accuracy  String?
-  connection            String        @default("Online")
-  battery               String?
-  
-  // Camera connection fields for external cameras (Yoosee, etc.)
-  camera_brand          String?       // "Yoosee", "Hikvision", etc.
-  rtsp_url              String?       // RTSP stream URL
-  http_url              String?       // HTTP stream URL
-  username              String?       // Camera username
-  password              String?       // Camera password
-  port                  Int?          // Camera port (default 554 for RTSP)
-  channel               Int?          // Camera channel (usually 0 or 1)
-  protocol              CameraProtocol @default(RTSP)
-  
-  // Stream settings
-  main_stream_url       String?       // Main stream URL
-  sub_stream_url        String?       // Sub stream URL
-  audio_enabled         Boolean       @default(false)
-  ptz_enabled           Boolean       @default(false) // Pan-Tilt-Zoom support
-  
-  // Device specific
-  device_id             String?       // Unique device ID for Yoosee
-  mac_address           String?       // MAC address
-  serial_number         String?       // Serial number
-  onvif_id              String?       // ONVIF ID (found on camera label)
-  firmware_version      String?       // Firmware version
-  
-  created_at            DateTime      @default(now())
-  updated_at            DateTime      @default(now()) @updatedAt
+// Máy trạm Edge đặt tại cổng. Xác thực bằng API key (chỉ lưu SHA-256 hash).
+model EdgeDevice {
+  id             Int          @id @default(autoincrement())
+  code           String       @unique
+  name           String
+  lane           LaneType     @default(BOTH)
+  lot_id         Int?
+  api_key_hash   String       @unique
+  status         DeviceStatus @default(active)
+  last_seen_at   DateTime?
+  last_ip        String?
+  app_version    String?
+  // Số sự kiện PENDING_SYNC Edge báo cáo qua heartbeat
+  pending_events Int          @default(0)
+  created_at     DateTime     @default(now())
+  updated_at     DateTime     @default(now()) @updatedAt
 
   // Relations
-  alerts Alert[]
+  parking_lot    ParkingLot?      @relation(fields: [lot_id], references: [id], onDelete: SetNull)
+  entry_sessions ParkingSession[] @relation("EntryDevice")
+  exit_sessions  ParkingSession[] @relation("ExitDevice")
+  events         EdgeEvent[]
+  alerts         Alert[]
 
-  @@map("cameras")
-  @@unique([name], map: "UQ_cameras_name")
+  @@map("edge_devices")
+}
+
+// Sổ cái idempotency: mỗi sự kiện Edge đã được xử lý thành công chỉ được ghi 1 lần.
+model EdgeEvent {
+  event_id    String        @id
+  device_id   Int
+  type        EdgeEventType
+  plate       String
+  event_time  DateTime
+  mode        EventMode
+  result_code String
+  session_id  Int?
+  result      Json?
+  received_at DateTime      @default(now())
+
+  device EdgeDevice @relation(fields: [device_id], references: [id], onDelete: Cascade)
+
+  @@index([device_id, received_at], map: "IX_edge_events_device_received")
+  @@map("edge_events")
 }
 
 model Alert {
-  id         Int       @id @default(autoincrement())
-  camera_id  Int?
+  id         Int      @id @default(autoincrement())
+  device_id  Int?
   type       String
   message    String?
-  priority   Priority  @default(Trung_binh)
-  created_at DateTime  @default(now())
+  priority   Priority @default(Trung_binh)
+  created_at DateTime @default(now())
 
   // Relations
-  camera Camera? @relation(fields: [camera_id], references: [id], onDelete: SetNull)
+  device EdgeDevice? @relation(fields: [device_id], references: [id], onDelete: SetNull)
 
   @@map("alerts")
 }
 
 model SystemLog {
-  id         Int     @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   action     String
   user_id    Int?
-  type       LogType @default(Other)
+  type       LogType  @default(Other)
   created_at DateTime @default(now())
 
   // Relations
@@ -244,27 +264,41 @@ enum SessionStatus {
 
 enum PaymentStatus {
   Chua_thanh_toan @map("Chưa thanh toán")
-  Da_thanh_toan @map("Đã thanh toán")
-  Hoan_tien @map("Hoàn tiền")
+  Da_thanh_toan   @map("Đã thanh toán")
+  Hoan_tien       @map("Hoàn tiền")
 }
 
-enum CameraType {
-  Vao @map("Vào")
-  Ra @map("Ra")
+enum LaneType {
+  IN
+  OUT
+  BOTH
 }
 
-enum CameraProtocol {
-  RTSP
-  HTTP
-  ONVIF
-  Yoosee
-  Custom
+enum DeviceStatus {
+  active
+  revoked
+}
+
+enum EdgeEventType {
+  CHECK_IN
+  CHECK_OUT
+}
+
+enum EventMode {
+  ONLINE
+  SYNC
+}
+
+enum SyncSource {
+  ONLINE
+  OFFLINE_SYNC
+  MANUAL
 }
 
 enum Priority {
-  Cao @map("Cao")
+  Cao        @map("Cao")
   Trung_binh @map("Trung bình")
-  Thap @map("Thấp")
+  Thap       @map("Thấp")
 }
 
 enum LogType {

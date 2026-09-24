@@ -17,3 +17,5 @@ test_model/img/
 
 # EasyOCR cache
 .EasyOCR/
+evidence/
+tests/.evidence/

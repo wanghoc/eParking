@@ -1,5 +1,7 @@
 # eParking Docker Setup - Complete Initialization Guide
 
+> **Lỗi thời một phần (09/2026):** backend không còn chạy Python/ML và không còn cổng 5001. Nhận diện biển số đã chuyển sang ứng dụng máy trạm `edge/`. Xem [docs/EDGE_CLOUD_ARCHITECTURE.md](docs/EDGE_CLOUD_ARCHITECTURE.md).
+
 ## ✅ Completed Setup Steps
 
 ### 1. Environment Configuration

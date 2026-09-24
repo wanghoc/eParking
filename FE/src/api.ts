@@ -14,3 +14,6 @@ export const apiUrl = (path: string) => `${API_BASE_URL}${path}`;
 
 
 
+// Ảnh bằng chứng do backend phục vụ tại /evidence/... (ngoài tiền tố /api)
+export const assetUrl = (path?: string | null) =>
+  !path ? null : /^https?:\/\//.test(path) ? path : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${path}`;

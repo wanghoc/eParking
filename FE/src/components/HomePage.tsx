@@ -108,10 +108,10 @@ export function HomePage({ onNavigate }: HomePageProps = {}) {
             color: "bg-gradient-to-r from-cyan-500 to-cyan-600"
         },
         {
-            title: "Số dư hiện tại",
+            title: stats.balance < 0 ? "Đang nợ cước" : "Số dư hiện tại",
             value: isLoading ? "..." : `${stats.balance.toLocaleString('vi-VN')}₫`,
             icon: CreditCard,
-            color: "bg-gradient-to-r from-emerald-500 to-emerald-600"
+            color: stats.balance < 0 ? "bg-gradient-to-r from-red-500 to-red-600" : "bg-gradient-to-r from-emerald-500 to-emerald-600"
         },
         {
             title: "Lượt gửi tháng này",
@@ -176,6 +176,17 @@ export function HomePage({ onNavigate }: HomePageProps = {}) {
 
     return (
         <div className="space-y-8">
+            {!isLoading && stats.balance < 0 && (
+                <div className="bg-red-50 border-2 border-red-300 text-red-800 px-4 py-3 rounded-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                        <p className="font-semibold">Bạn đang nợ cước {(-stats.balance).toLocaleString('vi-VN')}₫</p>
+                        <p className="text-sm">Phí gửi xe lúc cổng mất mạng đã được trừ sau khi đồng bộ. Hãy nạp tiền, nếu không xe sẽ bị chặn ở lượt tiếp theo.</p>
+                    </div>
+                    <button onClick={() => onNavigate?.('payment')} className="bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 whitespace-nowrap">
+                        Nạp tiền ngay
+                    </button>
+                </div>
+            )}
             {/* Welcome Section - Enhanced */}
             <div className="relative bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-700 rounded-3xl p-4 lg:p-8 text-white shadow-2xl overflow-hidden">
                 {/* Animated background elements */}

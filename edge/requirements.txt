@@ -1,0 +1,9 @@
+# eParking Edge Workstation (Python 3.10 - 3.12 khuyến nghị cho torch/ultralytics)
+ultralytics>=8.3.0
+opencv-python>=4.9
+numpy
+PySide6>=6.6
+requests>=2.31
+PyYAML>=6.0
+pyserial>=3.5   # chỉ cần khi barrier.kind = serial
+pytest>=8       # chạy test

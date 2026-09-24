@@ -12,9 +12,11 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// Import ML service
-const mlService = require('./api/ml_service');
-app.use('/api/ml', mlService);
+// Edge gate workstations (desktop app): nhận diện chạy tại cổng, Cloud chỉ nhận sự kiện ra/vào.
+const { router: edgeRouter } = require('./api/edge_service');
+const { EVIDENCE_DIR } = require('./lib/edge_events');
+app.use('/api/edge', edgeRouter);
+app.use('/evidence', express.static(EVIDENCE_DIR, { fallthrough: false, index: false }));
 
 // Import Chatbot service
 const chatbotService = require('./api/chatbot_service');
@@ -471,346 +473,6 @@ app.get('/api/payment-methods', async (req, res) => {
   }
 });
 
-// CAMERAS ENDPOINTS
-app.get('/api/cameras', async (req, res) => {
-  try {
-    const cameras = await prisma.camera.findMany({
-      orderBy: { id: 'asc' }
-    });
-
-    res.json(cameras);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error fetching cameras' });
-  }
-});
-
-app.post('/api/cameras', async (req, res) => {
-  const {
-    name,
-    parking_lot_id,
-    type,
-    rtsp_url
-  } = req.body;
-
-  if (!name || !type) {
-    return res.status(400).json({ message: 'Vui lòng điền tên và loại camera' });
-  }
-
-  if (!rtsp_url) {
-    return res.status(400).json({ message: 'Vui lòng điền RTSP URL' });
-  }
-
-  try {
-    // Check if camera name already exists
-    const existingCamera = await prisma.camera.findFirst({
-      where: { name }
-    });
-
-    if (existingCamera) {
-      return res.status(409).json({ message: 'Camera name already exists' });
-    }
-
-    // Normalize camera type to match Prisma enum (handle both "Vào"/"Ra" and "Vao"/"Ra")
-    let normalizedType = type;
-    if (type === 'Vào' || type === 'Vao') {
-      normalizedType = 'Vao';
-    } else if (type === 'Ra') {
-      normalizedType = 'Ra';
-    }
-
-    // Parse RTSP URL to extract IP, port, username, password if possible
-    let parsedData = {
-      ip_address: null,
-      port: 554,
-      username: null,
-      password: null
-    };
-
-    try {
-      const url = new URL(rtsp_url);
-      parsedData.ip_address = url.hostname;
-      parsedData.port = url.port ? parseInt(url.port) : 554;
-      parsedData.username = url.username || null;
-      parsedData.password = url.password || null;
-    } catch (parseError) {
-      console.log('Could not parse RTSP URL, storing as-is:', parseError.message);
-    }
-
-    const camera = await prisma.camera.create({
-      data: {
-        name,
-        parking_lot_id: parking_lot_id ? parseInt(parking_lot_id) : null,
-        type: normalizedType,
-        rtsp_url: rtsp_url,
-        ip_address: parsedData.ip_address,
-        port: parsedData.port,
-        username: parsedData.username,
-        password: parsedData.password,
-        protocol: 'RTSP',
-        resolution: '1080p',
-        fps: 30,
-        status: 'Hoạt động',
-        connection: 'Online',
-        channel: 0,
-        audio_enabled: false,
-        ptz_enabled: false
-      }
-    });
-
-    await prisma.systemLog.create({
-      data: {
-        action: `Thêm camera mới: ${name}`,
-        type: 'Admin'
-      }
-    });
-
-    res.status(201).json({
-      message: 'Camera created successfully',
-      cameraId: camera.id,
-      camera: camera
-    });
-  } catch (err) {
-    console.error('Create camera error:', err);
-    res.status(500).json({
-      message: 'Error creating camera',
-      error: err.message
-    });
-  }
-});
-
-app.delete('/api/cameras/:cameraId', async (req, res) => {
-  const { cameraId } = req.params;
-
-  try {
-    const camera = await prisma.camera.findUnique({
-      where: { id: parseInt(cameraId) }
-    });
-
-    if (!camera) {
-      return res.status(404).json({ message: 'Camera not found' });
-    }
-
-    await prisma.camera.delete({
-      where: { id: parseInt(cameraId) }
-    });
-
-    await prisma.systemLog.create({
-      data: {
-        action: `Xóa camera: ${camera.name}`,
-        type: 'Admin'
-      }
-    });
-
-    res.json({ message: 'Camera deleted successfully' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error deleting camera' });
-  }
-});
-
-app.post('/api/cameras/test-connection', async (req, res) => {
-  const { rtsp_url } = req.body;
-
-  try {
-    // Basic validation
-    if (!rtsp_url) {
-      return res.status(400).json({
-        success: false,
-        message: 'RTSP URL is required'
-      });
-    }
-
-    if (!rtsp_url.startsWith('rtsp://')) {
-      return res.status(400).json({
-        success: false,
-        message: 'URL phải bắt đầu bằng rtsp://'
-      });
-    }
-
-    // Parse RTSP URL to validate format
-    let parsedData = {};
-    try {
-      const url = new URL(rtsp_url);
-      parsedData = {
-        protocol: url.protocol,
-        hostname: url.hostname,
-        port: url.port || '554',
-        hasAuth: !!(url.username && url.password)
-      };
-    } catch (parseError) {
-      return res.status(400).json({
-        success: false,
-        message: 'URL không đúng định dạng. Ví dụ: rtsp://username:password@192.168.1.16:554/stream'
-      });
-    }
-
-    // For now, we simulate a successful connection test
-    // In a real implementation, you would use ffmpeg or similar to test actual RTSP stream
-    const testResult = {
-      success: true,
-      message: `Định dạng RTSP URL hợp lệ. Host: ${parsedData.hostname}, Port: ${parsedData.port}`,
-      details: {
-        ...parsedData,
-        timestamp: new Date().toISOString()
-      }
-    };
-
-    res.json(testResult);
-  } catch (err) {
-    console.error('Test connection error:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Error testing camera connection',
-      error: err.message
-    });
-  }
-});
-
-// Camera Stream Proxy Endpoint
-app.get('/api/cameras/:id/stream', async (req, res) => {
-  const { id } = req.params;
-  const { protocol: queryProtocol, deviceId, rtsp } = req.query;
-
-  try {
-    const camera = await prisma.camera.findUnique({
-      where: { id: parseInt(id) }
-    });
-
-    if (!camera) {
-      return res.status(404).json({ message: 'Camera not found' });
-    }
-
-    // Determine which protocol to use
-    const streamProtocol = queryProtocol || camera.protocol;
-    let streamUrl = '';
-
-    // Build stream URL based on protocol
-    switch (streamProtocol) {
-      case 'Yoosee':
-        // Yoosee snapshot URL
-        streamUrl = `http://${camera.ip_address}:${camera.port || 8000}/snapshot.jpg`;
-        break;
-
-      case 'HTTP':
-        // HTTP stream/snapshot URL
-        streamUrl = camera.http_url || `http://${camera.ip_address}:${camera.port || 80}/videostream.cgi`;
-        break;
-
-      case 'RTSP':
-        // RTSP stream - use FFmpeg to convert to JPEG snapshot
-        const rtspUrl = camera.rtsp_url || `rtsp://${camera.ip_address}:${camera.port || 554}/live/ch00_0`;
-
-        // Build FFmpeg command with authentication if provided
-        let ffmpegUrl = rtspUrl;
-        if (camera.username && camera.password && !rtspUrl.includes('@')) {
-          // Insert credentials into URL
-          ffmpegUrl = rtspUrl.replace('rtsp://', `rtsp://${camera.username}:${camera.password}@`);
-        }
-
-        // Use FFmpeg to capture a single frame as JPEG
-        const { exec } = require('child_process');
-        const ffmpegCmd = `ffmpeg -rtsp_transport tcp -i "${ffmpegUrl}" -vframes 1 -f image2pipe -vcodec mjpeg -`;
-
-        exec(ffmpegCmd, { encoding: 'buffer', maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
-          if (error) {
-            console.error('FFmpeg error:', error);
-            return res.status(500).json({
-              message: 'Failed to capture RTSP stream',
-              error: error.message
-            });
-          }
-
-          if (stdout && stdout.length > 0) {
-            res.setHeader('Content-Type', 'image/jpeg');
-            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-            res.setHeader('Pragma', 'no-cache');
-            res.setHeader('Expires', '0');
-            res.send(stdout);
-          } else {
-            res.status(500).json({
-              message: 'FFmpeg produced no output',
-              stderr: stderr.toString()
-            });
-          }
-        });
-
-        return; // Exit early, FFmpeg handles response
-
-      case 'ONVIF':
-        // ONVIF snapshot - usually at /onvif/snapshot
-        streamUrl = `http://${camera.ip_address}:${camera.port || 80}/onvif/snapshot`;
-        break;
-
-      default:
-        // Generic HTTP snapshot
-        streamUrl = `http://${camera.ip_address}:${camera.port || 80}/snapshot.jpg`;
-    }
-
-    // Add authentication if provided
-    let fetchOptions = {
-      method: 'GET',
-      timeout: 5000
-    };
-
-    if (camera.username && camera.password) {
-      const auth = Buffer.from(`${camera.username}:${camera.password}`).toString('base64');
-      fetchOptions.headers = {
-        'Authorization': `Basic ${auth}`
-      };
-    }
-
-    // Fetch the image from camera using axios
-    const axios = require('axios');
-
-    try {
-      const axiosResponse = await axios.get(streamUrl, {
-        responseType: 'arraybuffer',
-        timeout: 10000,
-        maxRedirects: 5,
-        headers: fetchOptions.headers || {},
-        validateStatus: (status) => status < 500 // Don't throw on 4xx errors
-      });
-
-      if (axiosResponse.status === 200) {
-        // Set headers for image
-        res.setHeader('Content-Type', axiosResponse.headers['content-type'] || 'image/jpeg');
-        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        res.setHeader('Pragma', 'no-cache');
-        res.setHeader('Expires', '0');
-
-        // Send image data
-        res.send(Buffer.from(axiosResponse.data));
-      } else if (axiosResponse.status === 401) {
-        res.status(401).json({
-          message: 'Camera authentication failed',
-          details: 'Invalid username or password'
-        });
-      } else {
-        res.status(axiosResponse.status).json({
-          message: 'Camera returned error',
-          statusCode: axiosResponse.status,
-          details: axiosResponse.statusText
-        });
-      }
-    } catch (error) {
-      console.error('Camera stream error:', error.message);
-      res.status(500).json({
-        message: 'Failed to connect to camera',
-        error: error.message,
-        streamUrl: streamUrl.replace(/:[^:]*@/, ':****@') // Hide password in logs
-      });
-    }
-
-  } catch (err) {
-    console.error('Stream endpoint error:', err);
-    res.status(500).json({
-      message: 'Error fetching camera stream',
-      error: err.message
-    });
-  }
-});
-
 // DASHBOARD STATS
 app.get('/api/dashboard/stats', async (req, res) => {
   const { userId } = req.query;
@@ -1051,141 +713,6 @@ app.get('/api/parking-history/:vehicle_id', async (req, res) => {
   }
 });
 
-app.post('/api/parking-sessions/check-in', async (req, res) => {
-  const { license_plate, lot_id, recognition_method } = req.body;
-
-  if (!license_plate) {
-    return res.status(400).json({ message: 'license_plate required' });
-  }
-
-  try {
-    const vehicle = await prisma.vehicle.findUnique({
-      where: { license_plate }
-    });
-
-    if (!vehicle) {
-      return res.status(404).json({ message: 'Vehicle not found' });
-    }
-
-    // Check for open session
-    const openSession = await prisma.parkingSession.findFirst({
-      where: {
-        vehicle_id: vehicle.id,
-        exit_time: null
-      }
-    });
-
-    if (openSession) {
-      return res.status(400).json({ message: 'Vehicle already checked in' });
-    }
-
-    await prisma.parkingSession.create({
-      data: {
-        vehicle_id: vehicle.id,
-        lot_id: lot_id || null,
-        status: 'IN',
-        recognition_method: recognition_method || 'Tự động',
-        payment_status: 'Chua_thanh_toan'
-      }
-    });
-
-    await prisma.systemLog.create({
-      data: {
-        action: 'Xe vào bãi',
-        type: 'Recognition'
-      }
-    });
-
-    res.status(201).json({ message: 'Checked in' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error on check-in' });
-  }
-});
-
-app.post('/api/parking-sessions/check-out', async (req, res) => {
-  const { license_plate } = req.body;
-
-  if (!license_plate) {
-    return res.status(400).json({ message: 'license_plate required' });
-  }
-
-  try {
-    const vehicle = await prisma.vehicle.findUnique({
-      where: { license_plate },
-      include: { user: true }
-    });
-
-    if (!vehicle) {
-      return res.status(404).json({ message: 'Vehicle not found' });
-    }
-
-    const session = await prisma.parkingSession.findFirst({
-      where: {
-        vehicle_id: vehicle.id,
-        exit_time: null
-      },
-      orderBy: { entry_time: 'desc' }
-    });
-
-    if (!session) {
-      return res.status(400).json({ message: 'No open session' });
-    }
-
-    const fee = await getFeePerTurn();
-
-    const wallet = await ensureWallet(vehicle.user_id);
-    if (Number(wallet.balance) < fee) {
-      return res.status(400).json({
-        message: 'Insufficient balance',
-        required: fee,
-        balance: Number(wallet.balance)
-      });
-    }
-
-    await prisma.$transaction([
-      prisma.wallet.update({
-        where: { user_id: vehicle.user_id },
-        data: {
-          balance: {
-            decrement: fee
-          }
-        }
-      }),
-      prisma.transaction.create({
-        data: {
-          user_id: vehicle.user_id,
-          type: 'FEE',
-          method: 'AUTO',
-          amount: -fee,
-          status: 'Thành công',
-          description: `Trừ phí gửi xe - ${license_plate}`
-        }
-      }),
-      prisma.parkingSession.update({
-        where: { id: session.id },
-        data: {
-          exit_time: new Date(),
-          fee: fee,
-          status: 'OUT',
-          payment_status: 'Da_thanh_toan'
-        }
-      }),
-      prisma.systemLog.create({
-        data: {
-          action: 'Xe ra bãi',
-          type: 'Payment'
-        }
-      })
-    ]);
-
-    res.json({ message: 'Checked out', fee });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error on check-out' });
-  }
-});
-
 // PARKING LOTS OVERVIEW
 app.get('/api/parking-lots/overview', async (_req, res) => {
   try {
@@ -1276,7 +803,7 @@ app.get('/api/alerts', async (_req, res) => {
   try {
     const alerts = await prisma.alert.findMany({
       include: {
-        camera: { select: { name: true } }
+        device: { select: { name: true, code: true } }
       },
       orderBy: { created_at: 'desc' },
       take: 100
@@ -1288,7 +815,7 @@ app.get('/api/alerts', async (_req, res) => {
       message: a.message,
       priority: a.priority,
       created_at: a.created_at,
-      camera: a.camera?.name || null
+      device: a.device?.name || null
     }));
 
     res.json(formatted);
@@ -1612,109 +1139,6 @@ app.delete('/api/parking-lots/:lotId', async (req, res) => {
   }
 });
 
-// CAMERA UPDATE
-app.put('/api/cameras/:cameraId', async (req, res) => {
-  const { cameraId } = req.params;
-  const {
-    name,
-    location,
-    parking_lot_id,
-    type,
-    status,
-    ip_address,
-    camera_brand,
-    rtsp_url,
-    http_url,
-    username,
-    password,
-    port,
-    channel,
-    protocol,
-    main_stream_url,
-    sub_stream_url,
-    audio_enabled,
-    ptz_enabled,
-    device_id,
-    mac_address,
-    serial_number,
-    onvif_id,
-    resolution,
-    fps
-  } = req.body;
-
-  try {
-    // Check if camera name already exists (excluding current camera)
-    if (name) {
-      const existingCamera = await prisma.camera.findFirst({
-        where: {
-          name,
-          NOT: { id: parseInt(cameraId) }
-        }
-      });
-
-      if (existingCamera) {
-        return res.status(409).json({ message: 'Camera name already exists' });
-      }
-    }
-
-    // Normalize camera type to match Prisma enum (handle both "Vào"/"Ra" and "Vao"/"Ra")
-    let normalizedType = type;
-    if (type === 'Vào' || type === 'Vao') {
-      normalizedType = 'Vao';
-    } else if (type === 'Ra') {
-      normalizedType = 'Ra';
-    }
-
-    const camera = await prisma.camera.update({
-      where: { id: parseInt(cameraId) },
-      data: {
-        name,
-        location: location || null,
-        parking_lot_id: parking_lot_id ? parseInt(parking_lot_id) : null,
-        type: normalizedType,
-        status: status || 'Hoạt động',
-        ip_address: ip_address || null,
-        camera_brand: camera_brand || null,
-        rtsp_url: rtsp_url || null,
-        http_url: http_url || null,
-        username: username || null,
-        password: password || null,
-        port: port || (protocol === 'RTSP' ? 554 : 80),
-        channel: channel || 0,
-        protocol: protocol || 'RTSP',
-        main_stream_url: main_stream_url || null,
-        sub_stream_url: sub_stream_url || null,
-        audio_enabled: audio_enabled || false,
-        ptz_enabled: ptz_enabled || false,
-        device_id: device_id || null,
-        mac_address: mac_address || null,
-        serial_number: serial_number || null,
-        onvif_id: onvif_id || null,
-        resolution: resolution || '1080p',
-        fps: fps || 30
-      }
-    });
-
-    await prisma.systemLog.create({
-      data: {
-        action: `Cập nhật camera: ${name}`,
-        type: 'Admin'
-      }
-    });
-
-    res.json({
-      message: 'Camera updated successfully',
-      camera: camera
-    });
-  } catch (err) {
-    console.error('Update camera error:', err);
-    res.status(500).json({
-      message: 'Error updating camera',
-      error: err.message
-    });
-  }
-});
-
 // SYSTEM SETTINGS
 app.get('/api/system-settings', async (_req, res) => {
   try {
@@ -1800,6 +1224,8 @@ app.get('/api/admin/parking-sessions/active', async (_req, res) => {
       exit_time: s.exit_time,
       fee: Number(s.fee),
       payment_status: s.payment_status,
+      entry_image_url: s.entry_image_url,
+      entry_source: s.entry_source,
       user_id: s.vehicle.user_id,
       balance: s.vehicle.user?.wallet ? Number(s.vehicle.user.wallet.balance) : 0
     }));
@@ -1849,6 +1275,57 @@ app.get('/api/admin/parking-sessions/history', async (_req, res) => {
   } catch (err) {
     console.error('Error fetching parking history:', err);
     res.status(500).json({ message: 'Error fetching parking history' });
+  }
+});
+
+// ADMIN: trạng thái máy trạm Edge tại các cổng
+const EDGE_ONLINE_WINDOW_MS = 30 * 1000;
+app.get('/api/admin/edge-devices', async (_req, res) => {
+  try {
+    const devices = await prisma.edgeDevice.findMany({
+      include: { parking_lot: { select: { name: true } } },
+      orderBy: { code: 'asc' }
+    });
+    res.json(devices.map(({ api_key_hash, ...d }) => ({
+      ...d,
+      lot_name: d.parking_lot?.name || null,
+      online: !!d.last_seen_at && Date.now() - d.last_seen_at.getTime() < EDGE_ONLINE_WINDOW_MS
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error fetching edge devices' });
+  }
+});
+
+// ADMIN: danh sách tài khoản đang nợ cước (số dư âm)
+app.get('/api/admin/debts', async (_req, res) => {
+  try {
+    const wallets = await prisma.wallet.findMany({
+      where: { balance: { lt: 0 } },
+      include: {
+        user: {
+          select: {
+            id: true, username: true, mssv: true, email: true, phone: true,
+            vehicles: { select: { license_plate: true } }
+          }
+        }
+      },
+      orderBy: { balance: 'asc' }
+    });
+    res.json(wallets.map(w => ({
+      user_id: w.user.id,
+      username: w.user.username,
+      mssv: w.user.mssv,
+      email: w.user.email,
+      phone: w.user.phone,
+      plates: w.user.vehicles.map(v => v.license_plate),
+      balance: Number(w.balance),
+      debt: -Number(w.balance),
+      updated_at: w.updated_at
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error fetching debts' });
   }
 });
 

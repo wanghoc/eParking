@@ -167,13 +167,20 @@ export function PaymentPage() {
                 </div>
             )}
 
+            {wallet && wallet.balance < 0 && (
+                <div className="bg-red-50 border-2 border-red-300 text-red-800 px-4 py-3 rounded-lg">
+                    <p className="font-semibold">Tài khoản đang nợ cước {(-wallet.balance).toLocaleString('vi-VN')}₫</p>
+                    <p className="text-sm">Xe sẽ bị chặn tại cổng ở lượt gửi tiếp theo cho đến khi bạn nạp đủ tiền để số dư không còn âm.</p>
+                </div>
+            )}
+
             {/* Quick Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
                 <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm font-medium text-gray-600 mb-1">Tổng số dư</p>
-                            <p className="text-2xl font-bold text-gray-900">
+                            <p className={`text-2xl font-bold ${wallet && wallet.balance < 0 ? "text-red-600" : "text-gray-900"}`}>
                                 {wallet ? `${wallet.balance.toLocaleString('vi-VN')}₫` : "0₫"}
                             </p>
                         </div>

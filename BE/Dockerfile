@@ -1,77 +1,30 @@
-# Dockerfile for Backend with ML Support
-# Uses Python slim image for ML library support
-
-# Stage 1: Node.js dependencies
-FROM node:22-alpine AS node-deps
-
+# Cloud backend: Node.js API only. AI inference now runs on the Edge desktop app at each gate.
+FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci
 
-# Stage 2: Python ML environment
-FROM python:3.11-slim AS python-ml
-
+FROM node:22-alpine
+RUN apk add --no-cache curl netcat-openbsd openssl \
+    && addgroup -g 1001 nodejs \
+    && adduser -S -u 1001 -G nodejs backend
 WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    libgl1 \
-    libglib2.0-0 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy and install Python ML dependencies
-COPY requirements_ml.txt ./
-ENV PIP_DEFAULT_TIMEOUT=180
-RUN pip3 install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu -r requirements_ml.txt
-
-# Stage 3: Final image with Node.js + Python
-FROM python:3.11-slim
-
-# Install Node.js and minimal system deps
-RUN apt-get update && apt-get install -y \
-    curl \
-    netcat-openbsd \
-    libgl1 \
-    libglib2.0-0 \
-    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y nodejs \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-
-# Copy Node.js dependencies from stage 1
-COPY --from=node-deps /app/node_modules ./node_modules
-
-# Copy Python ML packages from stage 2
-COPY --from=python-ml /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=python-ml /usr/local/bin /usr/local/bin
-
-# Copy application code
-COPY . .
-
-# Create necessary directories
-RUN mkdir -p detected_plates
-
-# Copy and setup entrypoint
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN sed -i 's/\r$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
-
-# Generate Prisma client
+COPY --chown=backend:nodejs --from=deps /app/node_modules ./node_modules
+COPY --chown=backend:nodejs . .
+# Prisma CLI (devDependency) is kept: the entrypoint runs `prisma db push` on start.
 RUN npx prisma generate
 
-# Create non-root user
-RUN groupadd -g 1001 nodejs && \
-    useradd -r -u 1001 -g nodejs -m backend && \
-    chown -R backend:nodejs /app && \
-    chown backend:nodejs /docker-entrypoint.sh
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN sed -i 's/\r$//' /docker-entrypoint.sh \
+    && chmod +x /docker-entrypoint.sh \
+    && mkdir -p /app/evidence \
+    && chown backend:nodejs /app /app/evidence
 
 USER backend
-
 EXPOSE 5000
-EXPOSE 5001
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:5000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -fsS http://localhost:5000/api/health || exit 1
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["npm", "start"]

@@ -1,7 +1,7 @@
 import { History, Bike, Clock, DollarSign, CheckCircle, Calendar } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { apiUrl } from "../api";
+import { apiUrl, assetUrl } from "../api";
 
 interface ParkingSession {
     id: number;
@@ -11,6 +11,9 @@ interface ParkingSession {
     fee: number;
     status: string;
     payment_status: string;
+    entry_image_url?: string | null;
+    exit_image_url?: string | null;
+    exit_source?: "ONLINE" | "OFFLINE_SYNC" | "MANUAL" | null;
     vehicle: {
         license_plate: string;
         brand?: string;
@@ -231,12 +234,15 @@ export function HistoryPage() {
                                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Trạng thái
                                 </th>
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Ảnh đối soát
+                                </th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {historyData.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                                         <History className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                                         <p className="text-lg font-medium">Chưa có lịch sử gửi xe</p>
                                         <p className="text-sm">Hãy đăng ký phương tiện và bắt đầu sử dụng dịch vụ</p>
@@ -271,6 +277,21 @@ export function HistoryPage() {
                                                 <span className={`ml-2 inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(session)}`}>
                                                     {getStatusText(session)}
                                                 </span>
+                                            </div>
+                                            {session.exit_source === "OFFLINE_SYNC" && (
+                                                <div className="mt-1 text-xs text-amber-700">Ghi nhận khi cổng mất mạng</div>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-6 whitespace-nowrap">
+                                            <div className="flex space-x-2">
+                                                {[["Vào", session.entry_image_url], ["Ra", session.exit_image_url]].map(([label, url]) => {
+                                                    const src = assetUrl(url);
+                                                    return src ? (
+                                                        <a key={label} href={src} target="_blank" rel="noreferrer" title={`Ảnh lúc ${label}`}>
+                                                            <img src={src} alt={`Ảnh ${label}`} className="h-12 w-20 object-cover rounded border" />
+                                                        </a>
+                                                    ) : null;
+                                                })}
                                             </div>
                                         </td>
                                     </tr>
