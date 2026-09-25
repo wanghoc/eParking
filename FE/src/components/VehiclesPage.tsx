@@ -21,6 +21,8 @@ export function VehiclesPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string>("");
+    const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
+    const [editForm, setEditForm] = useState({ brand: "", model: "" });
 
     // Fetch vehicles và parking sessions khi component mount
     useEffect(() => {
@@ -120,6 +122,56 @@ export function VehiclesPage() {
             }
         } catch (error) {
             console.error('Error adding vehicle:', error);
+            setError('Không thể kết nối đến server');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const openEditModal = (vehicle: Vehicle) => {
+        setEditingVehicle(vehicle);
+        setEditForm({ brand: vehicle.brand || "", model: vehicle.model || "" });
+        setError('');
+    };
+
+    const closeEditModal = () => {
+        setEditingVehicle(null);
+        setError('');
+    };
+
+    const handleUpdateVehicle = async () => {
+        if (!editingVehicle) return;
+        if (!editForm.brand.trim() || !editForm.model.trim()) {
+            setError('Vui lòng điền đầy đủ thông tin');
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+            setError('');
+
+            const response = await fetch(apiUrl(`/vehicles/${editingVehicle.id}`), {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    brand: editForm.brand.trim(),
+                    model: editForm.model.trim(),
+                    vehicle_type: editingVehicle.vehicle_type,
+                }),
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                setEditingVehicle(null);
+                fetchVehicles();
+            } else {
+                setError(result.message || 'Không thể cập nhật phương tiện');
+            }
+        } catch (error) {
+            console.error('Error updating vehicle:', error);
             setError('Không thể kết nối đến server');
         } finally {
             setIsSubmitting(false);
@@ -333,7 +385,11 @@ export function VehiclesPage() {
                                         </td>
                                         <td className="px-6 py-6 whitespace-nowrap text-sm font-medium">
                                             <div className="flex space-x-3">
-                                                <button className="text-cyan-600 hover:text-cyan-900 transition-colors">
+                                                <button
+                                                    onClick={() => openEditModal(vehicle)}
+                                                    title="Sửa thông tin"
+                                                    className="text-cyan-600 hover:text-cyan-900 transition-colors"
+                                                >
                                                     <Edit className="h-5 w-5" />
                                                 </button>
                                                 <button
@@ -439,6 +495,67 @@ export function VehiclesPage() {
                     </div>
                 </div>
             )}
+
+            {/* Edit Vehicle Modal */}
+            {editingVehicle && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+                        <h3 className="text-xl font-semibold text-gray-900 mb-6">Sửa thông tin phương tiện</h3>
+
+                        {error && (
+                            <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">{error}</div>
+                        )}
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Biển số xe</label>
+                                <input
+                                    type="text"
+                                    value={editingVehicle.license_plate}
+                                    disabled
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Biển số không thể thay đổi. Hãy xóa và đăng ký lại nếu nhập sai.</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Hãng xe</label>
+                                <input
+                                    type="text"
+                                    value={editForm.brand}
+                                    onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Model</label>
+                                <input
+                                    type="text"
+                                    value={editForm.model}
+                                    onChange={(e) => setEditForm({ ...editForm, model: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex space-x-4 mt-6">
+                            <button
+                                onClick={closeEditModal}
+                                disabled={isSubmitting}
+                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                onClick={handleUpdateVehicle}
+                                disabled={isSubmitting}
+                                className="flex-1 px-4 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-lg hover:from-cyan-600 hover:to-cyan-700 transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
-} 
+}
