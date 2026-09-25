@@ -314,3 +314,14 @@ enum SettingType {
   number
   boolean
 }
+
+// Camera IP (RTSP) do admin thêm trên web để xem từ xa. Không liên quan camera cục bộ của app Edge.
+model Camera {
+  id         Int      @id @default(autoincrement())
+  name       String
+  location   String?
+  rtsp_url   String
+  created_at DateTime @default(now())
+
+  @@map("cameras")
+}

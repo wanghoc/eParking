@@ -5,7 +5,7 @@ COPY package*.json ./
 RUN npm ci
 
 FROM node:22-alpine
-RUN apk add --no-cache curl netcat-openbsd openssl \
+RUN apk add --no-cache curl netcat-openbsd openssl ffmpeg \
     && addgroup -g 1001 nodejs \
     && adduser -S -u 1001 -G nodejs backend
 WORKDIR /app

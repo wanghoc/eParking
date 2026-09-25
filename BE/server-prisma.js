@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const prisma = require('./lib/prisma');
+const { issueToken } = require('./lib/auth');
 const dotenv = require('dotenv');
 
 dotenv.config();
@@ -17,6 +18,10 @@ const { router: edgeRouter } = require('./api/edge_service');
 const { EVIDENCE_DIR } = require('./lib/edge_events');
 app.use('/api/edge', edgeRouter);
 app.use('/evidence', express.static(EVIDENCE_DIR, { fallthrough: false, index: false }));
+
+// Camera RTSP (admin xem từ xa qua web)
+const { router: cameraRouter } = require('./api/camera_service');
+app.use('/api/admin/cameras', cameraRouter);
 
 // Import Chatbot service
 const chatbotService = require('./api/chatbot_service');
@@ -139,7 +144,8 @@ app.post('/api/login', async (req, res) => {
 
     res.json({
       message: 'Đăng nhập thành công',
-      user: sanitizeUserRow(user)
+      user: sanitizeUserRow(user),
+      token: issueToken(user)
     });
   } catch (err) {
     console.error(err);

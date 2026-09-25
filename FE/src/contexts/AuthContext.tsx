@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { apiUrl } from '../api';
+import { apiUrl, TOKEN_KEY } from '../api';
 import { portalRoleError } from "../portal";
 
 // Types cho user và authentication
@@ -103,6 +103,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
             setUser(loggedInUser);
             localStorage.setItem('eparking_user', JSON.stringify(loggedInUser));
+            if (result.token) localStorage.setItem(TOKEN_KEY, result.token);
 
             return { success: true };
         } catch (error) {
@@ -179,6 +180,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const logout = () => {
         setUser(null);
         localStorage.removeItem('eparking_user');
+        localStorage.removeItem(TOKEN_KEY);
     };
 
     const value: AuthContextType = {

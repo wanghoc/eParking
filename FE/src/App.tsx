@@ -10,6 +10,7 @@ import { HistoryPage } from "./components/HistoryPage";
 import { PaymentPage } from "./components/PaymentPage";
 import { ManagementPage } from "./components/ManagementPage";
 import { AdminPage } from "./components/AdminPage";
+import { CamerasPage } from "./components/CamerasPage";
 import { AdminDashboardPage } from "./components/AdminDashboardPage";
 import { FAQPage } from "./components/FAQPage";
 import { ProfileModal } from "./components/ProfileModal";
@@ -27,7 +28,7 @@ function AuthenticatedApp() {
     // Enforce role-based accessible pages by auto-redirecting when not allowed
     useEffect(() => {
         if (!user) return;
-        const studentBlocked = ["management", "admin", "dashboard"];
+        const studentBlocked = ["management", "admin", "dashboard", "cameras"];
         const adminBlocked = ["vehicles", "payment", "home"];
         
         if (user.role === 'student' && studentBlocked.includes(activeItem)) {
@@ -84,6 +85,12 @@ function AuthenticatedApp() {
                 return (
                     <ProtectedRoute requiredRole="admin">
                         <AdminPage />
+                    </ProtectedRoute>
+                );
+            case "cameras":
+                return (
+                    <ProtectedRoute requiredRole="admin">
+                        <CamerasPage />
                     </ProtectedRoute>
                 );
             case "faq":
